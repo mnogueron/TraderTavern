@@ -21,7 +21,7 @@ Watchlist management and the `WatchlistWidget` live in their own milestone ([06]
 
 - **API `market-data` module:** `IMarketDataProvider` implementations (Yahoo unofficial endpoints as primary, Finnhub free tier as secondary/fallback), Redis-backed caching with per-type TTLs (quotes ~10-30s, movers ~1-5min, calendar ~1hr, internals ~30-60s). Includes a `searchSymbols(query)` method (Yahoo's unofficial symbol-search endpoint) returning Yahoo-style tickers (e.g. `AAPL`, `SAP.DE`) — backs the autocomplete UI in [Milestone 06](./06-watchlist-tab.md).
 - **Movers definition:** Yahoo Finance's own "day gainers" / "day losers" screener definition (via its unofficial endpoints), covering **both US and EU markets** — not US-only.
-- **Live updates:** client-side polling only for v1 — Apollo `pollInterval` per widget matching the relevant cache TTL. No GraphQL subscriptions/WebSocket push.
+- **Live updates:** client-side polling only for v1 — react-query `refetchInterval` per widget matching the relevant cache TTL. No WebSocket/SSE push.
 - **Web:** `MoversWidget` (US + EU), `EconomicCalendarWidget`, `MarketInternalsHeatmapWidget` (derived from sector-ETF quotes), `MultiMarketClockWidget` (US/EU/Asia open-close countdown).
 
 **Open caveat to validate during build:** no good free full economic-calendar API was found; Financial Modeling Prep's free tier is the best earlier candidate but has a capped daily call count — may need a lightweight in-house calendar for the highest-priority events (CPI, FOMC, NFP) if the free API proves too limited.

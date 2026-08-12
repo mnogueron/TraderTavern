@@ -26,7 +26,7 @@ As a developer, I want to build a persistent, user-arrangeable widget grid, so t
 - Nav shell ([Milestone 03](./03-web-app-shell.md)) routes between these.
 
 **Components:**
-- **API:** `DashboardLayout` schema + resolvers (`dashboardLayout` query, `saveDashboardLayout` mutation). Two levels of config persisted in Mongo, both inside `DashboardLayout`: (1) **grid config** per widget instance (`x, y, w, h` position/size) and (2) **widget config** per instance (the widget-specific settings, e.g. watchlist symbols) — stored together as `widgets: [{ widgetId, widgetType, x, y, w, h, config }]`, so both the arrangement and each widget's settings survive reload/redeploy.
+- **API:** `DashboardLayout` schema + REST controller (`GET /dashboard-layout`, `PUT /dashboard-layout`). Two levels of config persisted in Mongo, both inside `DashboardLayout`: (1) **grid config** per widget instance (`x, y, w, h` position/size) and (2) **widget config** per instance (the widget-specific settings, e.g. watchlist symbols) — stored together as `widgets: [{ widgetId, widgetType, x, y, w, h, config }]`, so both the arrangement and each widget's settings survive reload/redeploy.
 - **Web:** `react-grid-layout` integration, `WIDGET_REGISTRY` (display component + optional settings-form component per widget type — later milestones plug into this rather than inventing their own settings UI), "add widget" picker, debounced autosave on drag/resize-stop, unique widget-instance IDs (supports placing the same widget type more than once with different configs).
 - **Responsive breakpoints:** `react-grid-layout`'s responsive mode with distinct layouts for desktop (full grid), tablet, and mobile (collapsed to a single column, auto-resized).
 

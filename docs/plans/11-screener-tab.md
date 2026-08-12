@@ -32,7 +32,7 @@ interface ScreenerCompatibilityAdapter {
 The common filter vocabulary (field names like price range, volume, % change, market cap) is deliberately scoped to what ScreenerHero itself supports for v1, since that's the only adapter — it just isn't hard-coded to ScreenerHero's literal query-param names.
 
 **Components:**
-- **API:** `ScreenerPreset` schema/resolvers, `ScreenerCompatibilityAdapter` registry (mirrors `ChannelRegistryService`/`BotRegistryService` pattern), `ScreenerHeroAdapter` implementation (generic filters → ScreenerHero query string, and → whatever scrape-target shape the scraper endpoint from [Milestone 09](./09-scraper-worker-service.md) needs).
+- **API:** `ScreenerPreset` schema/REST controller, `ScreenerCompatibilityAdapter` registry (mirrors `ChannelRegistryService`/`BotRegistryService` pattern), `ScreenerHeroAdapter` implementation (generic filters → ScreenerHero query string, and → whatever scrape-target shape the scraper endpoint from [Milestone 09](./09-scraper-worker-service.md) needs).
 - **Web — dedicated Screener page:** manage presets (CRUD, built from the generic filter vocabulary), "open in ScreenerHero" deep-link button per preset via the adapter.
 - **Web — Dashboard widget:** per-instance config selects a saved preset, displays the **last-cached scrape result** for it (read from the Redis cache the scraper populates, per Milestone 09 — no live scrape triggered by viewing the widget).
 - **Cross-reference:** `ScreenerScrapeBot` ([Milestone 10](./10-notification-bots.md)) gets a `presetId` param — its scrape target is built via `ScreenerHeroAdapter.buildScrapeTarget()` from the selected preset's filters, rather than always hitting a fixed unfiltered view.

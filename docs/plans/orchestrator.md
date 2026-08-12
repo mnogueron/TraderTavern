@@ -30,7 +30,7 @@ Some cross-cutting facts established during earlier research (grounded, not assu
 
 ## Cross-Cutting Architecture Decisions (reference — earlier decisions, open to revisit)
 
-**Stack (user-specified):** React + Vite (frontend), NestJS (backend), MongoDB, GraphQL (code-first `@nestjs/graphql`). Node 24, npm as the package manager (no pnpm/yarn).
+**Stack (user-specified):** React + Vite (frontend), NestJS (backend), MongoDB, REST API (documented via Swagger/OpenAPI, `@nestjs/swagger`). Node 24, npm as the package manager (no pnpm/yarn).
 
 **Monorepo tooling:** built as an **Nx monorepo** (`npx create-nx-workspace`, npm as the package manager under the hood) rather than bare npm workspaces — see [Milestone 00](./00-foundation.md). Nx's generators, task caching, and dependency-graph visualization (`nx graph`) are worth learning deliberately as part of the "relearn fullstack, from the ground up" goal, on top of the plain workspace layout below.
 
@@ -38,7 +38,7 @@ Some cross-cutting facts established during earlier research (grounded, not assu
 ```
 /apps
   /web        React + Vite dashboard
-  /api        NestJS GraphQL API — auth, all domain modules, BullMQ consumer
+  /api        NestJS REST API (Swagger/OpenAPI docs) — auth, all domain modules, BullMQ consumer
   /scraper    Standalone Playwright microservice (internal-only network, no public port)
   /bots       One deployable per bot (see Bot contract below), each internal-only
     /news-sentiment
@@ -58,7 +58,7 @@ The scraper is a **separate deployable service**, not a NestJS module, because h
 // GET /definition
 interface BotDefinitionResponse {
   id: string; name: string; description: string;
-  paramsSchema: JSONSchema7;   // drives dynamic UI form + GraphQL exposure + input validation
+  paramsSchema: JSONSchema7;   // drives dynamic UI form + REST/Swagger exposure + input validation
 }
 // POST /run  (body: { params }, shared-secret header)
 interface BotResult { summary: string; sections?: BotResultSection[]; raw?: unknown }
@@ -82,11 +82,11 @@ Registered the same way (`ChannelRegistryService`). Fully decoupled from bots �
 
 **Dashboard layout:** `react-grid-layout` for drag/resize; a frontend `WIDGET_REGISTRY: Record<widgetType, Component>` so new widget types are a one-line registration. Layout persists as `DashboardLayout { widgets: [{ widgetId, widgetType, x, y, w, h, config }] }` in Mongo, keyed by user, autosaved (debounced) on drag/resize-stop. Widget instances get unique IDs so the same widget type (e.g. two watchlists with different symbol sets) can be placed more than once.
 
-**Secrets management:** deployment secrets (Mongo URI, JWT secret, `MASTER_ENCRYPTION_KEY`, Redis URL) via `.env`/Docker `env_file` — see [CLAUDE.md](../../CLAUDE.md) for the hard rule against ever committing real `.env` values. User-entered runtime credentials — Discord webhook URLs, XTB broker credentials ([Milestone 12](./12-ticker-universe-xtb.md)), any free-tier API keys (e.g. Finnhub) — are field-level encrypted (AES-256-GCM) via a `SecretsService` into a dedicated `Secret` collection, referenced by id, never returned in plaintext by GraphQL resolvers. TradeTally needs no stored credential for v1 since auth happens entirely inside its embedded iframe ([Milestone 13](./13-tradetally-integration.md)); ScreenerHero also needs none (unauthenticated access).
+**Secrets management:** deployment secrets (Mongo URI, JWT secret, `MASTER_ENCRYPTION_KEY`, Redis URL) via `.env`/Docker `env_file` — see [CLAUDE.md](../../CLAUDE.md) for the hard rule against ever committing real `.env` values. User-entered runtime credentials — Discord webhook URLs, XTB broker credentials ([Milestone 12](./12-ticker-universe-xtb.md)), any free-tier API keys (e.g. Finnhub) — are field-level encrypted (AES-256-GCM) via a `SecretsService` into a dedicated `Secret` collection, referenced by id, never returned in plaintext by REST API responses. TradeTally needs no stored credential for v1 since auth happens entirely inside its embedded iframe ([Milestone 13](./13-tradetally-integration.md)); ScreenerHero also needs none (unauthenticated access).
 
 **Auth & deployment hardening:** simple single-user username/password + JWT (no 2FA required for v1). Home server behind a reverse proxy (Nginx/Traefik) + tunnel (e.g. Cloudflare Tunnel) for remote access, HTTPS terminated at the proxy, `@nestjs/throttler` rate-limiting on login, CORS locked to the app's own origin, scraper service kept off the public network entirely.
 
-**GraphQL shape (representative, not exhaustive):** `User`/`login`/`me`; `DashboardLayout`/`saveDashboardLayout`; `NotificationRule`/`BotRunHistoryEntry` + CRUD + `runNotificationRuleNow`/`testNotificationChannel`; `BotDefinitionType`/`availableBots`; `ChannelConfig` + CRUD (secrets never exposed); `Watchlist`/`Quote`/`MoverEntry`/`EconomicEvent`/`MarketInternalsSnapshot`; `TickerAvailability`; `BrokerConfig` + CRUD; `ScreenerPreset` + CRUD. (No `TradeTally*` types for v1 — the Trade Journal page is iframe-only, no custom API client.)
+**REST API shape (representative, not exhaustive):** `POST /auth/login`, `POST /auth/refresh`, `GET /auth/me`; `GET/PUT /dashboard-layout`; `NotificationRule`/`BotRunHistoryEntry` CRUD + `POST /notification-rules/:id/run-now`, `POST /channel-configs/:id/test`; `GET /bots` (available bot definitions); `ChannelConfig` CRUD (secrets never exposed); `Watchlist`/`Quote`/`MoverEntry`/`EconomicEvent`/`MarketInternalsSnapshot` endpoints; `TickerAvailability`; `BrokerConfig` CRUD; `ScreenerPreset` CRUD. All documented via Swagger/OpenAPI (`@nestjs/swagger`), consumed on the frontend via react-query with a typed API client. (No `TradeTally` endpoints for v1 — the Trade Journal page is iframe-only, no custom API client.)
 
 ## App structure (reference)
 
