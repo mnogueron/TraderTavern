@@ -7,9 +7,6 @@
     },
     {
       "path": "./tsconfig.spec.json"
-    },
-    {
-      "path": "./tsconfig.src.json"
     }
   ],
   "extends": "../../tsconfig.base.json",
@@ -22,7 +19,6 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
-      "@app/*": ["./app/*"]
     }
   }
 }
