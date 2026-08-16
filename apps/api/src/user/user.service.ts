@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PaginationDto } from '../shared/Pagination.dto';
-import { PaginatedResponseDto } from '../shared/PaginatedResponse.dto';
+import { PaginatedUserDto } from './PaginatedUser.dto';
 import { UserDto } from '../shared/User.dto';
 
 const roles = ['admin', 'moderator', 'user'];
@@ -19,10 +19,10 @@ function generateRandomUsers(count: number): UserDto[] {
 
 @Injectable()
 export class UserService {
-  getAll(paginationDto: PaginationDto): PaginatedResponseDto<UserDto> {
+  getAll(paginationDto: PaginationDto): PaginatedUserDto {
     const { limit = 10, page = 1 } = paginationDto;
     const users = generateRandomUsers(200);
-    return new PaginatedResponseDto(
+    return new PaginatedUserDto(
       users.slice((page - 1) * limit, page * limit),
       page,
       limit,
