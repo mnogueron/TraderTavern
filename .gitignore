@@ -1,5 +1,50 @@
+# dependencies
+/node_modules
+**/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
 # Environment variables (never commit real secrets)
 .env
 .env.*
 !.env.local
 !.env.example
+
+# nx cache and runtime data
+.nx/cache
+.nx/workspace-data
+.nx/migrate-runs
+
+# testing
+/coverage
+
+# production
+/build
+**/dist/
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# typescript
+*.tsbuildinfo
+
+# IntelliJ
+/.idea
+
+# Husky
+/.husky/_/
+
+# Serena MCP
+/.serena
