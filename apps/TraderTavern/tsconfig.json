@@ -7,6 +7,9 @@
     },
     {
       "path": "./tsconfig.spec.json"
+    },
+    {
+      "path": "./tsconfig.src.json"
     }
   ],
   "extends": "../../tsconfig.base.json",
@@ -16,6 +19,10 @@
     "types": [
       "@react-router/node",
       "node"
-    ]
+    ],
+    "paths": {
+      "@/*": ["./src/*"],
+      "@app/*": ["./app/*"]
+    }
   }
 }
