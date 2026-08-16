@@ -1,20 +1,13 @@
-export class PaginatedDto<T> {
-  data: T[];
-  meta: { page: number; size: number; total: number; totalPages: number };
+export class UserDto {
+  id: number;
+  username: string;
+  email: string;
+  role: string;
 
-  constructor(
-    entity: T[],
-    page: number,
-    size: number,
-    total: number,
-    totalPages: number,
-  ) {
-    this.data = entity;
-    this.meta = {
-      page,
-      size,
-      total,
-      totalPages,
-    };
+  constructor(id: number, username: string, email: string, role: string) {
+    this.id = id;
+    this.username = username;
+    this.email = email;
+    this.role = role;
   }
 }

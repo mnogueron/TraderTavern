@@ -1,17 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { PaginationDto } from '../shared/Pagination.dto';
-import { PaginatedDto } from '../shared/Paginated.dto';
-
-type User = {
-  id: number;
-  username: string;
-  email: string;
-  role: string;
-};
+import { PaginatedResponseDto } from '../shared/PaginatedResponse.dto';
+import { UserDto } from '../shared/User.dto';
 
 const roles = ['admin', 'moderator', 'user'];
 
-function generateRandomUsers(count: number): User[] {
+function generateRandomUsers(count: number): UserDto[] {
   return Array.from({ length: count }, (_, index) => {
     const id = index + 1;
     return {
@@ -25,10 +19,10 @@ function generateRandomUsers(count: number): User[] {
 
 @Injectable()
 export class UserService {
-  getAll(paginationDto: PaginationDto): PaginatedDto<User> {
+  getAll(paginationDto: PaginationDto): PaginatedResponseDto<UserDto> {
     const { limit = 10, page = 1 } = paginationDto;
     const users = generateRandomUsers(200);
-    return new PaginatedDto(
+    return new PaginatedResponseDto(
       users.slice((page - 1) * limit, page * limit),
       page,
       limit,
