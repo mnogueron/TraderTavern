@@ -11,6 +11,11 @@ import {
 import { AppNav } from './app-nav';
 import '@/styles/global.css';
 
+import { initClient } from '@trader-tavern/api-client';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+initClient('http://localhost:3000');
+
 export const meta: MetaFunction = () => [
   {
     title: 'New Nx React Router App',
@@ -30,6 +35,8 @@ export const links: LinksFunction = () => [
   },
 ];
 
+const queryClient = new QueryClient();
+
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
@@ -41,9 +48,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         <div className="root">
-          <AppNav />
-          {children}
-          <ScrollRestoration />
+          <QueryClientProvider client={queryClient}>
+            <AppNav />
+            {children}
+            <ScrollRestoration />
+          </QueryClientProvider>
         </div>
         <Scripts />
       </body>

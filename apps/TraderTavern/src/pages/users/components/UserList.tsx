@@ -54,7 +54,12 @@ const invoices = [
   },
 ];
 
-const UserList = () => {
+type UserListProps = {
+  users: any[];
+};
+
+const UserList = ({ users }: UserListProps) => {
+  console.log(users);
   return (
     <Table>
       <TableCaption>A list of your recent invoices.</TableCaption>
