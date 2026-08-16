@@ -1,0 +1,36 @@
+{
+  "name": "@trader-tavern/api-client",
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "rslib",
+    "dev": "rslib --watch",
+    "test": "rstest",
+    "test:watch": "rstest --watch",
+    "generate": "openapi-typescript openapi.yaml -o ../api-client/api.d.ts"
+  },
+  "dependencies": {
+    "openapi-fetch": "^0.17.0",
+    "openapi-react-query": "^0.5.4"
+  },
+  "devDependencies": {
+    "@rslib/core": "^0.23.2",
+    "@rstest/adapter-rslib": "^0.10.6",
+    "@rstest/core": "^0.10.6",
+    "@types/node": "^24.13.2",
+    "openapi-typescript": "^7.13.0"
+  }
+}
