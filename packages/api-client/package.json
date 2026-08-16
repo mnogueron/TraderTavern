@@ -24,7 +24,8 @@
   },
   "dependencies": {
     "openapi-fetch": "^0.17.0",
-    "openapi-react-query": "^0.5.4"
+    "openapi-react-query": "^0.5.4",
+    "openapi-typescript-helpers": "^0.1.0"
   },
   "devDependencies": {
     "@rslib/core": "^0.23.2",

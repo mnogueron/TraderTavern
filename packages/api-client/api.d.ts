@@ -40,7 +40,22 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        PaginatedResponseDto: Record<string, never>;
+        UserDto: {
+            id: number;
+            username: string;
+            email: string;
+            role: string;
+        };
+        PaginationMetaDto: {
+            page: number;
+            size: number;
+            total: number;
+            totalPages: number;
+        };
+        PaginatedUserDto: {
+            data: components["schemas"]["UserDto"][];
+            meta: components["schemas"]["PaginationMetaDto"];
+        };
     };
     responses: never;
     parameters: never;
@@ -84,7 +99,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PaginatedResponseDto"];
+                    "application/json": components["schemas"]["PaginatedUserDto"];
                 };
             };
         };

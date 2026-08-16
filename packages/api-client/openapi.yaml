@@ -33,7 +33,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedResponseDto'
+                $ref: '#/components/schemas/PaginatedUserDto'
       tags:
         - User
 info:
@@ -45,6 +45,47 @@ tags: []
 servers: []
 components:
   schemas:
-    PaginatedResponseDto:
+    UserDto:
       type: object
-      properties: {}
+      properties:
+        id:
+          type: number
+        username:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+      required:
+        - id
+        - username
+        - email
+        - role
+    PaginationMetaDto:
+      type: object
+      properties:
+        page:
+          type: number
+        size:
+          type: number
+        total:
+          type: number
+        totalPages:
+          type: number
+      required:
+        - page
+        - size
+        - total
+        - totalPages
+    PaginatedUserDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserDto'
+        meta:
+          $ref: '#/components/schemas/PaginationMetaDto'
+      required:
+        - data
+        - meta
