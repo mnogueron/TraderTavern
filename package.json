@@ -77,6 +77,10 @@
     "webpack-dev-server": "^5.2.1"
   },
   "workspaces": [
-    "apps/*"
-  ]
+    "apps/*",
+    "packages/*"
+  ],
+  "overrides": {
+    "typescript": "~6.0.3"
+  }
 }
