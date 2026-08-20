@@ -1,50 +1,77 @@
-import { Injectable, Logger } from '@nestjs/common';
-import YahooFinance from 'yahoo-finance2';
+import { Injectable } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import { TickerDto } from './dto/Ticker.dto';
-import { SCREENER_TICKERS } from './constants/tickers';
-
-const yahooFinance = new YahooFinance();
+import { SyncType } from './enums/sync-type.enum';
+import { TickerSyncService } from './ticker-sync.service';
+import { TickerStaticData, TickerStaticDataDocument } from './schemas/ticker-static-data.schema';
+import {
+  CompoundTechnicalTickerData,
+  CompoundTechnicalTickerDataDocument,
+} from './schemas/compound-technical-ticker-data.schema';
+import {
+  FundamentalTickerData,
+  FundamentalTickerDataDocument,
+} from './schemas/fundamental-ticker-data.schema';
 
 @Injectable()
 export class FinanceService {
-  private readonly logger = new Logger(FinanceService.name);
+  constructor(
+    private readonly tickerSyncService: TickerSyncService,
+    @InjectModel(TickerStaticData.name)
+    private readonly tickerStaticDataModel: Model<TickerStaticDataDocument>,
+    @InjectModel(CompoundTechnicalTickerData.name)
+    private readonly compoundTechnicalTickerDataModel: Model<CompoundTechnicalTickerDataDocument>,
+    @InjectModel(FundamentalTickerData.name)
+    private readonly fundamentalTickerDataModel: Model<FundamentalTickerDataDocument>,
+  ) {}
 
   async getScreener(): Promise<TickerDto[]> {
-    const results = await Promise.allSettled(
-      SCREENER_TICKERS.map((ticker) => this.fetchTicker(ticker)),
+    await this.tickerSyncService.ensureSyncedToday({ type: SyncType.Auto });
+
+    const [staticData, technicalData, fundamentalData] = await Promise.all([
+      this.tickerStaticDataModel.find().lean(),
+      this.latestPerTicker<CompoundTechnicalTickerData>(
+        this.compoundTechnicalTickerDataModel,
+      ),
+      this.latestPerTicker<FundamentalTickerData>(
+        this.fundamentalTickerDataModel,
+      ),
+    ]);
+
+    const technicalByTicker = new Map(
+      technicalData.map((doc) => [doc.ticker, doc]),
+    );
+    const fundamentalByTicker = new Map(
+      fundamentalData.map((doc) => [doc.ticker, doc]),
     );
 
-    return results
-      .filter(
-        (result): result is PromiseFulfilledResult<TickerDto> =>
-          result.status === 'fulfilled',
-      )
-      .map((result) => result.value);
-  }
-
-  private async fetchTicker(ticker: string): Promise<TickerDto> {
-    try {
-      const { price, summaryDetail, assetProfile } =
-        await yahooFinance.quoteSummary(ticker, {
-          modules: ['price', 'summaryDetail', 'assetProfile'],
-        });
+    return staticData.map((ticker) => {
+      const technical = technicalByTicker.get(ticker.ticker);
+      const fundamental = fundamentalByTicker.get(ticker.ticker);
 
       return new TickerDto(
-        ticker,
-        price?.longName ?? price?.shortName ?? ticker,
-        assetProfile?.sector ?? null,
-        assetProfile?.industry ?? null,
-        summaryDetail?.marketCap ?? price?.marketCap ?? null,
-        summaryDetail?.trailingPE ?? null,
-        price?.regularMarketPrice ?? null,
-        assetProfile?.country ?? null,
-        price?.regularMarketChangePercent != null
-          ? price.regularMarketChangePercent * 100
-          : null,
+        ticker.ticker,
+        ticker.companyName,
+        ticker.sector ?? null,
+        ticker.industry ?? null,
+        fundamental?.marketCap ?? null,
+        fundamental?.peRatio ?? null,
+        technical?.price ?? null,
+        ticker.country ?? null,
+        technical?.changePercent1d ?? null,
       );
-    } catch (error) {
-      this.logger.warn(`Failed to fetch ticker ${ticker}: ${error}`);
-      throw error;
-    }
+    });
+  }
+
+  private latestPerTicker<T extends { ticker: string; syncDate: Date }>(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    model: Model<any>,
+  ): Promise<T[]> {
+    return model.aggregate<T>([
+      { $sort: { syncDate: -1 } },
+      { $group: { _id: '$ticker', doc: { $first: '$$ROOT' } } },
+      { $replaceRoot: { newRoot: '$doc' } },
+    ]);
   }
 }
