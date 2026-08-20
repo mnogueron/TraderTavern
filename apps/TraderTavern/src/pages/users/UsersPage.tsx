@@ -1,7 +1,9 @@
 import { type MouseEvent } from 'react';
 import { useSearchParams } from 'react-router';
 import UserList from '@/pages/users/components/UserList';
+import UserListSkeleton from '@/pages/users/components/UserListSkeleton';
 import { useClientQuery } from '@trader-tavern/api-client';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Pagination,
   PaginationContent,
@@ -21,23 +23,33 @@ import {
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 
+// Always show the first/last page and the 2 pages around the current one,
+// collapsing any gap into an ellipsis.
+const SIBLING_COUNT = 2;
+
 const getPageNumbers = (
   page: number,
   totalPages: number,
 ): (number | 'ellipsis')[] => {
-  const pages: (number | 'ellipsis')[] = [];
-  const window = new Set([1, totalPages, page - 1, page, page + 1]);
+  const visiblePages = new Set(
+    [
+      1,
+      totalPages,
+      ...Array.from(
+        { length: SIBLING_COUNT * 2 + 1 },
+        (_, index) => page - SIBLING_COUNT + index,
+      ),
+    ].filter((candidate) => candidate >= 1 && candidate <= totalPages),
+  );
 
-  let previous: number | undefined;
-  for (const candidate of Array.from(window).sort((a, b) => a - b)) {
-    if (candidate < 1 || candidate > totalPages) {
-      continue;
-    }
-    if (previous !== undefined && candidate - previous > 1) {
+  const pages: (number | 'ellipsis')[] = [];
+  let previousPage: number | undefined;
+  for (const pageNumber of Array.from(visiblePages).sort((a, b) => a - b)) {
+    if (previousPage !== undefined && pageNumber - previousPage > 1) {
       pages.push('ellipsis');
     }
-    pages.push(candidate);
-    previous = candidate;
+    pages.push(pageNumber);
+    previousPage = pageNumber;
   }
 
   return pages;
@@ -75,11 +87,7 @@ const UsersPage = () => {
     });
   };
 
-  if (isPending || !data) {
-    return null;
-  }
-
-  const { meta } = data;
+  const meta = data?.meta;
 
   return (
     <div className="flex flex-col gap-4">
@@ -99,44 +107,52 @@ const UsersPage = () => {
         </Select>
       </div>
 
-      <UserList users={data.data} />
+      {isPending || !data || !meta ? (
+        <UserListSkeleton rows={limit} />
+      ) : (
+        <UserList users={data.data} />
+      )}
 
-      <Pagination>
-        <PaginationContent>
-          <PaginationItem>
-            <PaginationPrevious
-              href="#"
-              aria-disabled={meta.page <= 1}
-              onClick={(event) => handlePageChange(event, meta.page - 1)}
-            />
-          </PaginationItem>
-          {getPageNumbers(meta.page, meta.totalPages).map(
-            (pageNumber, index) =>
-              pageNumber === 'ellipsis' ? (
-                <PaginationItem key={`ellipsis-${index}`}>
-                  <PaginationEllipsis />
-                </PaginationItem>
-              ) : (
-                <PaginationItem key={pageNumber}>
-                  <PaginationLink
-                    href="#"
-                    isActive={pageNumber === meta.page}
-                    onClick={(event) => handlePageChange(event, pageNumber)}
-                  >
-                    {pageNumber}
-                  </PaginationLink>
-                </PaginationItem>
-              ),
-          )}
-          <PaginationItem>
-            <PaginationNext
-              href="#"
-              aria-disabled={meta.page >= meta.totalPages}
-              onClick={(event) => handlePageChange(event, meta.page + 1)}
-            />
-          </PaginationItem>
-        </PaginationContent>
-      </Pagination>
+      {isPending || !data || !meta ? (
+        <Skeleton className="mx-auto h-9 w-72" />
+      ) : (
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                href="#"
+                aria-disabled={meta.page <= 1}
+                onClick={(event) => handlePageChange(event, meta.page - 1)}
+              />
+            </PaginationItem>
+            {getPageNumbers(meta.page, meta.totalPages).map(
+              (pageNumber, index) =>
+                pageNumber === 'ellipsis' ? (
+                  <PaginationItem key={`ellipsis-${index}`}>
+                    <PaginationEllipsis />
+                  </PaginationItem>
+                ) : (
+                  <PaginationItem key={pageNumber}>
+                    <PaginationLink
+                      href="#"
+                      isActive={pageNumber === meta.page}
+                      onClick={(event) => handlePageChange(event, pageNumber)}
+                    >
+                      {pageNumber}
+                    </PaginationLink>
+                  </PaginationItem>
+                ),
+            )}
+            <PaginationItem>
+              <PaginationNext
+                href="#"
+                aria-disabled={meta.page >= meta.totalPages}
+                onClick={(event) => handlePageChange(event, meta.page + 1)}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      )}
     </div>
   );
 };
