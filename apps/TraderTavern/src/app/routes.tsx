@@ -5,6 +5,9 @@ export default [
     index('./app.tsx'),
     route('about', './routes/about.tsx'),
     route('users', './routes/users.tsx'),
+    route('dashboard', './routes/dashboard.tsx'),
+    route('screener', './routes/screener.tsx'),
+    route('news', './routes/news.tsx'),
   ]),
   layout('./layouts/guest-layout.tsx', [
     route('login', './routes/login.tsx'),
