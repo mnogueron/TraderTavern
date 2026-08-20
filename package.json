@@ -11,6 +11,8 @@
     "@react-router/node": "^7.14.2",
     "@react-router/serve": "^7.14.2",
     "axios": "^1.6.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1",
     "isbot": "^4.4.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
