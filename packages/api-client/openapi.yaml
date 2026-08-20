@@ -121,6 +121,23 @@ paths:
         - cookie: []
       tags:
         - Auth
+  /finance/screener:
+    get:
+      operationId: getScreener
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TickerDto'
+      security:
+        - cookie: []
+      tags:
+        - Finance
 info:
   title: TraderTavern API
   description: The TraderTavern API documentation
@@ -215,3 +232,42 @@ components:
           type: string
         success:
           type: boolean
+    TickerDto:
+      type: object
+      properties:
+        ticker:
+          type: string
+        companyName:
+          type: string
+        sector:
+          type: string
+          nullable: true
+        industry:
+          type: string
+          nullable: true
+        marketCap:
+          type: number
+          nullable: true
+        peRatio:
+          type: number
+          nullable: true
+        price:
+          type: number
+          nullable: true
+        country:
+          type: string
+          nullable: true
+        changePercent:
+          type: number
+          nullable: true
+          description: Intraday change, in percent (e.g. 1.23 for +1.23%)
+      required:
+        - ticker
+        - companyName
+        - sector
+        - industry
+        - marketCap
+        - peRatio
+        - price
+        - country
+        - changePercent
