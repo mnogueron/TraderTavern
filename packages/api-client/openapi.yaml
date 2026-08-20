@@ -34,8 +34,93 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaginatedUserDto'
+      security:
+        - cookie: []
       tags:
         - User
+  /auth/register:
+    post:
+      operationId: register
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDto'
+      tags:
+        - Auth
+  /auth/login:
+    post:
+      operationId: login
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDto'
+      tags:
+        - Auth
+  /auth/logout:
+    post:
+      operationId: logout
+      parameters: []
+      responses:
+        '200':
+          description: ''
+      security:
+        - cookie: []
+      tags:
+        - Auth
+  /auth/reset-password:
+    post:
+      operationId: resetPassword
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResetPasswordResponseDto'
+      tags:
+        - Auth
+  /auth/me:
+    get:
+      operationId: me
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDto'
+      security:
+        - cookie: []
+      tags:
+        - Auth
 info:
   title: TraderTavern API
   description: The TraderTavern API documentation
@@ -49,7 +134,7 @@ components:
       type: object
       properties:
         id:
-          type: number
+          type: string
         username:
           type: string
         email:
@@ -89,3 +174,44 @@ components:
       required:
         - data
         - meta
+    RegisterDto:
+      type: object
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+        password:
+          type: string
+      required:
+        - username
+        - email
+        - password
+    LoginDto:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+      required:
+        - username
+        - password
+    ResetPasswordDto:
+      type: object
+      properties:
+        email:
+          type: string
+        token:
+          type: string
+        newPassword:
+          type: string
+      required:
+        - email
+    ResetPasswordResponseDto:
+      type: object
+      properties:
+        token:
+          type: string
+        success:
+          type: boolean

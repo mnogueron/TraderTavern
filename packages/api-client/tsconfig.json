@@ -1,6 +1,9 @@
 {
   "compilerOptions": {
-    "lib": ["ES2022"],
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
     "noEmit": true,
     "skipLibCheck": true,
     "isolatedModules": true,
@@ -10,5 +13,7 @@
     "allowImportingTsExtensions": true,
     "rootDir": "src"
   },
-  "include": ["src"]
+  "include": [
+    "src"
+  ]
 }
