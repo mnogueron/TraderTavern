@@ -1,33 +1,62 @@
 import { Injectable } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import { PaginationDto } from '../shared/Pagination.dto';
 import { PaginatedUserDto } from './PaginatedUser.dto';
 import { UserDto } from '../shared/User.dto';
+import { User, UserDocument } from './schemas/user.schema';
 
-const roles = ['admin', 'moderator', 'user'];
-
-function generateRandomUsers(count: number): UserDto[] {
-  return Array.from({ length: count }, (_, index) => {
-    const id = index + 1;
-    return {
-      id,
-      username: `user${id}`,
-      email: `user${id}@example.com`,
-      role: roles[Math.floor(Math.random() * roles.length)],
-    };
-  });
-}
+const toUserDto = (user: UserDocument): UserDto =>
+  new UserDto(user._id.toString(), user.username, user.email, user.role);
 
 @Injectable()
 export class UserService {
-  getAll(paginationDto: PaginationDto): PaginatedUserDto {
+  constructor(
+    @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
+  ) {}
+
+  async getAll(paginationDto: PaginationDto): Promise<PaginatedUserDto> {
     const { limit = 10, page = 1 } = paginationDto;
-    const users = generateRandomUsers(200);
+
+    const [users, total] = await Promise.all([
+      this.userModel
+        .find()
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .exec(),
+      this.userModel.countDocuments().exec(),
+    ]);
+
     return new PaginatedUserDto(
-      users.slice((page - 1) * limit, page * limit),
+      users.map(toUserDto),
       page,
       limit,
-      users.length,
-      Math.ceil(users.length / limit),
+      total,
+      Math.ceil(total / limit),
     );
+  }
+
+  async findByUsername(username: string): Promise<UserDocument | null> {
+    return this.userModel.findOne({ username }).exec();
+  }
+
+  async findByEmail(email: string): Promise<UserDocument | null> {
+    return this.userModel.findOne({ email }).exec();
+  }
+
+  async findById(id: string): Promise<UserDocument | null> {
+    return this.userModel.findById(id).exec();
+  }
+
+  async create(user: {
+    username: string;
+    email: string;
+    passwordHash: string;
+  }): Promise<UserDocument> {
+    return this.userModel.create(user);
+  }
+
+  toDto(user: UserDocument): UserDto {
+    return toUserDto(user);
   }
 }
