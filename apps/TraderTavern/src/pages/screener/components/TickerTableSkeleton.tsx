@@ -24,6 +24,7 @@ const TickerTableSkeleton = ({ rows }: TickerTableSkeletonProps) => {
           <TableHead className="text-right">Market Cap</TableHead>
           <TableHead className="text-right">P/E</TableHead>
           <TableHead className="text-right">Price</TableHead>
+          <TableHead className="text-right">Change</TableHead>
           <TableHead>Country</TableHead>
         </TableRow>
       </TableHeader>
@@ -47,6 +48,9 @@ const TickerTableSkeleton = ({ rows }: TickerTableSkeletonProps) => {
             </TableCell>
             <TableCell>
               <Skeleton className="ml-auto h-4 w-10" />
+            </TableCell>
+            <TableCell>
+              <Skeleton className="ml-auto h-4 w-14" />
             </TableCell>
             <TableCell>
               <Skeleton className="ml-auto h-4 w-14" />

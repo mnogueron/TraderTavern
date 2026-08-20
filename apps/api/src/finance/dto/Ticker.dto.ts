@@ -25,6 +25,13 @@ export class TickerDto {
   @ApiProperty({ nullable: true, type: String })
   country: string | null;
 
+  @ApiProperty({
+    nullable: true,
+    type: Number,
+    description: 'Intraday change, in percent (e.g. 1.23 for +1.23%)',
+  })
+  changePercent: number | null;
+
   constructor(
     ticker: string,
     companyName: string,
@@ -34,6 +41,7 @@ export class TickerDto {
     peRatio: number | null,
     price: number | null,
     country: string | null,
+    changePercent: number | null,
   ) {
     this.ticker = ticker;
     this.companyName = companyName;
@@ -43,5 +51,6 @@ export class TickerDto {
     this.peRatio = peRatio;
     this.price = price;
     this.country = country;
+    this.changePercent = changePercent;
   }
 }

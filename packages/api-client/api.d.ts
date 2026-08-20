@@ -179,6 +179,8 @@ export interface components {
             peRatio: number | null;
             price: number | null;
             country: string | null;
+            /** @description Intraday change, in percent (e.g. 1.23 for +1.23%) */
+            changePercent: number | null;
         };
     };
     responses: never;

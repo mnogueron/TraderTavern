@@ -38,6 +38,9 @@ export class FinanceService {
         summaryDetail?.trailingPE ?? null,
         price?.regularMarketPrice ?? null,
         assetProfile?.country ?? null,
+        price?.regularMarketChangePercent != null
+          ? price.regularMarketChangePercent * 100
+          : null,
       );
     } catch (error) {
       this.logger.warn(`Failed to fetch ticker ${ticker}: ${error}`);
