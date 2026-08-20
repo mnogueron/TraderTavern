@@ -8,7 +8,6 @@ import {
   type LinksFunction,
 } from 'react-router';
 
-import { AppNav } from './app-nav';
 import '@/styles/global.css';
 
 import { initClient } from '@trader-tavern/api-client';
@@ -49,7 +48,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <body>
         <div className="root">
           <QueryClientProvider client={queryClient}>
-            <AppNav />
             {children}
             <ScrollRestoration />
           </QueryClientProvider>

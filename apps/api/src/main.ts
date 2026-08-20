@@ -3,7 +3,7 @@
  * This is only a minimal backend to get started.
  */
 
-import { Logger } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import {
   SwaggerModule,
@@ -15,9 +15,19 @@ import { writeFileSync } from 'node:fs';
 import yaml from 'js-yaml';
 import { apiReference } from '@scalar/nestjs-api-reference';
 import * as path from 'node:path';
+import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { cors: true });
+  const app = await NestFactory.create(AppModule, {
+    cors: {
+      origin: process.env.FRONTEND_ORIGIN,
+      credentials: true,
+    },
+  });
+
+  app.use(cookieParser());
+
+  app.useGlobalPipes(new ValidationPipe({ transform: true }));
 
   //const globalPrefix = 'api';
   //app.setGlobalPrefix(globalPrefix);
