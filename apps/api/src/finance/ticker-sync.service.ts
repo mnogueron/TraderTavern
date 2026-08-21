@@ -510,12 +510,18 @@ export class TickerSyncService {
     if (latestClose == null || quotes.length === 0) {
       return undefined;
     }
-    const closest = quotes.reduce((best, quote) =>
-      Math.abs(quote.date.getTime() - targetDate.getTime()) <
-      Math.abs(best.date.getTime() - targetDate.getTime())
-        ? quote
-        : best,
+    // Anchor to the last close on or before the target date, not merely the
+    // chronologically nearest one — around gaps like the New Year holiday,
+    // the nearest quote by absolute distance can land on the wrong side of
+    // the boundary (e.g. the first trading day of the new year instead of
+    // the last one of the previous year), silently skewing YTD/period
+    // returns. Fall back to the earliest available quote if the ticker's
+    // history doesn't reach back to the target date.
+    const onOrBefore = quotes.filter(
+      (quote) => quote.date.getTime() <= targetDate.getTime(),
     );
+    const closest =
+      onOrBefore.length > 0 ? onOrBefore[onOrBefore.length - 1] : quotes[0];
     if (closest.close === 0) {
       return undefined;
     }
