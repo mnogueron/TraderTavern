@@ -9,13 +9,15 @@ const ScreenerPage = () => {
   );
 
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">Screener</h1>
-      {isPending || !tickers ? (
-        <TickerTableSkeleton rows={20} />
-      ) : (
-        <TickerTable tickers={tickers} />
-      )}
+    <div className="flex h-full min-h-0 flex-col gap-4">
+      <h1 className="shrink-0 text-2xl font-semibold">Screener</h1>
+      <div className="min-h-0 flex-1 overflow-hidden rounded-md border">
+        {isPending || !tickers ? (
+          <TickerTableSkeleton rows={20} />
+        ) : (
+          <TickerTable tickers={tickers} />
+        )}
+      </div>
     </div>
   );
 };

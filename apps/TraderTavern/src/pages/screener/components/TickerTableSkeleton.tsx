@@ -14,7 +14,7 @@ type TickerTableSkeletonProps = {
 
 const TickerTableSkeleton = ({ rows }: TickerTableSkeletonProps) => {
   return (
-    <Table>
+    <Table containerClassName="h-full">
       <TableHeader>
         <TableRow>
           <TableHead>Ticker</TableHead>
