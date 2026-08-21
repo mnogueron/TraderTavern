@@ -59,6 +59,41 @@ export class FinanceController {
     return this.tickerSyncService.syncAllCompound();
   }
 
+  @Post('sync/technical')
+  @HttpCode(204)
+  @Auth(Role.Admin)
+  syncTechnical(): Promise<void> {
+    return this.tickerSyncService.syncAllTechnical();
+  }
+
+  @Post('ticker/:id/sync')
+  @HttpCode(204)
+  @Auth(Role.Admin)
+  syncSingleTicker(@Param('id') id: string): Promise<void> {
+    return this.tickerSyncService.syncSingleTicker(id.toUpperCase());
+  }
+
+  @Post('ticker/:id/sync/fundamental')
+  @HttpCode(204)
+  @Auth(Role.Admin)
+  syncSingleTickerFundamental(@Param('id') id: string): Promise<void> {
+    return this.tickerSyncService.syncSingleTickerFundamental(id.toUpperCase());
+  }
+
+  @Post('ticker/:id/sync/compound')
+  @HttpCode(204)
+  @Auth(Role.Admin)
+  syncSingleTickerCompound(@Param('id') id: string): Promise<void> {
+    return this.tickerSyncService.syncSingleTickerCompound(id.toUpperCase());
+  }
+
+  @Post('ticker/:id/sync/technical')
+  @HttpCode(204)
+  @Auth(Role.Admin)
+  syncSingleTickerTechnical(@Param('id') id: string): Promise<void> {
+    return this.tickerSyncService.syncSingleTickerTechnical(id.toUpperCase());
+  }
+
   @Get('ticker/:id')
   @Auth()
   @ApiOkResponse({ type: TickerDto })

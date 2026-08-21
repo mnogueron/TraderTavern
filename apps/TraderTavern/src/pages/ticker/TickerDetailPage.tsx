@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router';
 import { RiArrowLeftLine, RiEyeLine, RiEyeOffLine } from '@remixicon/react';
 import { useClientQuery } from '@trader-tavern/api-client';
@@ -126,13 +126,14 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
           <CardHeader>
             <CardTitle>Performance</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-y-2 text-sm">
+          <CardContent>
             {isTickerPending || !tickerData ? (
-              <Skeleton className="col-span-2 h-24" />
+              <Skeleton className="h-16 w-full" />
             ) : (
-              <>
+              <div className="flex gap-2 overflow-x-auto pb-1">
                 {(
                   [
+                    ['1D', tickerData.changePercent],
                     ['1W', tickerData.changePercent1w],
                     ['1M', tickerData.changePercent1m],
                     ['3M', tickerData.changePercent3m],
@@ -141,16 +142,21 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
                     ['1Y', tickerData.changePercent1y],
                   ] as const
                 ).map(([label, value]) => (
-                  <Fragment key={label}>
-                    <span className="text-muted-foreground">{label}</span>
+                  <div
+                    key={label}
+                    className="flex shrink-0 flex-col items-center gap-1 rounded-md border bg-muted/40 px-3 py-2"
+                  >
+                    <span className="text-xs text-muted-foreground">
+                      {label}
+                    </span>
                     <span
-                      className={`text-right tabular-nums ${changePercentClassName(value)}`}
+                      className={`text-sm tabular-nums ${changePercentClassName(value)}`}
                     >
                       {formatChangePercent(value)}
                     </span>
-                  </Fragment>
+                  </div>
                 ))}
-              </>
+              </div>
             )}
           </CardContent>
         </Card>

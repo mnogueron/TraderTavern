@@ -188,6 +188,81 @@ paths:
         - cookie: []
       tags:
         - Finance
+  /finance/sync/technical:
+    post:
+      operationId: syncTechnical
+      parameters: []
+      responses:
+        '204':
+          description: ''
+      security:
+        - cookie: []
+      tags:
+        - Finance
+  /finance/ticker/{id}/sync:
+    post:
+      operationId: syncSingleTicker
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '204':
+          description: ''
+      security:
+        - cookie: []
+      tags:
+        - Finance
+  /finance/ticker/{id}/sync/fundamental:
+    post:
+      operationId: syncSingleTickerFundamental
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '204':
+          description: ''
+      security:
+        - cookie: []
+      tags:
+        - Finance
+  /finance/ticker/{id}/sync/compound:
+    post:
+      operationId: syncSingleTickerCompound
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '204':
+          description: ''
+      security:
+        - cookie: []
+      tags:
+        - Finance
+  /finance/ticker/{id}/sync/technical:
+    post:
+      operationId: syncSingleTickerTechnical
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '204':
+          description: ''
+      security:
+        - cookie: []
+      tags:
+        - Finance
   /finance/ticker/{id}:
     get:
       operationId: getTicker
