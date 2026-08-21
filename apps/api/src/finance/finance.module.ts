@@ -15,6 +15,10 @@ import {
   FundamentalTickerDataSchema,
 } from './schemas/fundamental-ticker-data.schema';
 import { SyncHistory, SyncHistorySchema } from './schemas/sync-history.schema';
+import {
+  TechnicalTickerData,
+  TechnicalTickerDataSchema,
+} from './schemas/technical-ticker-data.schema';
 
 @Module({
   imports: [
@@ -28,6 +32,7 @@ import { SyncHistory, SyncHistorySchema } from './schemas/sync-history.schema';
       },
       { name: FundamentalTickerData.name, schema: FundamentalTickerDataSchema },
       { name: SyncHistory.name, schema: SyncHistorySchema },
+      { name: TechnicalTickerData.name, schema: TechnicalTickerDataSchema },
     ]),
   ],
   controllers: [FinanceController],

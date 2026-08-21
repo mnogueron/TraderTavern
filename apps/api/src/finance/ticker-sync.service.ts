@@ -1,11 +1,19 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Model } from 'mongoose';
 import YahooFinance from 'yahoo-finance2';
 import { SCREENER_TICKERS } from './constants/tickers';
+import {
+  CANDLE_COUNT_ENV_VAR,
+  CANDLE_LOOKBACK_MULTIPLIER,
+  CANDLE_WINDOW_DURATION_MS,
+  DEFAULT_CANDLE_COUNT,
+} from './constants/candle-windows';
 import { SyncType } from './enums/sync-type.enum';
 import { SyncStatus } from './enums/sync-status.enum';
+import { CandleWindow } from './enums/candle-window.enum';
 import { TickerStaticData, TickerStaticDataDocument } from './schemas/ticker-static-data.schema';
 import {
   CompoundTechnicalTickerData,
@@ -16,6 +24,10 @@ import {
   FundamentalTickerDataDocument,
 } from './schemas/fundamental-ticker-data.schema';
 import { SyncHistory, SyncHistoryDocument } from './schemas/sync-history.schema';
+import {
+  TechnicalTickerData,
+  TechnicalTickerDataDocument,
+} from './schemas/technical-ticker-data.schema';
 
 const yahooFinance = new YahooFinance();
 
@@ -49,6 +61,9 @@ export class TickerSyncService {
     private readonly fundamentalTickerDataModel: Model<FundamentalTickerDataDocument>,
     @InjectModel(SyncHistory.name)
     private readonly syncHistoryModel: Model<SyncHistoryDocument>,
+    @InjectModel(TechnicalTickerData.name)
+    private readonly technicalTickerDataModel: Model<TechnicalTickerDataDocument>,
+    private readonly configService: ConfigService,
   ) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_1AM)
@@ -174,6 +189,90 @@ export class TickerSyncService {
       },
       { upsert: true },
     );
+
+    await Promise.all(
+      Object.values(CandleWindow).map((window) =>
+        this.syncCandles(ticker, window),
+      ),
+    );
+  }
+
+  private getCandleCount(window: CandleWindow): number {
+    const raw = this.configService.get<string>(CANDLE_COUNT_ENV_VAR[window]);
+    const parsed = raw != null ? Number(raw) : undefined;
+    return parsed != null && Number.isFinite(parsed) && parsed > 0
+      ? parsed
+      : DEFAULT_CANDLE_COUNT[window];
+  }
+
+  private async syncCandles(
+    ticker: string,
+    window: CandleWindow,
+  ): Promise<void> {
+    const count = this.getCandleCount(window);
+    const lookbackMs =
+      count * CANDLE_WINDOW_DURATION_MS[window] * CANDLE_LOOKBACK_MULTIPLIER;
+
+    const chart = await yahooFinance.chart(ticker, {
+      period1: new Date(Date.now() - lookbackMs),
+      interval: window,
+    });
+
+    const candles = (chart.quotes ?? [])
+      .filter(
+        (quote): quote is typeof quote & {
+          open: number;
+          close: number;
+          low: number;
+          high: number;
+          volume: number;
+        } =>
+          quote.open != null &&
+          quote.close != null &&
+          quote.low != null &&
+          quote.high != null &&
+          quote.volume != null,
+      )
+      .slice(-count);
+
+    if (candles.length === 0) {
+      return;
+    }
+
+    const durationMs = CANDLE_WINDOW_DURATION_MS[window];
+
+    await this.technicalTickerDataModel.bulkWrite(
+      candles.map((candle) => {
+        const startTime = candle.date;
+        const endTime = new Date(startTime.getTime() + durationMs);
+        return {
+          updateOne: {
+            filter: { ticker, window, startTime },
+            update: {
+              $set: {
+                ticker,
+                window,
+                startTime,
+                endTime,
+                entry: candle.open,
+                exit: candle.close,
+                low: candle.low,
+                high: candle.high,
+                volume: candle.volume,
+              },
+            },
+            upsert: true,
+          },
+        };
+      }),
+    );
+
+    const oldestKeptStartTime = candles[0].date;
+    await this.technicalTickerDataModel.deleteMany({
+      ticker,
+      window,
+      startTime: { $lt: oldestKeptStartTime },
+    });
   }
 
   private changePercent(
