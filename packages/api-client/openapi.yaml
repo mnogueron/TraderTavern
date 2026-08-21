@@ -138,6 +138,23 @@ paths:
         - cookie: []
       tags:
         - Finance
+  /finance/screener/filters/tickers:
+    get:
+      operationId: getScreenerTickerOptions
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TickerOptionDto'
+      security:
+        - cookie: []
+      tags:
+        - Finance
   /finance/sync:
     post:
       operationId: syncScreener
@@ -383,6 +400,16 @@ components:
         - market
         - changePercent
         - refreshedAt
+    TickerOptionDto:
+      type: object
+      properties:
+        ticker:
+          type: string
+        companyName:
+          type: string
+      required:
+        - ticker
+        - companyName
     FundamentalTickerDto:
       type: object
       properties:

@@ -7,6 +7,7 @@ import { FundamentalTickerDto } from './dto/FundamentalTicker.dto';
 import { TickerChartDto } from './dto/TickerChart.dto';
 import { GetTickerChartDto } from './dto/GetTickerChart.dto';
 import { MarketHoursDto } from './dto/MarketHours.dto';
+import { TickerOptionDto } from './dto/TickerOption.dto';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { JwtPayload } from '../auth/types/jwt-payload.type';
@@ -25,6 +26,13 @@ export class FinanceController {
   @ApiOkResponse({ type: TickerDto, isArray: true })
   getScreener(): Promise<TickerDto[]> {
     return this.financeService.getScreener();
+  }
+
+  @Get('screener/filters/tickers')
+  @Auth()
+  @ApiOkResponse({ type: TickerOptionDto, isArray: true })
+  getScreenerTickerOptions(): Promise<TickerOptionDto[]> {
+    return this.financeService.getScreenerTickerOptions();
   }
 
   @Post('sync')
