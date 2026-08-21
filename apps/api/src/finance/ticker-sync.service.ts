@@ -245,38 +245,25 @@ export class TickerSyncService {
 
     const durationMs = CANDLE_WINDOW_DURATION_MS[window];
 
-    await this.technicalTickerDataModel.bulkWrite(
-      candles.map((candle) => {
-        const startTime = candle.date;
-        const endTime = new Date(startTime.getTime() + durationMs);
-        return {
-          updateOne: {
-            filter: { ticker, window, startTime },
-            update: {
-              $set: {
-                ticker,
-                window,
-                startTime,
-                endTime,
-                entry: candle.open,
-                exit: candle.close,
-                low: candle.low,
-                high: candle.high,
-                volume: candle.volume,
-              },
-            },
-            upsert: true,
-          },
-        };
-      }),
+    await this.technicalTickerDataModel.updateOne(
+      { ticker, window },
+      {
+        $set: {
+          ticker,
+          window,
+          candles: candles.map((candle) => ({
+            startTime: candle.date,
+            endTime: new Date(candle.date.getTime() + durationMs),
+            entry: candle.open,
+            exit: candle.close,
+            low: candle.low,
+            high: candle.high,
+            volume: candle.volume,
+          })),
+        },
+      },
+      { upsert: true },
     );
-
-    const oldestKeptStartTime = candles[0].date;
-    await this.technicalTickerDataModel.deleteMany({
-      ticker,
-      window,
-      startTime: { $lt: oldestKeptStartTime },
-    });
   }
 
   private changePercent(

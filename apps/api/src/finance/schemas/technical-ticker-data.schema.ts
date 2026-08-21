@@ -2,16 +2,8 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { CandleWindow } from '../enums/candle-window.enum';
 
-export type TechnicalTickerDataDocument = HydratedDocument<TechnicalTickerData>;
-
-@Schema({ collection: 'technical_ticker_data', timestamps: true })
-export class TechnicalTickerData {
-  @Prop({ required: true })
-  ticker!: string;
-
-  @Prop({ type: String, required: true, enum: CandleWindow })
-  window!: CandleWindow;
-
+@Schema({ _id: false })
+export class Candle {
   @Prop({ required: true })
   startTime!: Date;
 
@@ -34,10 +26,23 @@ export class TechnicalTickerData {
   volume!: number;
 }
 
+export const CandleSchema = SchemaFactory.createForClass(Candle);
+
+export type TechnicalTickerDataDocument = HydratedDocument<TechnicalTickerData>;
+
+@Schema({ collection: 'technical_ticker_data', timestamps: true })
+export class TechnicalTickerData {
+  @Prop({ required: true })
+  ticker!: string;
+
+  @Prop({ type: String, required: true, enum: CandleWindow })
+  window!: CandleWindow;
+
+  @Prop({ type: [CandleSchema], default: [] })
+  candles!: Candle[];
+}
+
 export const TechnicalTickerDataSchema = SchemaFactory.createForClass(
   TechnicalTickerData,
 );
-TechnicalTickerDataSchema.index(
-  { ticker: 1, window: 1, startTime: -1 },
-  { unique: true },
-);
+TechnicalTickerDataSchema.index({ ticker: 1, window: 1 }, { unique: true });
