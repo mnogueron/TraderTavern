@@ -76,7 +76,7 @@ const CandleShape = (props: CandleShapeProps) => {
   const closeY = priceToY(close);
   const bodyTop = Math.min(openY, closeY);
   const bodyHeight = Math.max(Math.abs(closeY - openY), 1);
-  const bodyWidth = Math.max(width * 0.6, 1);
+  const bodyWidth = Math.max(width - 2, 1);
   const centerX = x + width / 2;
 
   return (
@@ -181,7 +181,7 @@ const CandlestickChart = ({
       <ComposedChart
         data={data}
         margin={{ top: 8, right: 8, left: 8, bottom: 8 }}
-        barCategoryGap="5%"
+        barCategoryGap={0}
       >
         <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
         <XAxis
