@@ -215,6 +215,7 @@ export class FinanceService {
       technical?.price ?? null,
       staticData.country ?? null,
       marketLabel,
+      staticData.currency ?? null,
       technical?.changePercent1d ?? null,
       technical?.updatedAt ?? null,
     );

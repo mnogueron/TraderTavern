@@ -277,6 +277,8 @@ export interface components {
             country: string | null;
             /** @description Display name of the market the ticker trades on */
             market: string | null;
+            /** @description ISO 4217 currency code the ticker is priced in (e.g. USD, EUR) */
+            currency: string | null;
             /** @description Intraday change, in percent (e.g. 1.23 for +1.23%) */
             changePercent: number | null;
             /**

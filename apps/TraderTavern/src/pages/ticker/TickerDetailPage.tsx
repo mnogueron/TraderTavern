@@ -99,7 +99,7 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
               <>
                 <span className="text-muted-foreground">Price</span>
                 <span className="text-right tabular-nums">
-                  {formatNumber(tickerData.price)}
+                  {formatNumber(tickerData.price, 2, tickerData.currency)}
                 </span>
                 <span className="text-muted-foreground">Change</span>
                 <span
@@ -133,7 +133,7 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
               <div className="grid grid-cols-3 gap-y-2 text-sm">
                 <span className="text-muted-foreground">Market Cap</span>
                 <span className="text-right tabular-nums">
-                  {formatMarketCap(fundamental.marketCap)}
+                  {formatMarketCap(fundamental.marketCap, tickerData?.currency ?? null)}
                 </span>
                 <span />
                 <span className="text-muted-foreground">P/E</span>
@@ -148,12 +148,12 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
                 <span />
                 <span className="text-muted-foreground">EBITDA</span>
                 <span className="text-right tabular-nums">
-                  {formatMarketCap(fundamental.ebitda)}
+                  {formatMarketCap(fundamental.ebitda, tickerData?.currency ?? null)}
                 </span>
                 <span />
                 <span className="text-muted-foreground">Total Debt</span>
                 <span className="text-right tabular-nums">
-                  {formatMarketCap(fundamental.totalDebt)}
+                  {formatMarketCap(fundamental.totalDebt, tickerData?.currency ?? null)}
                 </span>
                 <span />
                 <span className="text-muted-foreground">Debt / Equity</span>
@@ -207,6 +207,7 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
               window={chart.window}
               marketHours={marketHours}
               showPreMarket={showPreMarket}
+              currency={tickerData?.currency}
             />
           )}
         </CardContent>

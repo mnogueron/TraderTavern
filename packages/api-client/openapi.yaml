@@ -379,6 +379,10 @@ components:
           type: string
           nullable: true
           description: Display name of the market the ticker trades on
+        currency:
+          type: string
+          nullable: true
+          description: ISO 4217 currency code the ticker is priced in (e.g. USD, EUR)
         changePercent:
           type: number
           nullable: true
@@ -398,6 +402,7 @@ components:
         - price
         - country
         - market
+        - currency
         - changePercent
         - refreshedAt
     TickerOptionDto:

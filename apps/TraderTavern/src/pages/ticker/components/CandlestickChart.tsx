@@ -22,6 +22,7 @@ type CandlestickChartProps = {
   window: '5m' | '1h' | '1d' | '1wk';
   marketHours?: MarketHours | null;
   showPreMarket: boolean;
+  currency?: string | null;
 };
 
 const isOutsideRegularHours = (
@@ -115,9 +116,11 @@ type TooltipPayload = {
 const CandleTooltip = ({
   active,
   payload,
+  currency,
 }: {
   active?: boolean;
   payload?: { payload: TooltipPayload }[];
+  currency?: string | null;
 }) => {
   if (!active || !payload?.length) {
     return null;
@@ -132,13 +135,13 @@ const CandleTooltip = ({
       </div>
       <div className="grid grid-cols-2 gap-x-3 tabular-nums">
         <span className="text-muted-foreground">Open</span>
-        <span className="text-right">{formatNumber(candle.open)}</span>
+        <span className="text-right">{formatNumber(candle.open, 2, currency)}</span>
         <span className="text-muted-foreground">High</span>
-        <span className="text-right">{formatNumber(candle.high)}</span>
+        <span className="text-right">{formatNumber(candle.high, 2, currency)}</span>
         <span className="text-muted-foreground">Low</span>
-        <span className="text-right">{formatNumber(candle.low)}</span>
+        <span className="text-right">{formatNumber(candle.low, 2, currency)}</span>
         <span className="text-muted-foreground">Close</span>
-        <span className="text-right">{formatNumber(candle.close)}</span>
+        <span className="text-right">{formatNumber(candle.close, 2, currency)}</span>
         <span className="text-muted-foreground">Volume</span>
         <span className="text-right">{candle.volume.toLocaleString()}</span>
       </div>
@@ -151,6 +154,7 @@ const CandlestickChart = ({
   window,
   marketHours,
   showPreMarket,
+  currency,
 }: CandlestickChartProps) => {
   const isIntraday = window === '5m' || window === '1h';
 
@@ -196,7 +200,7 @@ const CandlestickChart = ({
         <YAxis
           domain={['auto', 'auto']}
           tick={{ fontSize: 12 }}
-          tickFormatter={(value: number) => formatNumber(value, 0)}
+          tickFormatter={(value: number) => formatNumber(value, 0, currency)}
           width={56}
         />
         <Tooltip
@@ -208,6 +212,7 @@ const CandlestickChart = ({
                   | { payload: TooltipPayload }[]
                   | undefined
               }
+              currency={currency}
             />
           )}
         />

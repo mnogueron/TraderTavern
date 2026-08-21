@@ -30,6 +30,13 @@ export class TickerDto {
 
   @ApiProperty({
     nullable: true,
+    type: String,
+    description: 'ISO 4217 currency code the ticker is priced in (e.g. USD, EUR)',
+  })
+  currency: string | null;
+
+  @ApiProperty({
+    nullable: true,
     type: Number,
     description: 'Intraday change, in percent (e.g. 1.23 for +1.23%)',
   })
@@ -52,6 +59,7 @@ export class TickerDto {
     price: number | null,
     country: string | null,
     market: string | null,
+    currency: string | null,
     changePercent: number | null,
     refreshedAt: Date | null,
   ) {
@@ -64,6 +72,7 @@ export class TickerDto {
     this.price = price;
     this.country = country;
     this.market = market;
+    this.currency = currency;
     this.changePercent = changePercent;
     this.refreshedAt = refreshedAt;
   }

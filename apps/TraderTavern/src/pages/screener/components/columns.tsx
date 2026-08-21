@@ -69,7 +69,7 @@ export const columns: ColumnDef<Ticker>[] = [
     ),
     cell: ({ row }) => (
       <div className="text-right tabular-nums">
-        {formatMarketCap(row.original.marketCap)}
+        {formatMarketCap(row.original.marketCap, row.original.currency)}
       </div>
     ),
   },
@@ -91,7 +91,7 @@ export const columns: ColumnDef<Ticker>[] = [
     ),
     cell: ({ row }) => (
       <div className="text-right tabular-nums">
-        {formatNumber(row.original.price)}
+        {formatNumber(row.original.price, 2, row.original.currency)}
       </div>
     ),
   },
