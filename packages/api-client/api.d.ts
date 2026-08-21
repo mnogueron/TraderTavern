@@ -148,6 +148,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/finance/ticker/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getTicker"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/ticker/{id}/fundamental": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getTickerFundamental"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/ticker/{id}/chart": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getTickerChart"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -197,6 +245,42 @@ export interface components {
             country: string | null;
             /** @description Intraday change, in percent (e.g. 1.23 for +1.23%) */
             changePercent: number | null;
+            /**
+             * Format: date-time
+             * @description When the underlying technical data was last refreshed
+             */
+            refreshedAt: string | null;
+        };
+        FundamentalTickerDto: {
+            ticker: string;
+            marketCap: number | null;
+            peRatio: number | null;
+            psRatio: number | null;
+            ebitda: number | null;
+            totalDebt: number | null;
+            debtToEquity: number | null;
+            /**
+             * Format: date-time
+             * @description When this fundamental data was last refreshed
+             */
+            refreshedAt: string | null;
+        };
+        CandleDto: {
+            /** Format: date-time */
+            startTime: string;
+            /** Format: date-time */
+            endTime: string;
+            entry: number;
+            exit: number;
+            low: number;
+            high: number;
+            volume: number;
+        };
+        TickerChartDto: {
+            ticker: string;
+            /** @enum {string} */
+            window: "5m" | "1h" | "1d" | "1wk";
+            candles: components["schemas"]["CandleDto"][];
         };
     };
     responses: never;
@@ -384,6 +468,71 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    getTicker: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TickerDto"];
+                };
+            };
+        };
+    };
+    getTickerFundamental: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FundamentalTickerDto"];
+                };
+            };
+        };
+    };
+    getTickerChart: {
+        parameters: {
+            query: {
+                window: "5m" | "1h" | "1d" | "1wk";
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TickerChartDto"];
+                };
             };
         };
     };

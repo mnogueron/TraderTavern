@@ -1,8 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { TickerDto } from './dto/Ticker.dto';
+import { FundamentalTickerDto } from './dto/FundamentalTicker.dto';
+import { CandleDto } from './dto/Candle.dto';
+import { TickerChartDto } from './dto/TickerChart.dto';
 import { SyncType } from './enums/sync-type.enum';
+import { CandleWindow } from './enums/candle-window.enum';
 import { TickerSyncService } from './ticker-sync.service';
 import { TickerStaticData, TickerStaticDataDocument } from './schemas/ticker-static-data.schema';
 import {
@@ -13,6 +17,12 @@ import {
   FundamentalTickerData,
   FundamentalTickerDataDocument,
 } from './schemas/fundamental-ticker-data.schema';
+import {
+  TechnicalTickerData,
+  TechnicalTickerDataDocument,
+} from './schemas/technical-ticker-data.schema';
+
+type WithUpdatedAt = { updatedAt: Date };
 
 @Injectable()
 export class FinanceService {
@@ -24,6 +34,8 @@ export class FinanceService {
     private readonly compoundTechnicalTickerDataModel: Model<CompoundTechnicalTickerDataDocument>,
     @InjectModel(FundamentalTickerData.name)
     private readonly fundamentalTickerDataModel: Model<FundamentalTickerDataDocument>,
+    @InjectModel(TechnicalTickerData.name)
+    private readonly technicalTickerDataModel: Model<TechnicalTickerDataDocument>,
   ) {}
 
   async getScreener(): Promise<TickerDto[]> {
@@ -31,7 +43,7 @@ export class FinanceService {
 
     const [staticData, technicalData, fundamentalData] = await Promise.all([
       this.tickerStaticDataModel.find().lean(),
-      this.latestPerTicker<CompoundTechnicalTickerData>(
+      this.latestPerTicker<CompoundTechnicalTickerData & WithUpdatedAt>(
         this.compoundTechnicalTickerDataModel,
       ),
       this.latestPerTicker<FundamentalTickerData>(
@@ -46,22 +58,104 @@ export class FinanceService {
       fundamentalData.map((doc) => [doc.ticker, doc]),
     );
 
-    return staticData.map((ticker) => {
-      const technical = technicalByTicker.get(ticker.ticker);
-      const fundamental = fundamentalByTicker.get(ticker.ticker);
+    return staticData.map((ticker) =>
+      this.toTickerDto(
+        ticker,
+        technicalByTicker.get(ticker.ticker),
+        fundamentalByTicker.get(ticker.ticker),
+      ),
+    );
+  }
 
-      return new TickerDto(
-        ticker.ticker,
-        ticker.companyName,
-        ticker.sector ?? null,
-        ticker.industry ?? null,
-        fundamental?.marketCap ?? null,
-        fundamental?.peRatio ?? null,
-        technical?.price ?? null,
-        ticker.country ?? null,
-        technical?.changePercent1d ?? null,
+  async getTicker(ticker: string): Promise<TickerDto> {
+    const [staticData, technical, fundamental] = await Promise.all([
+      this.tickerStaticDataModel.findOne({ ticker }).lean(),
+      this.compoundTechnicalTickerDataModel
+        .findOne({ ticker })
+        .sort({ syncDate: -1 })
+        .lean<CompoundTechnicalTickerData & WithUpdatedAt>(),
+      this.fundamentalTickerDataModel
+        .findOne({ ticker })
+        .sort({ syncDate: -1 })
+        .lean<FundamentalTickerData>(),
+    ]);
+
+    if (!staticData) {
+      throw new NotFoundException(`Ticker ${ticker} not found`);
+    }
+
+    return this.toTickerDto(staticData, technical, fundamental);
+  }
+
+  async getFundamental(ticker: string): Promise<FundamentalTickerDto> {
+    const fundamental = await this.fundamentalTickerDataModel
+      .findOne({ ticker })
+      .sort({ syncDate: -1 })
+      .lean<(FundamentalTickerData & WithUpdatedAt) | null>();
+
+    if (!fundamental) {
+      throw new NotFoundException(`Fundamental data for ${ticker} not found`);
+    }
+
+    return new FundamentalTickerDto(
+      ticker,
+      fundamental.marketCap ?? null,
+      fundamental.peRatio ?? null,
+      fundamental.psRatio ?? null,
+      fundamental.ebitda ?? null,
+      fundamental.totalDebt ?? null,
+      fundamental.debtToEquity ?? null,
+      fundamental.updatedAt ?? null,
+    );
+  }
+
+  async getChart(
+    ticker: string,
+    window: CandleWindow,
+  ): Promise<TickerChartDto> {
+    const technicalTickerData = await this.technicalTickerDataModel
+      .findOne({ ticker, window })
+      .lean();
+
+    if (!technicalTickerData) {
+      throw new NotFoundException(
+        `Chart data for ${ticker} (${window}) not found`,
       );
-    });
+    }
+
+    const candles = technicalTickerData.candles.map(
+      (candle) =>
+        new CandleDto(
+          candle.startTime,
+          candle.endTime,
+          candle.entry,
+          candle.exit,
+          candle.low,
+          candle.high,
+          candle.volume,
+        ),
+    );
+
+    return new TickerChartDto(ticker, window, candles);
+  }
+
+  private toTickerDto(
+    staticData: TickerStaticData,
+    technical: (CompoundTechnicalTickerData & WithUpdatedAt) | null | undefined,
+    fundamental: FundamentalTickerData | null | undefined,
+  ): TickerDto {
+    return new TickerDto(
+      staticData.ticker,
+      staticData.companyName,
+      staticData.sector ?? null,
+      staticData.industry ?? null,
+      fundamental?.marketCap ?? null,
+      fundamental?.peRatio ?? null,
+      technical?.price ?? null,
+      staticData.country ?? null,
+      technical?.changePercent1d ?? null,
+      technical?.updatedAt ?? null,
+    );
   }
 
   private latestPerTicker<T extends { ticker: string; syncDate: Date }>(

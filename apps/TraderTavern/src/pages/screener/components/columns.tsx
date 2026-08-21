@@ -1,44 +1,16 @@
 import type { Column, ColumnDef } from '@tanstack/react-table';
 import type { ApiResponse } from '@trader-tavern/api-client';
 import { ArrowUpDown } from 'lucide-react';
+import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
+import {
+  changePercentClassName,
+  formatChangePercent,
+  formatMarketCap,
+  formatNumber,
+} from '@/lib/format';
 
 export type Ticker = ApiResponse<'get', '/finance/screener'>[number];
-
-const formatMarketCap = (value: number | null) => {
-  if (value === null) {
-    return '—';
-  }
-  const units: [number, string][] = [
-    [1e12, 'T'],
-    [1e9, 'B'],
-    [1e6, 'M'],
-  ];
-  for (const [threshold, suffix] of units) {
-    if (value >= threshold) {
-      return `${(value / threshold).toFixed(2)}${suffix}`;
-    }
-  }
-  return value.toLocaleString();
-};
-
-const formatNumber = (value: number | null, digits = 2) =>
-  value === null ? '—' : value.toFixed(digits);
-
-const formatChangePercent = (value: number | null) => {
-  if (value === null) {
-    return '—';
-  }
-  const sign = value > 0 ? '+' : '';
-  return `${sign}${value.toFixed(2)}%`;
-};
-
-const changePercentClassName = (value: number | null) => {
-  if (value === null || value === 0) {
-    return 'text-muted-foreground';
-  }
-  return value > 0 ? 'text-emerald-600' : 'text-red-600';
-};
 
 type SortableHeaderProps = {
   column: Column<Ticker, unknown>;
@@ -68,7 +40,12 @@ export const columns: ColumnDef<Ticker>[] = [
     accessorKey: 'ticker',
     header: ({ column }) => <SortableHeader column={column} label="Ticker" />,
     cell: ({ row }) => (
-      <span className="font-medium">{row.original.ticker}</span>
+      <Link
+        to={`/ticker/${row.original.ticker}`}
+        className="font-medium hover:underline"
+      >
+        {row.original.ticker}
+      </Link>
     ),
   },
   {
