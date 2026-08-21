@@ -19,6 +19,9 @@ export class TickerStaticData {
 
   @Prop()
   country?: string;
+
+  @Prop()
+  market?: string;
 }
 
 export const TickerStaticDataSchema =

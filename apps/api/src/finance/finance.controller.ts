@@ -6,6 +6,7 @@ import { TickerDto } from './dto/Ticker.dto';
 import { FundamentalTickerDto } from './dto/FundamentalTicker.dto';
 import { TickerChartDto } from './dto/TickerChart.dto';
 import { GetTickerChartDto } from './dto/GetTickerChart.dto';
+import { MarketHoursDto } from './dto/MarketHours.dto';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { JwtPayload } from '../auth/types/jwt-payload.type';
@@ -58,5 +59,12 @@ export class FinanceController {
     @Query() query: GetTickerChartDto,
   ): Promise<TickerChartDto> {
     return this.financeService.getChart(id.toUpperCase(), query.window);
+  }
+
+  @Get('ticker/:id/market-hours')
+  @Auth()
+  @ApiOkResponse({ type: MarketHoursDto })
+  getTickerMarketHours(@Param('id') id: string): Promise<MarketHoursDto> {
+    return this.financeService.getMarketHours(id.toUpperCase());
   }
 }

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { RiArrowLeftLine } from '@remixicon/react';
+import { RiArrowLeftLine, RiEyeLine, RiEyeOffLine } from '@remixicon/react';
 import { useClientQuery } from '@trader-tavern/api-client';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
@@ -35,6 +35,7 @@ type TickerDetailPageProps = {
 
 const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
   const [window, setWindow] = useState<CandleWindow>('1d');
+  const [showPreMarket, setShowPreMarket] = useState(false);
 
   const { data: tickerData, isPending: isTickerPending } = useClientQuery(
     'get',
@@ -51,6 +52,12 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
     'get',
     '/finance/ticker/{id}/chart',
     { params: { path: { id: ticker }, query: { window } } },
+  );
+
+  const { data: marketHours } = useClientQuery(
+    'get',
+    '/finance/ticker/{id}/market-hours',
+    { params: { path: { id: ticker } } },
   );
 
   return (
@@ -108,6 +115,8 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
                 </span>
                 <span className="text-muted-foreground">Country</span>
                 <span className="text-right">{tickerData.country ?? '—'}</span>
+                <span className="text-muted-foreground">Market</span>
+                <span className="text-right">{tickerData.market ?? '—'}</span>
               </>
             )}
           </CardContent>
@@ -164,25 +173,41 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
       <Card className="min-h-0 flex-1">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Candles</CardTitle>
-          <ButtonGroup>
-            {WINDOW_OPTIONS.map((option) => (
-              <Button
-                key={option.value}
-                type="button"
-                size="sm"
-                variant={window === option.value ? 'default' : 'outline'}
-                onClick={() => setWindow(option.value)}
-              >
-                {option.label}
-              </Button>
-            ))}
-          </ButtonGroup>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant={showPreMarket ? 'default' : 'outline'}
+              onClick={() => setShowPreMarket((value) => !value)}
+            >
+              {showPreMarket ? <RiEyeLine /> : <RiEyeOffLine />}
+              Pre/Post-market
+            </Button>
+            <ButtonGroup>
+              {WINDOW_OPTIONS.map((option) => (
+                <Button
+                  key={option.value}
+                  type="button"
+                  size="sm"
+                  variant={window === option.value ? 'default' : 'outline'}
+                  onClick={() => setWindow(option.value)}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </ButtonGroup>
+          </div>
         </CardHeader>
         <CardContent className="min-h-0 flex-1">
           {isChartPending || !chart ? (
             <Skeleton className="h-full w-full" />
           ) : (
-            <CandlestickChart candles={chart.candles} window={chart.window} />
+            <CandlestickChart
+              candles={chart.candles}
+              window={chart.window}
+              marketHours={marketHours}
+              showPreMarket={showPreMarket}
+            />
           )}
         </CardContent>
       </Card>

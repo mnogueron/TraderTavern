@@ -196,6 +196,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/finance/ticker/{id}/market-hours": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getTickerMarketHours"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -243,6 +259,8 @@ export interface components {
             peRatio: number | null;
             price: number | null;
             country: string | null;
+            /** @description Display name of the market the ticker trades on */
+            market: string | null;
             /** @description Intraday change, in percent (e.g. 1.23 for +1.23%) */
             changePercent: number | null;
             /**
@@ -281,6 +299,20 @@ export interface components {
             /** @enum {string} */
             window: "5m" | "1h" | "1d" | "1wk";
             candles: components["schemas"]["CandleDto"][];
+        };
+        MarketHoursDto: {
+            market: string;
+            label: string;
+            /** @description IANA timezone name, e.g. America/New_York */
+            timezone: string;
+            /** @description HH:mm, local to timezone */
+            preMarketOpen: string | null;
+            /** @description HH:mm, local to timezone */
+            regularOpen: string;
+            /** @description HH:mm, local to timezone */
+            regularClose: string;
+            /** @description HH:mm, local to timezone */
+            postMarketClose: string | null;
         };
     };
     responses: never;
@@ -532,6 +564,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TickerChartDto"];
+                };
+            };
+        };
+    };
+    getTickerMarketHours: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarketHoursDto"];
                 };
             };
         };

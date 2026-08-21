@@ -21,6 +21,8 @@ import {
   TechnicalTickerData,
   TechnicalTickerDataDocument,
 } from './schemas/technical-ticker-data.schema';
+import { MarketHours, MarketHoursDocument } from './schemas/market-hours.schema';
+import { MarketHoursDto } from './dto/MarketHours.dto';
 
 type WithUpdatedAt = { updatedAt: Date };
 
@@ -36,20 +38,24 @@ export class FinanceService {
     private readonly fundamentalTickerDataModel: Model<FundamentalTickerDataDocument>,
     @InjectModel(TechnicalTickerData.name)
     private readonly technicalTickerDataModel: Model<TechnicalTickerDataDocument>,
+    @InjectModel(MarketHours.name)
+    private readonly marketHoursModel: Model<MarketHoursDocument>,
   ) {}
 
   async getScreener(): Promise<TickerDto[]> {
     await this.tickerSyncService.ensureSyncedToday({ type: SyncType.Auto });
 
-    const [staticData, technicalData, fundamentalData] = await Promise.all([
-      this.tickerStaticDataModel.find().lean(),
-      this.latestPerTicker<CompoundTechnicalTickerData & WithUpdatedAt>(
-        this.compoundTechnicalTickerDataModel,
-      ),
-      this.latestPerTicker<FundamentalTickerData>(
-        this.fundamentalTickerDataModel,
-      ),
-    ]);
+    const [staticData, technicalData, fundamentalData, marketHours] =
+      await Promise.all([
+        this.tickerStaticDataModel.find().lean(),
+        this.latestPerTicker<CompoundTechnicalTickerData & WithUpdatedAt>(
+          this.compoundTechnicalTickerDataModel,
+        ),
+        this.latestPerTicker<FundamentalTickerData>(
+          this.fundamentalTickerDataModel,
+        ),
+        this.marketHoursModel.find().lean(),
+      ]);
 
     const technicalByTicker = new Map(
       technicalData.map((doc) => [doc.ticker, doc]),
@@ -57,12 +63,16 @@ export class FinanceService {
     const fundamentalByTicker = new Map(
       fundamentalData.map((doc) => [doc.ticker, doc]),
     );
+    const marketLabelByCode = new Map(
+      marketHours.map((doc) => [doc.market, doc.label]),
+    );
 
     return staticData.map((ticker) =>
       this.toTickerDto(
         ticker,
         technicalByTicker.get(ticker.ticker),
         fundamentalByTicker.get(ticker.ticker),
+        (ticker.market && marketLabelByCode.get(ticker.market)) ?? null,
       ),
     );
   }
@@ -84,7 +94,44 @@ export class FinanceService {
       throw new NotFoundException(`Ticker ${ticker} not found`);
     }
 
-    return this.toTickerDto(staticData, technical, fundamental);
+    const marketHours = staticData.market
+      ? await this.marketHoursModel.findOne({ market: staticData.market }).lean()
+      : null;
+
+    return this.toTickerDto(
+      staticData,
+      technical,
+      fundamental,
+      marketHours?.label ?? null,
+    );
+  }
+
+  async getMarketHours(ticker: string): Promise<MarketHoursDto> {
+    const staticData = await this.tickerStaticDataModel
+      .findOne({ ticker })
+      .lean();
+
+    if (!staticData) {
+      throw new NotFoundException(`Ticker ${ticker} not found`);
+    }
+
+    const marketHours = staticData.market
+      ? await this.marketHoursModel.findOne({ market: staticData.market }).lean()
+      : null;
+
+    if (!marketHours) {
+      throw new NotFoundException(`Market hours for ${ticker} not found`);
+    }
+
+    return new MarketHoursDto(
+      marketHours.market,
+      marketHours.label,
+      marketHours.timezone,
+      marketHours.preMarketOpen ?? null,
+      marketHours.regularOpen,
+      marketHours.regularClose,
+      marketHours.postMarketClose ?? null,
+    );
   }
 
   async getFundamental(ticker: string): Promise<FundamentalTickerDto> {
@@ -143,6 +190,7 @@ export class FinanceService {
     staticData: TickerStaticData,
     technical: (CompoundTechnicalTickerData & WithUpdatedAt) | null | undefined,
     fundamental: FundamentalTickerData | null | undefined,
+    marketLabel: string | null,
   ): TickerDto {
     return new TickerDto(
       staticData.ticker,
@@ -153,6 +201,7 @@ export class FinanceService {
       fundamental?.peRatio ?? null,
       technical?.price ?? null,
       staticData.country ?? null,
+      marketLabel,
       technical?.changePercent1d ?? null,
       technical?.updatedAt ?? null,
     );

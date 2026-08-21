@@ -219,6 +219,26 @@ paths:
         - cookie: []
       tags:
         - Finance
+  /finance/ticker/{id}/market-hours:
+    get:
+      operationId: getTickerMarketHours
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarketHoursDto'
+      security:
+        - cookie: []
+      tags:
+        - Finance
 info:
   title: TraderTavern API
   description: The TraderTavern API documentation
@@ -338,6 +358,10 @@ components:
         country:
           type: string
           nullable: true
+        market:
+          type: string
+          nullable: true
+          description: Display name of the market the ticker trades on
         changePercent:
           type: number
           nullable: true
@@ -356,6 +380,7 @@ components:
         - peRatio
         - price
         - country
+        - market
         - changePercent
         - refreshedAt
     FundamentalTickerDto:
@@ -442,3 +467,35 @@ components:
         - ticker
         - window
         - candles
+    MarketHoursDto:
+      type: object
+      properties:
+        market:
+          type: string
+        label:
+          type: string
+        timezone:
+          type: string
+          description: IANA timezone name, e.g. America/New_York
+        preMarketOpen:
+          type: string
+          nullable: true
+          description: HH:mm, local to timezone
+        regularOpen:
+          type: string
+          description: HH:mm, local to timezone
+        regularClose:
+          type: string
+          description: HH:mm, local to timezone
+        postMarketClose:
+          type: string
+          nullable: true
+          description: HH:mm, local to timezone
+      required:
+        - market
+        - label
+        - timezone
+        - preMarketOpen
+        - regularOpen
+        - regularClose
+        - postMarketClose

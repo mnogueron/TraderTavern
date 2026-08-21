@@ -40,6 +40,19 @@ export const formatCandleTime = (value: string, isIntraday: boolean) => {
     : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 };
 
+export const formatCandleTooltipTime = (value: string) => {
+  const date = new Date(value);
+  const time = date.toLocaleTimeString(undefined, {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${time} ${day}.${month}.${year}`;
+};
+
 export const formatDateTime = (value: string | null) => {
   if (value === null) {
     return '—';
