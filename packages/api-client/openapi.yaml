@@ -386,7 +386,35 @@ components:
         changePercent:
           type: number
           nullable: true
-          description: Intraday change, in percent (e.g. 1.23 for +1.23%)
+          description: >-
+            Change since the last completed session close, in percent (e.g. 1.23
+            for +1.23%). While the market is open this compares the last two
+            completed closes; once the market has closed for the day it compares
+            today's close to yesterday's.
+        changePercent1w:
+          type: number
+          nullable: true
+          description: 1 week change, in percent
+        changePercent1m:
+          type: number
+          nullable: true
+          description: 1 month change, in percent
+        changePercent3m:
+          type: number
+          nullable: true
+          description: 3 month change, in percent
+        changePercent6m:
+          type: number
+          nullable: true
+          description: 6 month change, in percent
+        changePercentYtd:
+          type: number
+          nullable: true
+          description: Year-to-date change, in percent
+        changePercent1y:
+          type: number
+          nullable: true
+          description: 1 year change, in percent
         refreshedAt:
           format: date-time
           type: string
@@ -404,6 +432,12 @@ components:
         - market
         - currency
         - changePercent
+        - changePercent1w
+        - changePercent1m
+        - changePercent3m
+        - changePercent6m
+        - changePercentYtd
+        - changePercent1y
         - refreshedAt
     TickerOptionDto:
       type: object

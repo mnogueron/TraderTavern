@@ -29,10 +29,13 @@ import {
   TechnicalTickerData,
   TechnicalTickerDataDocument,
 } from './schemas/technical-ticker-data.schema';
+import { MarketHours, MarketHoursDocument } from './schemas/market-hours.schema';
 
 const yahooFinance = new YahooFinance();
 
-const HISTORY_LOOKBACK_DAYS = 45;
+// Covers just over a year of calendar days lookback, so the 1y/YTD change
+// calculations always have a reference close to compare against.
+const HISTORY_LOOKBACK_DAYS = 400;
 
 type SyncTrigger = {
   type: SyncType;
@@ -67,12 +70,61 @@ export class TickerSyncService {
     private readonly syncHistoryModel: Model<SyncHistoryDocument>,
     @InjectModel(TechnicalTickerData.name)
     private readonly technicalTickerDataModel: Model<TechnicalTickerDataDocument>,
+    @InjectModel(MarketHours.name)
+    private readonly marketHoursModel: Model<MarketHoursDocument>,
     private readonly configService: ConfigService,
   ) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_1AM)
   async handleDailyCron(): Promise<void> {
     await this.ensureSyncedToday({ type: SyncType.Auto });
+  }
+
+  // Refreshes tickers whose market has just closed for the day, so
+  // changePercent1d reflects today's official close (vs the daily cron,
+  // which only runs pre-market and always sees yesterday's close).
+  @Cron(CronExpression.EVERY_10_MINUTES)
+  async handleEndOfDayRefresh(): Promise<void> {
+    const syncDate = startOfToday();
+    const [staticData, marketHours] = await Promise.all([
+      this.tickerStaticDataModel.find().select('ticker market').lean(),
+      this.marketHoursModel.find().lean(),
+    ]);
+    const marketHoursByCode = new Map(
+      marketHours.map((hours) => [hours.market, hours]),
+    );
+
+    for (const { ticker, market } of staticData) {
+      const hours = market ? marketHoursByCode.get(market) : undefined;
+      if (!hours || !this.isPastRegularClose(hours)) {
+        continue;
+      }
+
+      const alreadySynced = await this.compoundTechnicalTickerDataModel.exists(
+        { ticker, syncDate },
+      );
+      if (alreadySynced) {
+        continue;
+      }
+
+      try {
+        await delay(YAHOO_REQUEST_DELAY_MS);
+        await this.syncTicker(ticker, syncDate);
+      } catch (error) {
+        this.logger.warn(`Failed end-of-day sync for ${ticker}: ${error}`);
+      }
+    }
+  }
+
+  private isPastRegularClose(hours: MarketHours): boolean {
+    const localTime = new Intl.DateTimeFormat('en-GB', {
+      timeZone: hours.timezone,
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    }).format(new Date());
+
+    return localTime >= hours.regularClose;
   }
 
   async ensureSyncedToday(trigger: SyncTrigger): Promise<void> {
@@ -159,6 +211,12 @@ export class TickerSyncService {
     );
     const latestClose =
       price?.regularMarketPrice ?? quotes.at(-1)?.close ?? null;
+    // The anchor for every change-percent below: the most recent official
+    // close, never the current intraday price, so these figures don't move
+    // while a market session is ongoing.
+    const previousClose =
+      price?.regularMarketPreviousClose ?? quotes.at(-1)?.close ?? null;
+    const startOfYear = new Date(new Date().getFullYear(), 0, 1);
 
     await this.compoundTechnicalTickerDataModel.updateOne(
       { ticker, syncDate },
@@ -167,13 +225,38 @@ export class TickerSyncService {
           ticker,
           syncDate,
           price: latestClose,
-          changePercent1d: this.changePercent(latestClose, quotes, 1),
-          changePercent2d: this.changePercent(latestClose, quotes, 2),
-          changePercent5d: this.changePercent(latestClose, quotes, 5),
+          changePercent1d: this.changePercent(previousClose, quotes, 1),
+          changePercent2d: this.changePercent(previousClose, quotes, 2),
+          changePercent5d: this.changePercent(previousClose, quotes, 5),
+          changePercent1w: this.changePercentFromDaysAgo(
+            previousClose,
+            quotes,
+            7,
+          ),
           changePercent1m: this.changePercentFromDaysAgo(
-            latestClose,
+            previousClose,
             quotes,
             30,
+          ),
+          changePercent3m: this.changePercentFromDaysAgo(
+            previousClose,
+            quotes,
+            91,
+          ),
+          changePercent6m: this.changePercentFromDaysAgo(
+            previousClose,
+            quotes,
+            182,
+          ),
+          changePercentYtd: this.changePercentFromDate(
+            previousClose,
+            quotes,
+            startOfYear,
+          ),
+          changePercent1y: this.changePercentFromDaysAgo(
+            previousClose,
+            quotes,
+            365,
           ),
         },
       },
@@ -288,12 +371,20 @@ export class TickerSyncService {
     quotes: { date: Date; close: number }[],
     calendarDaysAgo: number,
   ): number | undefined {
-    if (latestClose == null || quotes.length === 0) {
-      return undefined;
-    }
     const targetDate = new Date(
       Date.now() - calendarDaysAgo * 24 * 60 * 60 * 1000,
     );
+    return this.changePercentFromDate(latestClose, quotes, targetDate);
+  }
+
+  private changePercentFromDate(
+    latestClose: number | null,
+    quotes: { date: Date; close: number }[],
+    targetDate: Date,
+  ): number | undefined {
+    if (latestClose == null || quotes.length === 0) {
+      return undefined;
+    }
     const closest = quotes.reduce((best, quote) =>
       Math.abs(quote.date.getTime() - targetDate.getTime()) <
       Math.abs(best.date.getTime() - targetDate.getTime())

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { Link } from 'react-router';
 import { RiArrowLeftLine, RiEyeLine, RiEyeOffLine } from '@remixicon/react';
 import { useClientQuery } from '@trader-tavern/api-client';
@@ -122,7 +122,40 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
           </CardContent>
         </Card>
 
-        <Card className="md:col-span-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Performance</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-y-2 text-sm">
+            {isTickerPending || !tickerData ? (
+              <Skeleton className="col-span-2 h-24" />
+            ) : (
+              <>
+                {(
+                  [
+                    ['1W', tickerData.changePercent1w],
+                    ['1M', tickerData.changePercent1m],
+                    ['3M', tickerData.changePercent3m],
+                    ['6M', tickerData.changePercent6m],
+                    ['YTD', tickerData.changePercentYtd],
+                    ['1Y', tickerData.changePercent1y],
+                  ] as const
+                ).map(([label, value]) => (
+                  <Fragment key={label}>
+                    <span className="text-muted-foreground">{label}</span>
+                    <span
+                      className={`text-right tabular-nums ${changePercentClassName(value)}`}
+                    >
+                      {formatChangePercent(value)}
+                    </span>
+                  </Fragment>
+                ))}
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="md:col-span-3">
           <CardHeader>
             <CardTitle>Fundamentals</CardTitle>
           </CardHeader>
