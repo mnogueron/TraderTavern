@@ -166,6 +166,28 @@ paths:
         - cookie: []
       tags:
         - Finance
+  /finance/sync/fundamental:
+    post:
+      operationId: syncFundamental
+      parameters: []
+      responses:
+        '204':
+          description: ''
+      security:
+        - cookie: []
+      tags:
+        - Finance
+  /finance/sync/compound:
+    post:
+      operationId: syncCompound
+      parameters: []
+      responses:
+        '204':
+          description: ''
+      security:
+        - cookie: []
+      tags:
+        - Finance
   /finance/ticker/{id}:
     get:
       operationId: getTicker

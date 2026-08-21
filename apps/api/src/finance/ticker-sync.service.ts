@@ -109,7 +109,7 @@ export class TickerSyncService {
 
       try {
         await delay(YAHOO_REQUEST_DELAY_MS);
-        await this.syncTicker(ticker, syncDate);
+        await this.syncCompound(ticker, syncDate);
       } catch (error) {
         this.logger.warn(`Failed end-of-day sync for ${ticker}: ${error}`);
       }
@@ -173,20 +173,52 @@ export class TickerSyncService {
     });
   }
 
+  async syncAllFundamental(): Promise<void> {
+    const syncDate = startOfToday();
+    for (const ticker of SCREENER_TICKERS) {
+      try {
+        await delay(YAHOO_REQUEST_DELAY_MS);
+        await this.syncFundamental(ticker, syncDate);
+      } catch (error) {
+        this.logger.warn(`Failed to sync fundamental data for ${ticker}: ${error}`);
+      }
+    }
+  }
+
+  async syncAllCompound(): Promise<void> {
+    const syncDate = startOfToday();
+    for (const ticker of SCREENER_TICKERS) {
+      try {
+        await delay(YAHOO_REQUEST_DELAY_MS);
+        await this.syncCompound(ticker, syncDate);
+      } catch (error) {
+        this.logger.warn(`Failed to sync compound data for ${ticker}: ${error}`);
+      }
+    }
+  }
+
+  private async fetchQuoteSummary(ticker: string) {
+    return yahooFinance.quoteSummary(ticker, {
+      modules: ['price', 'summaryDetail', 'assetProfile', 'financialData'],
+    });
+  }
+
+  private async fetchDailyChart(ticker: string) {
+    return yahooFinance.chart(ticker, {
+      period1: new Date(
+        Date.now() - HISTORY_LOOKBACK_DAYS * 24 * 60 * 60 * 1000,
+      ),
+      interval: '1d',
+    });
+  }
+
   private async syncTicker(ticker: string, syncDate: Date): Promise<void> {
     const [quoteSummary, chart] = await Promise.all([
-      yahooFinance.quoteSummary(ticker, {
-        modules: ['price', 'summaryDetail', 'assetProfile', 'financialData'],
-      }),
-      yahooFinance.chart(ticker, {
-        period1: new Date(
-          Date.now() - HISTORY_LOOKBACK_DAYS * 24 * 60 * 60 * 1000,
-        ),
-        interval: '1d',
-      }),
+      this.fetchQuoteSummary(ticker),
+      this.fetchDailyChart(ticker),
     ]);
 
-    const { price, summaryDetail, assetProfile, financialData } = quoteSummary;
+    const { price, assetProfile } = quoteSummary;
     const companyName = price?.longName ?? price?.shortName ?? ticker;
 
     await this.tickerStaticDataModel.updateOne(
@@ -204,6 +236,38 @@ export class TickerSyncService {
       },
       { upsert: true },
     );
+
+    await this.updateCompound(ticker, syncDate, quoteSummary, chart);
+    await this.updateFundamental(ticker, syncDate, quoteSummary);
+
+    for (const window of Object.values(CandleWindow)) {
+      await delay(YAHOO_REQUEST_DELAY_MS);
+      await this.syncCandles(ticker, window);
+    }
+  }
+
+  private async syncCompound(ticker: string, syncDate: Date): Promise<void> {
+    const [quoteSummary, chart] = await Promise.all([
+      this.fetchQuoteSummary(ticker),
+      this.fetchDailyChart(ticker),
+    ]);
+
+    await this.updateCompound(ticker, syncDate, quoteSummary, chart);
+  }
+
+  private async syncFundamental(ticker: string, syncDate: Date): Promise<void> {
+    const quoteSummary = await this.fetchQuoteSummary(ticker);
+
+    await this.updateFundamental(ticker, syncDate, quoteSummary);
+  }
+
+  private async updateCompound(
+    ticker: string,
+    syncDate: Date,
+    quoteSummary: Awaited<ReturnType<typeof this.fetchQuoteSummary>>,
+    chart: Awaited<ReturnType<typeof this.fetchDailyChart>>,
+  ): Promise<void> {
+    const { price } = quoteSummary;
 
     const quotes = (chart.quotes ?? []).filter(
       (quote): quote is typeof quote & { close: number } =>
@@ -262,6 +326,14 @@ export class TickerSyncService {
       },
       { upsert: true },
     );
+  }
+
+  private async updateFundamental(
+    ticker: string,
+    syncDate: Date,
+    quoteSummary: Awaited<ReturnType<typeof this.fetchQuoteSummary>>,
+  ): Promise<void> {
+    const { price, summaryDetail, financialData } = quoteSummary;
 
     await this.fundamentalTickerDataModel.updateOne(
       { ticker, syncDate },
@@ -279,11 +351,6 @@ export class TickerSyncService {
       },
       { upsert: true },
     );
-
-    for (const window of Object.values(CandleWindow)) {
-      await delay(YAHOO_REQUEST_DELAY_MS);
-      await this.syncCandles(ticker, window);
-    }
   }
 
   private getCandleCount(window: CandleWindow): number {

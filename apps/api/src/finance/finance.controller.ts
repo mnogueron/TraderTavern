@@ -45,6 +45,20 @@ export class FinanceController {
     });
   }
 
+  @Post('sync/fundamental')
+  @HttpCode(204)
+  @Auth(Role.Admin)
+  syncFundamental(): Promise<void> {
+    return this.tickerSyncService.syncAllFundamental();
+  }
+
+  @Post('sync/compound')
+  @HttpCode(204)
+  @Auth(Role.Admin)
+  syncCompound(): Promise<void> {
+    return this.tickerSyncService.syncAllCompound();
+  }
+
   @Get('ticker/:id')
   @Auth()
   @ApiOkResponse({ type: TickerDto })
