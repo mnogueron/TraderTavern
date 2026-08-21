@@ -23,6 +23,7 @@ import {
 } from './schemas/technical-ticker-data.schema';
 import { MarketHours, MarketHoursDocument } from './schemas/market-hours.schema';
 import { MarketHoursDto } from './dto/MarketHours.dto';
+import { TickerOptionDto } from './dto/TickerOption.dto';
 
 type WithUpdatedAt = { updatedAt: Date };
 
@@ -41,6 +42,18 @@ export class FinanceService {
     @InjectModel(MarketHours.name)
     private readonly marketHoursModel: Model<MarketHoursDocument>,
   ) {}
+
+  async getScreenerTickerOptions(): Promise<TickerOptionDto[]> {
+    const staticData = await this.tickerStaticDataModel
+      .find()
+      .select('ticker companyName')
+      .sort({ ticker: 1 })
+      .lean();
+
+    return staticData.map(
+      (ticker) => new TickerOptionDto(ticker.ticker, ticker.companyName),
+    );
+  }
 
   async getScreener(): Promise<TickerDto[]> {
     await this.tickerSyncService.ensureSyncedToday({ type: SyncType.Auto });
