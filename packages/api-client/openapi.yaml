@@ -138,6 +138,17 @@ paths:
         - cookie: []
       tags:
         - Finance
+  /finance/sync:
+    post:
+      operationId: syncScreener
+      parameters: []
+      responses:
+        '204':
+          description: ''
+      security:
+        - cookie: []
+      tags:
+        - Finance
 info:
   title: TraderTavern API
   description: The TraderTavern API documentation
