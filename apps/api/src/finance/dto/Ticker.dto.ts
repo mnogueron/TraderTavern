@@ -32,6 +32,13 @@ export class TickerDto {
   })
   changePercent: number | null;
 
+  @ApiProperty({
+    nullable: true,
+    type: Date,
+    description: 'When the underlying technical data was last refreshed',
+  })
+  refreshedAt: Date | null;
+
   constructor(
     ticker: string,
     companyName: string,
@@ -42,6 +49,7 @@ export class TickerDto {
     price: number | null,
     country: string | null,
     changePercent: number | null,
+    refreshedAt: Date | null,
   ) {
     this.ticker = ticker;
     this.companyName = companyName;
@@ -52,5 +60,6 @@ export class TickerDto {
     this.price = price;
     this.country = country;
     this.changePercent = changePercent;
+    this.refreshedAt = refreshedAt;
   }
 }

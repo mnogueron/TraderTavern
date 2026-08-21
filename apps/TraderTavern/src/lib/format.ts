@@ -1,0 +1,51 @@
+export const formatMarketCap = (value: number | null) => {
+  if (value === null) {
+    return '—';
+  }
+  const units: [number, string][] = [
+    [1e12, 'T'],
+    [1e9, 'B'],
+    [1e6, 'M'],
+  ];
+  for (const [threshold, suffix] of units) {
+    if (value >= threshold) {
+      return `${(value / threshold).toFixed(2)}${suffix}`;
+    }
+  }
+  return value.toLocaleString();
+};
+
+export const formatNumber = (value: number | null, digits = 2) =>
+  value === null ? '—' : value.toFixed(digits);
+
+export const formatChangePercent = (value: number | null) => {
+  if (value === null) {
+    return '—';
+  }
+  const sign = value > 0 ? '+' : '';
+  return `${sign}${value.toFixed(2)}%`;
+};
+
+export const changePercentClassName = (value: number | null) => {
+  if (value === null || value === 0) {
+    return 'text-muted-foreground';
+  }
+  return value > 0 ? 'text-emerald-600' : 'text-red-600';
+};
+
+export const formatCandleTime = (value: string, isIntraday: boolean) => {
+  const date = new Date(value);
+  return isIntraday
+    ? date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+    : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+};
+
+export const formatDateTime = (value: string | null) => {
+  if (value === null) {
+    return '—';
+  }
+  return new Date(value).toLocaleString(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+};

@@ -7,6 +7,7 @@ export default [
     route('users', './routes/users.tsx'),
     route('dashboard', './routes/dashboard.tsx'),
     route('screener', './routes/screener.tsx'),
+    route('ticker/:ticker', './routes/ticker.tsx'),
     route('news', './routes/news.tsx'),
   ]),
   layout('./layouts/guest-layout.tsx', [

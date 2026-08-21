@@ -149,6 +149,76 @@ paths:
         - cookie: []
       tags:
         - Finance
+  /finance/ticker/{id}:
+    get:
+      operationId: getTicker
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TickerDto'
+      security:
+        - cookie: []
+      tags:
+        - Finance
+  /finance/ticker/{id}/fundamental:
+    get:
+      operationId: getTickerFundamental
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FundamentalTickerDto'
+      security:
+        - cookie: []
+      tags:
+        - Finance
+  /finance/ticker/{id}/chart:
+    get:
+      operationId: getTickerChart
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: window
+          required: true
+          in: query
+          schema:
+            type: string
+            enum:
+              - 5m
+              - 1h
+              - 1d
+              - 1wk
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TickerChartDto'
+      security:
+        - cookie: []
+      tags:
+        - Finance
 info:
   title: TraderTavern API
   description: The TraderTavern API documentation
@@ -272,6 +342,11 @@ components:
           type: number
           nullable: true
           description: Intraday change, in percent (e.g. 1.23 for +1.23%)
+        refreshedAt:
+          format: date-time
+          type: string
+          nullable: true
+          description: When the underlying technical data was last refreshed
       required:
         - ticker
         - companyName
@@ -282,3 +357,88 @@ components:
         - price
         - country
         - changePercent
+        - refreshedAt
+    FundamentalTickerDto:
+      type: object
+      properties:
+        ticker:
+          type: string
+        marketCap:
+          type: number
+          nullable: true
+        peRatio:
+          type: number
+          nullable: true
+        psRatio:
+          type: number
+          nullable: true
+        ebitda:
+          type: number
+          nullable: true
+        totalDebt:
+          type: number
+          nullable: true
+        debtToEquity:
+          type: number
+          nullable: true
+        refreshedAt:
+          format: date-time
+          type: string
+          nullable: true
+          description: When this fundamental data was last refreshed
+      required:
+        - ticker
+        - marketCap
+        - peRatio
+        - psRatio
+        - ebitda
+        - totalDebt
+        - debtToEquity
+        - refreshedAt
+    CandleDto:
+      type: object
+      properties:
+        startTime:
+          format: date-time
+          type: string
+        endTime:
+          format: date-time
+          type: string
+        entry:
+          type: number
+        exit:
+          type: number
+        low:
+          type: number
+        high:
+          type: number
+        volume:
+          type: number
+      required:
+        - startTime
+        - endTime
+        - entry
+        - exit
+        - low
+        - high
+        - volume
+    TickerChartDto:
+      type: object
+      properties:
+        ticker:
+          type: string
+        window:
+          type: string
+          enum:
+            - 5m
+            - 1h
+            - 1d
+            - 1wk
+        candles:
+          type: array
+          items:
+            $ref: '#/components/schemas/CandleDto'
+      required:
+        - ticker
+        - window
+        - candles

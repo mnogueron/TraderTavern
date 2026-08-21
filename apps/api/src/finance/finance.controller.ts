@@ -1,8 +1,11 @@
-import { Controller, Get, HttpCode, Post } from '@nestjs/common';
+import { Controller, Get, HttpCode, Param, Post, Query } from '@nestjs/common';
 import { ApiOkResponse } from '@nestjs/swagger';
 import { FinanceService } from './finance.service';
 import { TickerSyncService } from './ticker-sync.service';
 import { TickerDto } from './dto/Ticker.dto';
+import { FundamentalTickerDto } from './dto/FundamentalTicker.dto';
+import { TickerChartDto } from './dto/TickerChart.dto';
+import { GetTickerChartDto } from './dto/GetTickerChart.dto';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { JwtPayload } from '../auth/types/jwt-payload.type';
@@ -31,5 +34,29 @@ export class FinanceController {
       type: SyncType.Manual,
       userId: user.sub,
     });
+  }
+
+  @Get('ticker/:id')
+  @Auth()
+  @ApiOkResponse({ type: TickerDto })
+  getTicker(@Param('id') id: string): Promise<TickerDto> {
+    return this.financeService.getTicker(id.toUpperCase());
+  }
+
+  @Get('ticker/:id/fundamental')
+  @Auth()
+  @ApiOkResponse({ type: FundamentalTickerDto })
+  getTickerFundamental(@Param('id') id: string): Promise<FundamentalTickerDto> {
+    return this.financeService.getFundamental(id.toUpperCase());
+  }
+
+  @Get('ticker/:id/chart')
+  @Auth()
+  @ApiOkResponse({ type: TickerChartDto })
+  getTickerChart(
+    @Param('id') id: string,
+    @Query() query: GetTickerChartDto,
+  ): Promise<TickerChartDto> {
+    return this.financeService.getChart(id.toUpperCase(), query.window);
   }
 }
