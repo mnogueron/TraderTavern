@@ -24,7 +24,7 @@ type CandlestickChartProps = {
   showPreMarket: boolean;
 };
 
-const isPreMarketCandle = (
+const isOutsideRegularHours = (
   isoTime: string,
   marketHours: MarketHours,
 ): boolean => {
@@ -35,7 +35,10 @@ const isPreMarketCandle = (
     hour12: false,
   }).format(new Date(isoTime));
 
-  return localTime < marketHours.regularOpen;
+  return (
+    localTime < marketHours.regularOpen ||
+    localTime >= marketHours.regularClose
+  );
 };
 
 const BULLISH_COLOR = '#059669';
@@ -155,7 +158,7 @@ const CandlestickChart = ({
     showPreMarket || !marketHours
       ? candles
       : candles.filter(
-          (candle) => !isPreMarketCandle(candle.startTime, marketHours),
+          (candle) => !isOutsideRegularHours(candle.startTime, marketHours),
         );
 
   const data = visibleCandles.map((candle) => ({

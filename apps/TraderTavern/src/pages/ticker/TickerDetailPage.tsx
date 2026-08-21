@@ -181,7 +181,7 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
               onClick={() => setShowPreMarket((value) => !value)}
             >
               {showPreMarket ? <RiEyeLine /> : <RiEyeOffLine />}
-              Pre-market
+              Pre/Post-market
             </Button>
             <ButtonGroup>
               {WINDOW_OPTIONS.map((option) => (
