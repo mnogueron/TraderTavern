@@ -20,14 +20,22 @@ export const CANDLE_COUNT_ENV_VAR: Record<CandleWindow, string> = {
   [CandleWindow.OneWeek]: 'CANDLE_COUNT_1W',
 };
 
+// Kept low enough that a full sync (200+ tickers x 4 windows, one Yahoo
+// request each) doesn't trip Yahoo Finance's unofficial-API rate limiting.
+// These only need to cover what MACD/momentum-style indicators require
+// (tens of periods), not hundreds.
 export const DEFAULT_CANDLE_COUNT: Record<CandleWindow, number> = {
-  [CandleWindow.FiveMinutes]: 500,
-  [CandleWindow.OneHour]: 500,
-  [CandleWindow.OneDay]: 500,
-  [CandleWindow.OneWeek]: 260,
+  [CandleWindow.FiveMinutes]: 100,
+  [CandleWindow.OneHour]: 200,
+  [CandleWindow.OneDay]: 100,
+  [CandleWindow.OneWeek]: 52,
 };
 
 // Extra lookback multiplier applied to (count * window duration) when
 // requesting history from Yahoo, to account for closed markets (weekends,
 // holidays, after-hours) that leave gaps in the raw candle series.
-export const CANDLE_LOOKBACK_MULTIPLIER = 3;
+export const CANDLE_LOOKBACK_MULTIPLIER = 2;
+
+// Delay between successive Yahoo Finance requests during a sync run, to
+// spread calls out and avoid bursts that trigger rate limiting.
+export const YAHOO_REQUEST_DELAY_MS = 250;

@@ -10,6 +10,7 @@ import {
   CANDLE_LOOKBACK_MULTIPLIER,
   CANDLE_WINDOW_DURATION_MS,
   DEFAULT_CANDLE_COUNT,
+  YAHOO_REQUEST_DELAY_MS,
 } from './constants/candle-windows';
 import { SyncType } from './enums/sync-type.enum';
 import { SyncStatus } from './enums/sync-status.enum';
@@ -37,6 +38,9 @@ type SyncTrigger = {
   type: SyncType;
   userId?: string;
 };
+
+const delay = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
 
 const startOfToday = (): Date => {
   const now = new Date();
@@ -91,6 +95,7 @@ export class TickerSyncService {
 
     for (const ticker of SCREENER_TICKERS) {
       try {
+        await delay(YAHOO_REQUEST_DELAY_MS);
         await this.syncTicker(ticker, syncDate);
         successCount += 1;
       } catch (error) {
@@ -190,11 +195,10 @@ export class TickerSyncService {
       { upsert: true },
     );
 
-    await Promise.all(
-      Object.values(CandleWindow).map((window) =>
-        this.syncCandles(ticker, window),
-      ),
-    );
+    for (const window of Object.values(CandleWindow)) {
+      await delay(YAHOO_REQUEST_DELAY_MS);
+      await this.syncCandles(ticker, window);
+    }
   }
 
   private getCandleCount(window: CandleWindow): number {
