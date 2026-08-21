@@ -34,7 +34,7 @@ const TickerTable = ({ tickers }: TickerTableProps) => {
   });
 
   return (
-    <Table>
+    <Table containerClassName="h-full">
       <TableHeader>
         {table.getHeaderGroups().map((headerGroup) => (
           <TableRow key={headerGroup.id}>
