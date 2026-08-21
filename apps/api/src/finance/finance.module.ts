@@ -19,6 +19,7 @@ import {
   TechnicalTickerData,
   TechnicalTickerDataSchema,
 } from './schemas/technical-ticker-data.schema';
+import { MarketHours, MarketHoursSchema } from './schemas/market-hours.schema';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import {
       { name: FundamentalTickerData.name, schema: FundamentalTickerDataSchema },
       { name: SyncHistory.name, schema: SyncHistorySchema },
       { name: TechnicalTickerData.name, schema: TechnicalTickerDataSchema },
+      { name: MarketHours.name, schema: MarketHoursSchema },
     ]),
   ],
   controllers: [FinanceController],

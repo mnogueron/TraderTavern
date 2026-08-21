@@ -8,13 +8,34 @@ import {
   YAxis,
 } from 'recharts';
 import type { ApiResponse } from '@trader-tavern/api-client';
-import { formatCandleTime, formatNumber } from '@/lib/format';
+import {
+  formatCandleTime,
+  formatCandleTooltipTime,
+  formatNumber,
+} from '@/lib/format';
 
 type Candle = ApiResponse<'get', '/finance/ticker/{id}/chart'>['candles'][number];
+type MarketHours = ApiResponse<'get', '/finance/ticker/{id}/market-hours'>;
 
 type CandlestickChartProps = {
   candles: Candle[];
   window: '5m' | '1h' | '1d' | '1wk';
+  marketHours?: MarketHours | null;
+  showPreMarket: boolean;
+};
+
+const isPreMarketCandle = (
+  isoTime: string,
+  marketHours: MarketHours,
+): boolean => {
+  const localTime = new Intl.DateTimeFormat('en-GB', {
+    timeZone: marketHours.timezone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(isoTime));
+
+  return localTime < marketHours.regularOpen;
 };
 
 const BULLISH_COLOR = '#059669';
@@ -91,11 +112,9 @@ type TooltipPayload = {
 const CandleTooltip = ({
   active,
   payload,
-  isIntraday,
 }: {
   active?: boolean;
   payload?: { payload: TooltipPayload }[];
-  isIntraday: boolean;
 }) => {
   if (!active || !payload?.length) {
     return null;
@@ -106,7 +125,7 @@ const CandleTooltip = ({
   return (
     <div className="rounded-md border bg-popover p-2 text-xs text-popover-foreground shadow-md">
       <div className="mb-1 font-medium">
-        {formatCandleTime(candle.time, isIntraday)}
+        {formatCandleTooltipTime(candle.time)}
       </div>
       <div className="grid grid-cols-2 gap-x-3 tabular-nums">
         <span className="text-muted-foreground">Open</span>
@@ -124,10 +143,22 @@ const CandleTooltip = ({
   );
 };
 
-const CandlestickChart = ({ candles, window }: CandlestickChartProps) => {
+const CandlestickChart = ({
+  candles,
+  window,
+  marketHours,
+  showPreMarket,
+}: CandlestickChartProps) => {
   const isIntraday = window === '5m' || window === '1h';
 
-  const data = candles.map((candle) => ({
+  const visibleCandles =
+    showPreMarket || !marketHours
+      ? candles
+      : candles.filter(
+          (candle) => !isPreMarketCandle(candle.startTime, marketHours),
+        );
+
+  const data = visibleCandles.map((candle) => ({
     time: candle.startTime,
     open: candle.entry,
     close: candle.exit,
@@ -147,7 +178,11 @@ const CandlestickChart = ({ candles, window }: CandlestickChartProps) => {
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <ComposedChart data={data} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
+      <ComposedChart
+        data={data}
+        margin={{ top: 8, right: 8, left: 8, bottom: 8 }}
+        barCategoryGap="5%"
+      >
         <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
         <XAxis
           dataKey="time"
@@ -170,7 +205,6 @@ const CandlestickChart = ({ candles, window }: CandlestickChartProps) => {
                   | { payload: TooltipPayload }[]
                   | undefined
               }
-              isIntraday={isIntraday}
             />
           )}
         />

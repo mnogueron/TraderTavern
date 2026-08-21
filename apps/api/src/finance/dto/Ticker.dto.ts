@@ -25,6 +25,9 @@ export class TickerDto {
   @ApiProperty({ nullable: true, type: String })
   country: string | null;
 
+  @ApiProperty({ nullable: true, type: String, description: 'Display name of the market the ticker trades on' })
+  market: string | null;
+
   @ApiProperty({
     nullable: true,
     type: Number,
@@ -48,6 +51,7 @@ export class TickerDto {
     peRatio: number | null,
     price: number | null,
     country: string | null,
+    market: string | null,
     changePercent: number | null,
     refreshedAt: Date | null,
   ) {
@@ -59,6 +63,7 @@ export class TickerDto {
     this.peRatio = peRatio;
     this.price = price;
     this.country = country;
+    this.market = market;
     this.changePercent = changePercent;
     this.refreshedAt = refreshedAt;
   }

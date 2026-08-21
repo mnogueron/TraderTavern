@@ -146,6 +146,7 @@ export class TickerSyncService {
           sector: assetProfile?.sector,
           industry: assetProfile?.industry,
           country: assetProfile?.country,
+          market: price?.exchange,
         },
       },
       { upsert: true },
