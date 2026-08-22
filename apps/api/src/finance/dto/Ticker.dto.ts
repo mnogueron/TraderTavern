@@ -28,6 +28,15 @@ export class TickerDto {
   @ApiProperty({ nullable: true, type: String, description: 'Basic description of the company' })
   description: string | null;
 
+  @ApiProperty({ nullable: true, type: Number })
+  employees: number | null;
+
+  @ApiProperty({ nullable: true, type: Date })
+  fiscalYearEnd: Date | null;
+
+  @ApiProperty({ nullable: true, type: Date })
+  mostRecentQuarter: Date | null;
+
   @ApiProperty({ nullable: true, type: String, description: 'Display name of the market the ticker trades on' })
   market: string | null;
 
@@ -66,6 +75,36 @@ export class TickerDto {
   @ApiProperty({ nullable: true, type: Number, description: '1 year change, in percent' })
   changePercent1y: number | null;
 
+  @ApiProperty({ nullable: true, type: Number, description: 'RSI(14)' })
+  rsi14: number | null;
+
+  @ApiProperty({ nullable: true, type: Number, description: 'MACD(12,26,9) line' })
+  macd: number | null;
+
+  @ApiProperty({ nullable: true, type: Number, description: 'MACD(12,26,9) signal line' })
+  macdSignal: number | null;
+
+  @ApiProperty({ nullable: true, type: Number, description: 'MACD(12,26,9) histogram' })
+  macdHistogram: number | null;
+
+  @ApiProperty({ nullable: true, type: Number, description: 'Bollinger Band(20,2) upper' })
+  bbUpper: number | null;
+
+  @ApiProperty({ nullable: true, type: Number, description: 'Bollinger Band(20,2) middle' })
+  bbMiddle: number | null;
+
+  @ApiProperty({ nullable: true, type: Number, description: 'Bollinger Band(20,2) lower' })
+  bbLower: number | null;
+
+  @ApiProperty({ nullable: true, type: Number, description: 'Bollinger Band width, in percent' })
+  bbWidth: number | null;
+
+  @ApiProperty({ nullable: true, type: Number, description: 'ATR(14)' })
+  atr14: number | null;
+
+  @ApiProperty({ nullable: true, type: Number, description: '20 day volume ratio (latest volume / 20d avg volume)' })
+  volumeRatio20d: number | null;
+
   @ApiProperty({
     nullable: true,
     type: Date,
@@ -92,6 +131,19 @@ export class TickerDto {
     changePercent6m: number | null,
     changePercentYtd: number | null,
     changePercent1y: number | null,
+    employees: number | null,
+    fiscalYearEnd: Date | null,
+    mostRecentQuarter: Date | null,
+    rsi14: number | null,
+    macd: number | null,
+    macdSignal: number | null,
+    macdHistogram: number | null,
+    bbUpper: number | null,
+    bbMiddle: number | null,
+    bbLower: number | null,
+    bbWidth: number | null,
+    atr14: number | null,
+    volumeRatio20d: number | null,
     refreshedAt: Date | null,
   ) {
     this.ticker = ticker;
@@ -112,6 +164,19 @@ export class TickerDto {
     this.changePercent6m = changePercent6m;
     this.changePercentYtd = changePercentYtd;
     this.changePercent1y = changePercent1y;
+    this.employees = employees;
+    this.fiscalYearEnd = fiscalYearEnd;
+    this.mostRecentQuarter = mostRecentQuarter;
+    this.rsi14 = rsi14;
+    this.macd = macd;
+    this.macdSignal = macdSignal;
+    this.macdHistogram = macdHistogram;
+    this.bbUpper = bbUpper;
+    this.bbMiddle = bbMiddle;
+    this.bbLower = bbLower;
+    this.bbWidth = bbWidth;
+    this.atr14 = atr14;
+    this.volumeRatio20d = volumeRatio20d;
     this.refreshedAt = refreshedAt;
   }
 }

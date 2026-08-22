@@ -503,6 +503,17 @@ components:
           type: string
           nullable: true
           description: Basic description of the company
+        employees:
+          type: number
+          nullable: true
+        fiscalYearEnd:
+          format: date-time
+          type: string
+          nullable: true
+        mostRecentQuarter:
+          format: date-time
+          type: string
+          nullable: true
         market:
           type: string
           nullable: true
@@ -543,6 +554,46 @@ components:
           type: number
           nullable: true
           description: 1 year change, in percent
+        rsi14:
+          type: number
+          nullable: true
+          description: RSI(14)
+        macd:
+          type: number
+          nullable: true
+          description: MACD(12,26,9) line
+        macdSignal:
+          type: number
+          nullable: true
+          description: MACD(12,26,9) signal line
+        macdHistogram:
+          type: number
+          nullable: true
+          description: MACD(12,26,9) histogram
+        bbUpper:
+          type: number
+          nullable: true
+          description: Bollinger Band(20,2) upper
+        bbMiddle:
+          type: number
+          nullable: true
+          description: Bollinger Band(20,2) middle
+        bbLower:
+          type: number
+          nullable: true
+          description: Bollinger Band(20,2) lower
+        bbWidth:
+          type: number
+          nullable: true
+          description: Bollinger Band width, in percent
+        atr14:
+          type: number
+          nullable: true
+          description: ATR(14)
+        volumeRatio20d:
+          type: number
+          nullable: true
+          description: 20 day volume ratio (latest volume / 20d avg volume)
         refreshedAt:
           format: date-time
           type: string
@@ -558,6 +609,9 @@ components:
         - price
         - country
         - description
+        - employees
+        - fiscalYearEnd
+        - mostRecentQuarter
         - market
         - currency
         - changePercent
@@ -567,6 +621,16 @@ components:
         - changePercent6m
         - changePercentYtd
         - changePercent1y
+        - rsi14
+        - macd
+        - macdSignal
+        - macdHistogram
+        - bbUpper
+        - bbMiddle
+        - bbLower
+        - bbWidth
+        - atr14
+        - volumeRatio20d
         - refreshedAt
     TickerOptionDto:
       type: object
@@ -601,6 +665,188 @@ components:
         debtToEquity:
           type: number
           nullable: true
+        enterpriseValue:
+          type: number
+          nullable: true
+        revenue:
+          type: number
+          nullable: true
+          description: Revenue (TTM)
+        grossProfit:
+          type: number
+          nullable: true
+        netIncome:
+          type: number
+          nullable: true
+          description: Net income (TTM)
+        revenuePerShare:
+          type: number
+          nullable: true
+        forwardPE:
+          type: number
+          nullable: true
+        pegRatio:
+          type: number
+          nullable: true
+        evToEbitda:
+          type: number
+          nullable: true
+        evToRevenue:
+          type: number
+          nullable: true
+        priceToBook:
+          type: number
+          nullable: true
+        epsTrailing:
+          type: number
+          nullable: true
+        epsForward:
+          type: number
+          nullable: true
+        fiftyTwoWeekHigh:
+          type: number
+          nullable: true
+        fiftyTwoWeekLow:
+          type: number
+          nullable: true
+        grossMargin:
+          type: number
+          nullable: true
+          description: In percent
+        operatingMargin:
+          type: number
+          nullable: true
+          description: In percent
+        ebitdaMargin:
+          type: number
+          nullable: true
+          description: In percent
+        profitMargin:
+          type: number
+          nullable: true
+          description: In percent
+        returnOnEquity:
+          type: number
+          nullable: true
+          description: In percent
+        returnOnAssets:
+          type: number
+          nullable: true
+          description: In percent
+        revenueGrowth:
+          type: number
+          nullable: true
+          description: In percent
+        earningsGrowth:
+          type: number
+          nullable: true
+          description: In percent
+        operatingCashflow:
+          type: number
+          nullable: true
+        capex:
+          type: number
+          nullable: true
+          description: Capital expenditure (TTM)
+        fcfMargin:
+          type: number
+          nullable: true
+          description: In percent
+        fcfYield:
+          type: number
+          nullable: true
+          description: In percent
+        netDebt:
+          type: number
+          nullable: true
+        netDebtToEbitda:
+          type: number
+          nullable: true
+        currentRatio:
+          type: number
+          nullable: true
+        quickRatio:
+          type: number
+          nullable: true
+        bookValuePerShare:
+          type: number
+          nullable: true
+        cashPerShare:
+          type: number
+          nullable: true
+        forwardDividendRate:
+          type: number
+          nullable: true
+        trailingDividendRate:
+          type: number
+          nullable: true
+        dividendYield:
+          type: number
+          nullable: true
+          description: In percent
+        fiveYearAvgDividendYield:
+          type: number
+          nullable: true
+          description: In percent
+        payoutRatio:
+          type: number
+          nullable: true
+          description: In percent
+        exDividendDate:
+          format: date-time
+          type: string
+          nullable: true
+        analystRating:
+          type: string
+          nullable: true
+          description: e.g. "buy", "hold"
+        analystTargetMean:
+          type: number
+          nullable: true
+        analystTargetLow:
+          type: number
+          nullable: true
+        analystTargetHigh:
+          type: number
+          nullable: true
+        analystCount:
+          type: number
+          nullable: true
+        sharesOutstanding:
+          type: number
+          nullable: true
+        floatShares:
+          type: number
+          nullable: true
+        insidersPercent:
+          type: number
+          nullable: true
+          description: In percent
+        institutionsPercent:
+          type: number
+          nullable: true
+          description: In percent
+        sma50:
+          type: number
+          nullable: true
+        sma200:
+          type: number
+          nullable: true
+        beta:
+          type: number
+          nullable: true
+        sp500Change52w:
+          type: number
+          nullable: true
+          description: S&P 500 52 week change, in percent
+        avgVolume30d:
+          type: number
+          nullable: true
+          description: 30 day average volume
+        avgVolume10d:
+          type: number
+          nullable: true
+          description: 10 day average volume
         refreshedAt:
           format: date-time
           type: string
@@ -614,6 +860,59 @@ components:
         - ebitda
         - totalDebt
         - debtToEquity
+        - enterpriseValue
+        - revenue
+        - grossProfit
+        - netIncome
+        - revenuePerShare
+        - forwardPE
+        - pegRatio
+        - evToEbitda
+        - evToRevenue
+        - priceToBook
+        - epsTrailing
+        - epsForward
+        - fiftyTwoWeekHigh
+        - fiftyTwoWeekLow
+        - grossMargin
+        - operatingMargin
+        - ebitdaMargin
+        - profitMargin
+        - returnOnEquity
+        - returnOnAssets
+        - revenueGrowth
+        - earningsGrowth
+        - operatingCashflow
+        - capex
+        - fcfMargin
+        - fcfYield
+        - netDebt
+        - netDebtToEbitda
+        - currentRatio
+        - quickRatio
+        - bookValuePerShare
+        - cashPerShare
+        - forwardDividendRate
+        - trailingDividendRate
+        - dividendYield
+        - fiveYearAvgDividendYield
+        - payoutRatio
+        - exDividendDate
+        - analystRating
+        - analystTargetMean
+        - analystTargetLow
+        - analystTargetHigh
+        - analystCount
+        - sharesOutstanding
+        - floatShares
+        - insidersPercent
+        - institutionsPercent
+        - sma50
+        - sma200
+        - beta
+        - sp500Change52w
+        - avgVolume30d
+        - avgVolume10d
         - refreshedAt
     CandleDto:
       type: object

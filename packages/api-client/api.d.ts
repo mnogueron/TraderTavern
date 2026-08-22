@@ -421,6 +421,11 @@ export interface components {
             country: string | null;
             /** @description Basic description of the company */
             description: string | null;
+            employees: number | null;
+            /** Format: date-time */
+            fiscalYearEnd: string | null;
+            /** Format: date-time */
+            mostRecentQuarter: string | null;
             /** @description Display name of the market the ticker trades on */
             market: string | null;
             /** @description ISO 4217 currency code the ticker is priced in (e.g. USD, EUR) */
@@ -439,6 +444,26 @@ export interface components {
             changePercentYtd: number | null;
             /** @description 1 year change, in percent */
             changePercent1y: number | null;
+            /** @description RSI(14) */
+            rsi14: number | null;
+            /** @description MACD(12,26,9) line */
+            macd: number | null;
+            /** @description MACD(12,26,9) signal line */
+            macdSignal: number | null;
+            /** @description MACD(12,26,9) histogram */
+            macdHistogram: number | null;
+            /** @description Bollinger Band(20,2) upper */
+            bbUpper: number | null;
+            /** @description Bollinger Band(20,2) middle */
+            bbMiddle: number | null;
+            /** @description Bollinger Band(20,2) lower */
+            bbLower: number | null;
+            /** @description Bollinger Band width, in percent */
+            bbWidth: number | null;
+            /** @description ATR(14) */
+            atr14: number | null;
+            /** @description 20 day volume ratio (latest volume / 20d avg volume) */
+            volumeRatio20d: number | null;
             /**
              * Format: date-time
              * @description When the underlying technical data was last refreshed
@@ -457,6 +482,82 @@ export interface components {
             ebitda: number | null;
             totalDebt: number | null;
             debtToEquity: number | null;
+            enterpriseValue: number | null;
+            /** @description Revenue (TTM) */
+            revenue: number | null;
+            grossProfit: number | null;
+            /** @description Net income (TTM) */
+            netIncome: number | null;
+            revenuePerShare: number | null;
+            forwardPE: number | null;
+            pegRatio: number | null;
+            evToEbitda: number | null;
+            evToRevenue: number | null;
+            priceToBook: number | null;
+            epsTrailing: number | null;
+            epsForward: number | null;
+            fiftyTwoWeekHigh: number | null;
+            fiftyTwoWeekLow: number | null;
+            /** @description In percent */
+            grossMargin: number | null;
+            /** @description In percent */
+            operatingMargin: number | null;
+            /** @description In percent */
+            ebitdaMargin: number | null;
+            /** @description In percent */
+            profitMargin: number | null;
+            /** @description In percent */
+            returnOnEquity: number | null;
+            /** @description In percent */
+            returnOnAssets: number | null;
+            /** @description In percent */
+            revenueGrowth: number | null;
+            /** @description In percent */
+            earningsGrowth: number | null;
+            operatingCashflow: number | null;
+            /** @description Capital expenditure (TTM) */
+            capex: number | null;
+            /** @description In percent */
+            fcfMargin: number | null;
+            /** @description In percent */
+            fcfYield: number | null;
+            netDebt: number | null;
+            netDebtToEbitda: number | null;
+            currentRatio: number | null;
+            quickRatio: number | null;
+            bookValuePerShare: number | null;
+            cashPerShare: number | null;
+            forwardDividendRate: number | null;
+            trailingDividendRate: number | null;
+            /** @description In percent */
+            dividendYield: number | null;
+            /** @description In percent */
+            fiveYearAvgDividendYield: number | null;
+            /** @description In percent */
+            payoutRatio: number | null;
+            /** Format: date-time */
+            exDividendDate: string | null;
+            /** @description e.g. "buy", "hold" */
+            analystRating: string | null;
+            analystTargetMean: number | null;
+            analystTargetLow: number | null;
+            analystTargetHigh: number | null;
+            analystCount: number | null;
+            sharesOutstanding: number | null;
+            floatShares: number | null;
+            /** @description In percent */
+            insidersPercent: number | null;
+            /** @description In percent */
+            institutionsPercent: number | null;
+            sma50: number | null;
+            sma200: number | null;
+            beta: number | null;
+            /** @description S&P 500 52 week change, in percent */
+            sp500Change52w: number | null;
+            /** @description 30 day average volume */
+            avgVolume30d: number | null;
+            /** @description 10 day average volume */
+            avgVolume10d: number | null;
             /**
              * Format: date-time
              * @description When this fundamental data was last refreshed

@@ -42,9 +42,35 @@ export class CompoundTechnicalTickerData {
   @Prop()
   changePercent1y?: number;
 
-  // Placeholder for future indicators, e.g. MACD bullish/bearish on a given timeframe.
   @Prop()
-  macdSignal?: string;
+  rsi14?: number;
+
+  @Prop()
+  macd?: number;
+
+  @Prop()
+  macdSignal?: number;
+
+  @Prop()
+  macdHistogram?: number;
+
+  @Prop()
+  bbUpper?: number;
+
+  @Prop()
+  bbMiddle?: number;
+
+  @Prop()
+  bbLower?: number;
+
+  @Prop()
+  bbWidth?: number;
+
+  @Prop()
+  atr14?: number;
+
+  @Prop()
+  volumeRatio20d?: number;
 }
 
 export const CompoundTechnicalTickerDataSchema = SchemaFactory.createForClass(
