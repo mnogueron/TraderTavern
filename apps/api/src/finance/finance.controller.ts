@@ -45,6 +45,13 @@ export class FinanceController {
     });
   }
 
+  @Post('sync/static')
+  @HttpCode(204)
+  @Auth(Role.Admin)
+  syncStatic(): Promise<void> {
+    return this.tickerSyncService.syncAllStatic();
+  }
+
   @Post('sync/fundamental')
   @HttpCode(204)
   @Auth(Role.Admin)
@@ -71,6 +78,13 @@ export class FinanceController {
   @Auth(Role.Admin)
   syncSingleTicker(@Param('id') id: string): Promise<void> {
     return this.tickerSyncService.syncSingleTicker(id.toUpperCase());
+  }
+
+  @Post('ticker/:id/sync/static')
+  @HttpCode(204)
+  @Auth(Role.Admin)
+  syncSingleTickerStatic(@Param('id') id: string): Promise<void> {
+    return this.tickerSyncService.syncSingleTickerStatic(id.toUpperCase());
   }
 
   @Post('ticker/:id/sync/fundamental')

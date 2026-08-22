@@ -164,6 +164,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/finance/sync/static": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["syncStatic"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/finance/sync/fundamental": {
         parameters: {
             query?: never;
@@ -222,6 +238,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["syncSingleTicker"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/ticker/{id}/sync/static": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["syncSingleTickerStatic"];
         delete?: never;
         options?: never;
         head?: never;
@@ -670,6 +702,23 @@ export interface operations {
             };
         };
     };
+    syncStatic: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     syncFundamental: {
         parameters: {
             query?: never;
@@ -722,6 +771,25 @@ export interface operations {
         };
     };
     syncSingleTicker: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    syncSingleTickerStatic: {
         parameters: {
             query?: never;
             header?: never;
