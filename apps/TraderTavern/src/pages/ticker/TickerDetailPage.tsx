@@ -99,7 +99,7 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
   );
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex flex-col">
       <div className="sticky -top-4 z-10 -mx-4 -mt-4 flex flex-col bg-background px-4 pt-4">
         <TickerHeader
           ticker={tickerData ?? null}
