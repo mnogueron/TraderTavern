@@ -1,3 +1,20 @@
+export type ScreenerFilterCategory =
+  | 'descriptive'
+  | 'valuation'
+  | 'profitability'
+  | 'balance-sheet'
+  | 'performance-technical'
+  | 'ownership-analyst';
+
+export const SCREENER_FILTER_CATEGORY_LABELS: Record<ScreenerFilterCategory, string> = {
+  descriptive: 'Descriptive',
+  valuation: 'Valuation',
+  profitability: 'Profitability & Growth',
+  'balance-sheet': 'Balance Sheet',
+  'performance-technical': 'Performance & Technical',
+  'ownership-analyst': 'Ownership & Analyst',
+};
+
 export type ScreenerFilterOption = {
   value: string;
   label: string;
@@ -13,6 +30,7 @@ export type MultiSelectScreenerFilterConfig = {
   type: 'multiselect';
   key: string;
   label: string;
+  category: ScreenerFilterCategory;
   options: ScreenerFilterOption[];
 };
 
@@ -20,6 +38,7 @@ export type SelectScreenerFilterConfig = {
   type: 'select';
   key: string;
   label: string;
+  category: ScreenerFilterCategory;
   options: ScreenerFilterOption[];
 };
 
@@ -27,6 +46,7 @@ export type MinMaxScreenerFilterConfig = {
   type: 'minmax';
   key: string;
   label: string;
+  category: ScreenerFilterCategory;
   presets?: ScreenerFilterPreset[];
   unit?: string;
 };
@@ -35,14 +55,23 @@ export type NumberScreenerFilterConfig = {
   type: 'number';
   key: string;
   label: string;
+  category: ScreenerFilterCategory;
   unit?: string;
+};
+
+export type BooleanScreenerFilterConfig = {
+  type: 'boolean';
+  key: string;
+  label: string;
+  category: ScreenerFilterCategory;
 };
 
 export type ScreenerFilterConfig =
   | MultiSelectScreenerFilterConfig
   | SelectScreenerFilterConfig
   | MinMaxScreenerFilterConfig
-  | NumberScreenerFilterConfig;
+  | NumberScreenerFilterConfig
+  | BooleanScreenerFilterConfig;
 
 export type MultiSelectScreenerFilterValue = {
   type: 'multiselect';
@@ -65,15 +94,21 @@ export type NumberScreenerFilterValue = {
   value: number | null;
 };
 
+export type BooleanScreenerFilterValue = {
+  type: 'boolean';
+  value: boolean;
+};
+
 export type ScreenerFilterValue =
   | MultiSelectScreenerFilterValue
   | SelectScreenerFilterValue
   | MinMaxScreenerFilterValue
-  | NumberScreenerFilterValue;
+  | NumberScreenerFilterValue
+  | BooleanScreenerFilterValue;
 
 export type ScreenerFilterValues = Record<string, ScreenerFilterValue>;
 
-export type ScreenerFilterAccessor<T> = (item: T) => string | number | null | undefined;
+export type ScreenerFilterAccessor<T> = (item: T) => string | number | boolean | null | undefined;
 
 export type ScreenerFilterAccessors<T> = Record<string, ScreenerFilterAccessor<T>>;
 
@@ -89,6 +124,8 @@ export const isFilterValueActive = (value: ScreenerFilterValue | undefined): boo
       return value.min !== null || value.max !== null;
     case 'number':
       return value.value !== null;
+    case 'boolean':
+      return value.value;
     default:
       return false;
   }

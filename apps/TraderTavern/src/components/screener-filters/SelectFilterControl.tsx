@@ -27,7 +27,13 @@ const SelectFilterControl = ({ config, value, onChange }: SelectFilterControlPro
       }
     >
       <SelectTrigger size="sm" className="min-w-32">
-        <SelectValue placeholder={config.label} />
+        <SelectValue placeholder={config.label}>
+          {(selected: string) =>
+            selected === ALL_VALUE
+              ? `All ${config.label}`
+              : (config.options.find((option) => option.value === selected)?.label ?? selected)
+          }
+        </SelectValue>
       </SelectTrigger>
       <SelectContent>
         <SelectItem value={ALL_VALUE}>All {config.label}</SelectItem>

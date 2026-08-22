@@ -1,0 +1,144 @@
+{
+  "description": "Filters shown in screener_hero_filter.png that are NOT implemented in TraderTavern's screener, grouped by the reference image's categories, with the reason each is unsupported given our current data.",
+  "mappingNotes": [
+    "\"52-Week (%)\" in the reference image is mapped to our existing `changePercent1y` field (trailing 1-year change is the standard proxy for a 52-week change) rather than treated as missing.",
+    "\"Vol / Avg\" in the reference image is mapped to our existing `volumeRatio20d` field (latest volume relative to its 20-day average)."
+  ],
+  "unsupported": [
+    {
+      "category": "Descriptive",
+      "filter": "Equity Only",
+      "reason": "We don't track instrument/security type (equity vs. ETF vs. ADR, etc.); every synced ticker is treated the same, so there's no field to filter on."
+    },
+    {
+      "category": "Valuation",
+      "filter": "P/C (Price / Cash Flow)",
+      "reason": "No price-to-cashflow ratio is fetched or stored; only P/E, P/B, P/S, EV/EBITDA, EV/Sales, and PEG are available."
+    },
+    {
+      "category": "Profitability & Growth",
+      "filter": "ROIC (%)",
+      "reason": "Return on invested capital requires an invested-capital figure (debt + equity - cash, or similar) we don't compute or store."
+    },
+    {
+      "category": "Profitability & Growth",
+      "filter": "EPS Growth",
+      "reason": "We store revenue growth but not a comparable EPS growth figure."
+    },
+    {
+      "category": "Profitability & Growth",
+      "filter": "Piotroski Score",
+      "reason": "Composite 9-point fundamental health score; not computed or stored, and would require multiple historical financial statement inputs we don't currently persist."
+    },
+    {
+      "category": "Profitability & Growth",
+      "filter": "Moat Score",
+      "reason": "Proprietary/qualitative competitive-advantage rating; no equivalent data source."
+    },
+    {
+      "category": "Profitability & Growth",
+      "filter": "Beat Streak (Qtr)",
+      "reason": "Requires quarterly earnings-surprise history (consecutive beats); we don't store any earnings history."
+    },
+    {
+      "category": "Profitability & Growth",
+      "filter": "EPS Surprise (%)",
+      "reason": "Requires actual vs. estimated EPS for the latest quarter; not fetched or stored."
+    },
+    {
+      "category": "Profitability & Growth",
+      "filter": "Days to Earnings",
+      "reason": "We don't store the next scheduled earnings-report date."
+    },
+    {
+      "category": "Balance Sheet",
+      "filter": "LT Debt / Equity",
+      "reason": "Only a single (total) debt-to-equity figure is stored; long-term vs. short-term debt isn't broken out."
+    },
+    {
+      "category": "Balance Sheet",
+      "filter": "Div. Growth (3Y)",
+      "reason": "We store the current dividend yield and its 5-year average, but not year-over-year dividend growth history."
+    },
+    {
+      "category": "Performance & Technical",
+      "filter": "Gap (%)",
+      "reason": "Requires the day's open price relative to the prior close; we only store change percentages over various windows, not intraday open/close deltas."
+    },
+    {
+      "category": "Performance & Technical",
+      "filter": "Volume",
+      "reason": "No raw daily trading volume is stored on the screener snapshot (only a 20-day volume ratio and a 10-day average volume); per-day volume only exists inside a separate candle collection that isn't joined into the screener listing."
+    },
+    {
+      "category": "Performance & Technical",
+      "filter": "Liquidity (€/day)",
+      "reason": "Would require raw daily volume × price; raw volume isn't available on the screener snapshot (see \"Volume\" above)."
+    },
+    {
+      "category": "Performance & Technical",
+      "filter": "New 52W High",
+      "reason": "Requires detecting that today's price just crossed the 52-week high, which needs day-over-day price history; we only store the current 52-week high/low levels, not a history to compare against."
+    },
+    {
+      "category": "Performance & Technical",
+      "filter": "New 52W Low",
+      "reason": "Same limitation as \"New 52W High\" — no day-over-day price history to detect a fresh low."
+    },
+    {
+      "category": "Performance & Technical",
+      "filter": "Near 20D High",
+      "reason": "We don't track a rolling 20-day high/low, only Bollinger Bands (20-period) and the 52-week high/low."
+    },
+    {
+      "category": "Performance & Technical",
+      "filter": "Near 20D Low",
+      "reason": "Same limitation as \"Near 20D High\"."
+    },
+    {
+      "category": "Performance & Technical",
+      "filter": "Near 50D High",
+      "reason": "We don't track a rolling 50-day high/low (only SMA 50, which is an average, not a high/low)."
+    },
+    {
+      "category": "Performance & Technical",
+      "filter": "Near 50D Low",
+      "reason": "Same limitation as \"Near 50D High\"."
+    },
+    {
+      "category": "Ownership & Analyst",
+      "filter": "Insider Net Buying",
+      "reason": "No insider transaction data (buys/sells) is fetched or stored, only aggregate insider ownership percentage."
+    },
+    {
+      "category": "Ownership & Analyst",
+      "filter": "Insider Net Buy (Value)",
+      "reason": "Same limitation as \"Insider Net Buying\" — no insider transaction data."
+    },
+    {
+      "category": "Ownership & Analyst",
+      "filter": "Insider Buy Count",
+      "reason": "Same limitation as \"Insider Net Buying\" — no insider transaction data."
+    },
+    {
+      "category": "Ownership & Analyst",
+      "filter": "Short % Float",
+      "reason": "No short-interest data is fetched or stored."
+    },
+    {
+      "category": "Ownership & Analyst",
+      "filter": "Short Ratio",
+      "reason": "No short-interest data is fetched or stored."
+    },
+    {
+      "category": "Ownership & Analyst",
+      "filter": "Short Change (Month)",
+      "reason": "No short-interest data is fetched or stored."
+    },
+    {
+      "category": "Other",
+      "filter": "Include stocks with incomplete data",
+      "reason": "Not a filter but a toggle changing null-handling; our min/max filters currently always exclude tickers with a null value for the filtered field. No UI toggle was added to bypass that — left out of scope for this pass."
+    }
+  ]
+}

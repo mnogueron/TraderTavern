@@ -41,6 +41,10 @@ export const applyScreenerFilters = <T>(
           if (value.value === null) return true;
           return itemValue != null && Number(itemValue) === value.value;
         }
+        case 'boolean': {
+          if (!value.value) return true;
+          return itemValue === true;
+        }
         default:
           return true;
       }
