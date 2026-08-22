@@ -28,6 +28,15 @@ export class TickerStaticData {
 
   @Prop()
   currency?: string;
+
+  @Prop()
+  employees?: number;
+
+  @Prop()
+  fiscalYearEnd?: Date;
+
+  @Prop()
+  mostRecentQuarter?: Date;
 }
 
 export const TickerStaticDataSchema =

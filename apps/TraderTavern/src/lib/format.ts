@@ -25,6 +25,7 @@ export const formatMarketCap = (
     [1e12, 'T'],
     [1e9, 'B'],
     [1e6, 'M'],
+    [1e3, 'K'],
   ];
   for (const [threshold, suffix] of units) {
     if (value >= threshold) {
@@ -47,6 +48,26 @@ export const formatChangePercent = (value: number | null) => {
   }
   const sign = value > 0 ? '+' : '';
   return `${sign}${value.toFixed(2)}%`;
+};
+
+export const formatPercent = (value: number | null, digits = 2) =>
+  value === null ? '—' : `${value.toFixed(digits)}%`;
+
+export const formatDate = (value: string | null) => {
+  if (value === null) {
+    return '—';
+  }
+  return new Date(value).toLocaleDateString(undefined, { dateStyle: 'medium' });
+};
+
+export const formatMonthYear = (value: string | null) => {
+  if (value === null) {
+    return '—';
+  }
+  return new Date(value).toLocaleDateString(undefined, {
+    month: 'short',
+    year: 'numeric',
+  });
 };
 
 export const changePercentClassName = (value: number | null) => {
