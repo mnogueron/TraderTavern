@@ -133,11 +133,18 @@ const TickerHeader = ({ ticker, fundamental, isPending }: TickerHeaderProps) => 
         <div className="relative text-sm text-muted-foreground">
           <p
             ref={descriptionRef}
-            className={
-              isDescriptionExpanded ? undefined : 'line-clamp-2 pr-20'
-            }
+            className={isDescriptionExpanded ? undefined : 'line-clamp-2 pr-20'}
           >
             {ticker.description}
+            {isDescriptionExpanded && (
+              <button
+                type="button"
+                className="ml-1 text-xs font-medium text-foreground hover:underline"
+                onClick={() => setIsDescriptionExpanded(false)}
+              >
+                Show less
+              </button>
+            )}
           </p>
           {isDescriptionClamped && !isDescriptionExpanded && (
             <button
@@ -146,15 +153,6 @@ const TickerHeader = ({ ticker, fundamental, isPending }: TickerHeaderProps) => 
               onClick={() => setIsDescriptionExpanded(true)}
             >
               Show more
-            </button>
-          )}
-          {isDescriptionExpanded && (
-            <button
-              type="button"
-              className="mt-0.5 block text-xs font-medium text-foreground hover:underline"
-              onClick={() => setIsDescriptionExpanded(false)}
-            >
-              Show less
             </button>
           )}
         </div>
