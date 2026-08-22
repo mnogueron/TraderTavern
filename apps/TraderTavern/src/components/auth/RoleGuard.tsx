@@ -2,18 +2,18 @@ import { type ReactNode } from 'react';
 import { Navigate } from 'react-router';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 
-const RequireGuest = ({ children }: { children: ReactNode }) => {
+const RoleGuard = ({ roles, children }: { roles: string[]; children: ReactNode }) => {
   const { data: currentUser, isPending } = useCurrentUser();
 
   if (isPending) {
     return null;
   }
 
-  if (currentUser) {
+  if (!currentUser || !roles.includes(currentUser.role)) {
     return <Navigate to="/" replace />;
   }
 
   return children;
 };
 
-export default RequireGuest;
+export default RoleGuard;

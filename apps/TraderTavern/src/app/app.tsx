@@ -1,11 +1,7 @@
-import NxWelcome from './nx-welcome';
+import ScreenerPage from '@/pages/screener/ScreenerPage';
 
 export function App() {
-  return (
-    <div>
-      <NxWelcome title="@trader-tavern/TraderTavern" />
-    </div>
-  );
+  return <ScreenerPage />;
 }
 
 export default App;

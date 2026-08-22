@@ -17,7 +17,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { RiArrowUpDownLine, RiSettingsLine, RiLogoutBoxLine } from '@remixicon/react';
+import { RiArrowUpDownLine, RiSettingsLine, RiLogoutBoxLine, RiTeamLine } from '@remixicon/react';
 
 export function NavUser() {
   const { isMobile } = useSidebar();
@@ -33,6 +33,7 @@ export function NavUser() {
   }
 
   const initials = currentUser.username.slice(0, 2).toUpperCase();
+  const isAdmin = currentUser.role === 'admin';
 
   return (
     <SidebarMenu>
@@ -73,6 +74,12 @@ export function NavUser() {
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
+              {isAdmin && (
+                <DropdownMenuItem onClick={() => navigate('/users')}>
+                  <RiTeamLine />
+                  Users
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem>
                 <RiSettingsLine />
                 Settings
