@@ -27,8 +27,9 @@ export const formatMarketCap = (
     [1e6, 'M'],
     [1e3, 'K'],
   ];
+  const absValue = Math.abs(value);
   for (const [threshold, suffix] of units) {
-    if (value >= threshold) {
+    if (absValue >= threshold) {
       return `${symbol}${(value / threshold).toFixed(2)}${suffix}`;
     }
   }
