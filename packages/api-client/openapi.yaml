@@ -472,6 +472,10 @@ components:
         country:
           type: string
           nullable: true
+        description:
+          type: string
+          nullable: true
+          description: Basic description of the company
         market:
           type: string
           nullable: true
@@ -526,6 +530,7 @@ components:
         - peRatio
         - price
         - country
+        - description
         - market
         - currency
         - changePercent

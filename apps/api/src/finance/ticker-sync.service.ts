@@ -273,6 +273,7 @@ export class TickerSyncService {
           sector: assetProfile?.sector,
           industry: assetProfile?.industry,
           country: assetProfile?.country,
+          description: assetProfile?.longBusinessSummary,
           market: price?.exchange,
           currency: price?.currency,
         },

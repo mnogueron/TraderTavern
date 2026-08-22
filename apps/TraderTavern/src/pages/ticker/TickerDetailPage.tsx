@@ -163,6 +163,21 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
 
         <Card className="md:col-span-3">
           <CardHeader>
+            <CardTitle>About</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isTickerPending || !tickerData ? (
+              <Skeleton className="h-16 w-full" />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {tickerData.description ?? 'No description available.'}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="md:col-span-3">
+          <CardHeader>
             <CardTitle>Fundamentals</CardTitle>
           </CardHeader>
           <CardContent>
