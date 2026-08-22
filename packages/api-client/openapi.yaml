@@ -570,6 +570,10 @@ components:
             for +1.23%). While the market is open this compares the last two
             completed closes; once the market has closed for the day it compares
             today's close to yesterday's.
+        changePercent5d:
+          type: number
+          nullable: true
+          description: 5 day change, in percent
         changePercent1w:
           type: number
           nullable: true
@@ -647,6 +651,172 @@ components:
           type: string
           nullable: true
           description: Company logo image URL
+        psRatio:
+          type: number
+          nullable: true
+        forwardPE:
+          type: number
+          nullable: true
+        pegRatio:
+          type: number
+          nullable: true
+        evToEbitda:
+          type: number
+          nullable: true
+        evToRevenue:
+          type: number
+          nullable: true
+        priceToBook:
+          type: number
+          nullable: true
+        epsTrailing:
+          type: number
+          nullable: true
+        epsForward:
+          type: number
+          nullable: true
+        enterpriseValue:
+          type: number
+          nullable: true
+        fiftyTwoWeekHigh:
+          type: number
+          nullable: true
+        fiftyTwoWeekLow:
+          type: number
+          nullable: true
+        revenue:
+          type: number
+          nullable: true
+          description: Revenue (TTM)
+        grossProfit:
+          type: number
+          nullable: true
+        netIncome:
+          type: number
+          nullable: true
+          description: Net income (TTM)
+        revenuePerShare:
+          type: number
+          nullable: true
+        ebitda:
+          type: number
+          nullable: true
+        grossMargin:
+          type: number
+          nullable: true
+          description: In percent
+        operatingMargin:
+          type: number
+          nullable: true
+          description: In percent
+        ebitdaMargin:
+          type: number
+          nullable: true
+          description: In percent
+        profitMargin:
+          type: number
+          nullable: true
+          description: In percent
+        returnOnEquity:
+          type: number
+          nullable: true
+          description: In percent
+        returnOnAssets:
+          type: number
+          nullable: true
+          description: In percent
+        revenueGrowth:
+          type: number
+          nullable: true
+          description: In percent
+        operatingCashflow:
+          type: number
+          nullable: true
+        freeCashflow:
+          type: number
+          nullable: true
+          description: Free cash flow (TTM)
+        capex:
+          type: number
+          nullable: true
+          description: Capital expenditure (TTM)
+        totalDebt:
+          type: number
+          nullable: true
+        totalCash:
+          type: number
+          nullable: true
+        debtToEquity:
+          type: number
+          nullable: true
+        currentRatio:
+          type: number
+          nullable: true
+        quickRatio:
+          type: number
+          nullable: true
+        bookValuePerShare:
+          type: number
+          nullable: true
+        dividendYield:
+          type: number
+          nullable: true
+          description: In percent
+        payoutRatio:
+          type: number
+          nullable: true
+          description: In percent
+        fiveYearAvgDividendYield:
+          type: number
+          nullable: true
+          description: In percent
+        exDividendDate:
+          format: date-time
+          type: string
+          nullable: true
+        analystRating:
+          type: string
+          nullable: true
+          description: e.g. "buy", "hold"
+        analystTargetMean:
+          type: number
+          nullable: true
+        analystTargetLow:
+          type: number
+          nullable: true
+        analystTargetHigh:
+          type: number
+          nullable: true
+        analystCount:
+          type: number
+          nullable: true
+        sharesOutstanding:
+          type: number
+          nullable: true
+        floatShares:
+          type: number
+          nullable: true
+        insidersPercent:
+          type: number
+          nullable: true
+          description: In percent
+        institutionsPercent:
+          type: number
+          nullable: true
+          description: In percent
+        sma50:
+          type: number
+          nullable: true
+        sma200:
+          type: number
+          nullable: true
+        beta:
+          type: number
+          nullable: true
+        avgVolume10d:
+          type: number
+          nullable: true
+          description: 10 day average volume
       required:
         - ticker
         - companyName
@@ -663,6 +833,7 @@ components:
         - market
         - currency
         - changePercent
+        - changePercent5d
         - changePercent1w
         - changePercent1m
         - changePercent3m
@@ -682,6 +853,55 @@ components:
         - refreshedAt
         - website
         - logoUrl
+        - psRatio
+        - forwardPE
+        - pegRatio
+        - evToEbitda
+        - evToRevenue
+        - priceToBook
+        - epsTrailing
+        - epsForward
+        - enterpriseValue
+        - fiftyTwoWeekHigh
+        - fiftyTwoWeekLow
+        - revenue
+        - grossProfit
+        - netIncome
+        - revenuePerShare
+        - ebitda
+        - grossMargin
+        - operatingMargin
+        - ebitdaMargin
+        - profitMargin
+        - returnOnEquity
+        - returnOnAssets
+        - revenueGrowth
+        - operatingCashflow
+        - freeCashflow
+        - capex
+        - totalDebt
+        - totalCash
+        - debtToEquity
+        - currentRatio
+        - quickRatio
+        - bookValuePerShare
+        - dividendYield
+        - payoutRatio
+        - fiveYearAvgDividendYield
+        - exDividendDate
+        - analystRating
+        - analystTargetMean
+        - analystTargetLow
+        - analystTargetHigh
+        - analystCount
+        - sharesOutstanding
+        - floatShares
+        - insidersPercent
+        - institutionsPercent
+        - sma50
+        - sma200
+        - beta
+        - avgVolume10d
     TickerOptionDto:
       type: object
       properties:

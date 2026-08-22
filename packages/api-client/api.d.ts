@@ -464,6 +464,8 @@ export interface components {
             currency: string | null;
             /** @description Change since the last completed session close, in percent (e.g. 1.23 for +1.23%). While the market is open this compares the last two completed closes; once the market has closed for the day it compares today's close to yesterday's. */
             changePercent: number | null;
+            /** @description 5 day change, in percent */
+            changePercent5d: number | null;
             /** @description 1 week change, in percent */
             changePercent1w: number | null;
             /** @description 1 month change, in percent */
@@ -505,6 +507,74 @@ export interface components {
             website: string | null;
             /** @description Company logo image URL */
             logoUrl: string | null;
+            psRatio: number | null;
+            forwardPE: number | null;
+            pegRatio: number | null;
+            evToEbitda: number | null;
+            evToRevenue: number | null;
+            priceToBook: number | null;
+            epsTrailing: number | null;
+            epsForward: number | null;
+            enterpriseValue: number | null;
+            fiftyTwoWeekHigh: number | null;
+            fiftyTwoWeekLow: number | null;
+            /** @description Revenue (TTM) */
+            revenue: number | null;
+            grossProfit: number | null;
+            /** @description Net income (TTM) */
+            netIncome: number | null;
+            revenuePerShare: number | null;
+            ebitda: number | null;
+            /** @description In percent */
+            grossMargin: number | null;
+            /** @description In percent */
+            operatingMargin: number | null;
+            /** @description In percent */
+            ebitdaMargin: number | null;
+            /** @description In percent */
+            profitMargin: number | null;
+            /** @description In percent */
+            returnOnEquity: number | null;
+            /** @description In percent */
+            returnOnAssets: number | null;
+            /** @description In percent */
+            revenueGrowth: number | null;
+            operatingCashflow: number | null;
+            /** @description Free cash flow (TTM) */
+            freeCashflow: number | null;
+            /** @description Capital expenditure (TTM) */
+            capex: number | null;
+            totalDebt: number | null;
+            totalCash: number | null;
+            debtToEquity: number | null;
+            currentRatio: number | null;
+            quickRatio: number | null;
+            bookValuePerShare: number | null;
+            /** @description In percent */
+            dividendYield: number | null;
+            /** @description In percent */
+            payoutRatio: number | null;
+            /** @description In percent */
+            fiveYearAvgDividendYield: number | null;
+            /** Format: date-time */
+            exDividendDate: string | null;
+            /** @description e.g. "buy", "hold" */
+            analystRating: string | null;
+            analystTargetMean: number | null;
+            analystTargetLow: number | null;
+            analystTargetHigh: number | null;
+            analystCount: number | null;
+            sharesOutstanding: number | null;
+            floatShares: number | null;
+            /** @description In percent */
+            insidersPercent: number | null;
+            /** @description In percent */
+            institutionsPercent: number | null;
+            sma50: number | null;
+            sma200: number | null;
+            beta: number | null;
+            /** @description 10 day average volume */
+            avgVolume10d: number | null;
         };
         TickerOptionDto: {
             ticker: string;
