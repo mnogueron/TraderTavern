@@ -501,6 +501,10 @@ export interface components {
              * @description When the underlying technical data was last refreshed
              */
             refreshedAt: string | null;
+            /** @description Company website URL */
+            website: string | null;
+            /** @description Company logo image URL */
+            logoUrl: string | null;
         };
         TickerOptionDto: {
             ticker: string;

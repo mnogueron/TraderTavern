@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router';
-import { RiArrowLeftLine, RiEyeLine, RiEyeOffLine } from '@remixicon/react';
+import { RiEyeLine, RiEyeOffLine } from '@remixicon/react';
 import { useClientQuery } from '@trader-tavern/api-client';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
@@ -14,6 +13,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CandlestickChart from '@/pages/ticker/components/CandlestickChart';
 import FinancialsTab from '@/pages/ticker/components/financials/FinancialsTab';
+import PerformanceRow from '@/pages/ticker/components/PerformanceRow';
+import TickerHeader from '@/pages/ticker/components/TickerHeader';
 import {
   changePercentClassName,
   formatChangePercent,
@@ -98,33 +99,68 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
   );
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4">
-      <div className="flex shrink-0 items-center gap-3">
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          render={<Link to="/screener" />}
-        >
-          <RiArrowLeftLine />
-        </Button>
-        {isTickerPending || !tickerData ? (
-          <Skeleton className="h-8 w-64" />
-        ) : (
-          <div>
-            <h1 className="text-2xl font-semibold">
-              {tickerData.ticker}{' '}
-              <span className="text-lg font-normal text-muted-foreground">
-                {tickerData.companyName}
-              </span>
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Refreshed {formatDateTime(tickerData.refreshedAt)}
-            </p>
-          </div>
-        )}
+    <div className="flex flex-col">
+      <div className="sticky -top-4 z-10 -mx-4 -mt-4 flex flex-col bg-background px-4 pt-4">
+        <TickerHeader
+          ticker={tickerData ?? null}
+          fundamental={fundamental ?? null}
+          isPending={isTickerPending}
+        />
       </div>
 
-      <Tabs defaultValue="overview" className="min-h-0 flex-1">
+      <Card className="mt-4 h-[420px] shrink-0">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Candles</CardTitle>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant={showPreMarket ? 'default' : 'outline'}
+              onClick={() => setShowPreMarket((value) => !value)}
+            >
+              {showPreMarket ? <RiEyeLine /> : <RiEyeOffLine />}
+              Pre/Post-market
+            </Button>
+            <ButtonGroup>
+              {WINDOW_OPTIONS.map((option) => (
+                <Button
+                  key={option.value}
+                  type="button"
+                  size="sm"
+                  variant={window === option.value ? 'default' : 'outline'}
+                  onClick={() => setWindow(option.value)}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </ButtonGroup>
+          </div>
+        </CardHeader>
+        <CardContent className="min-h-0 flex-1">
+          {isChartPending || !chart ? (
+            <Skeleton className="h-full w-full" />
+          ) : (
+            <CandlestickChart
+              candles={chart.candles}
+              window={chart.window}
+              marketHours={marketHours}
+              showPreMarket={showPreMarket}
+              currency={tickerData?.currency}
+            />
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4 shrink-0">
+        <CardHeader>
+          <CardTitle>Performance</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <PerformanceRow ticker={tickerData ?? null} isPending={isTickerPending} />
+        </CardContent>
+      </Card>
+
+      <Tabs defaultValue="overview" className="min-h-0 flex-1 gap-4 pt-4">
         <TabsList variant="line" className="shrink-0">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="financials">Financials</TabsTrigger>
@@ -135,7 +171,7 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
           className="flex min-h-0 flex-1 flex-col gap-4"
         >
       <div className="grid shrink-0 gap-4 md:grid-cols-3">
-        <Card>
+        <Card className="md:col-span-3">
           <CardHeader>
             <CardTitle>Overview</CardTitle>
           </CardHeader>
@@ -177,60 +213,6 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
                   {formatMonthYear(tickerData.mostRecentQuarter)}
                 </span>
               </>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Performance</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isTickerPending || !tickerData ? (
-              <Skeleton className="h-16 w-full" />
-            ) : (
-              <div className="flex gap-2 overflow-x-auto pb-1">
-                {(
-                  [
-                    ['1D', tickerData.changePercent],
-                    ['1W', tickerData.changePercent1w],
-                    ['1M', tickerData.changePercent1m],
-                    ['3M', tickerData.changePercent3m],
-                    ['6M', tickerData.changePercent6m],
-                    ['YTD', tickerData.changePercentYtd],
-                    ['1Y', tickerData.changePercent1y],
-                  ] as const
-                ).map(([label, value]) => (
-                  <div
-                    key={label}
-                    className="flex shrink-0 flex-col items-center gap-1 rounded-md border bg-muted/40 px-3 py-2"
-                  >
-                    <span className="text-xs text-muted-foreground">
-                      {label}
-                    </span>
-                    <span
-                      className={`text-sm tabular-nums ${changePercentClassName(value)}`}
-                    >
-                      {formatChangePercent(value)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="md:col-span-3">
-          <CardHeader>
-            <CardTitle>About</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isTickerPending || !tickerData ? (
-              <Skeleton className="h-16 w-full" />
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                {tickerData.description ?? 'No description available.'}
-              </p>
             )}
           </CardContent>
         </Card>
@@ -517,48 +499,6 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
         </Card>
       </div>
 
-      <Card className="min-h-0 flex-1">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Candles</CardTitle>
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant={showPreMarket ? 'default' : 'outline'}
-              onClick={() => setShowPreMarket((value) => !value)}
-            >
-              {showPreMarket ? <RiEyeLine /> : <RiEyeOffLine />}
-              Pre/Post-market
-            </Button>
-            <ButtonGroup>
-              {WINDOW_OPTIONS.map((option) => (
-                <Button
-                  key={option.value}
-                  type="button"
-                  size="sm"
-                  variant={window === option.value ? 'default' : 'outline'}
-                  onClick={() => setWindow(option.value)}
-                >
-                  {option.label}
-                </Button>
-              ))}
-            </ButtonGroup>
-          </div>
-        </CardHeader>
-        <CardContent className="min-h-0 flex-1">
-          {isChartPending || !chart ? (
-            <Skeleton className="h-full w-full" />
-          ) : (
-            <CandlestickChart
-              candles={chart.candles}
-              window={chart.window}
-              marketHours={marketHours}
-              showPreMarket={showPreMarket}
-              currency={tickerData?.currency}
-            />
-          )}
-        </CardContent>
-      </Card>
         </TabsContent>
 
         <TabsContent value="financials" className="min-h-0 flex-1">

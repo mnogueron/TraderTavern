@@ -30,6 +30,12 @@ export class TickerStaticData {
   currency?: string;
 
   @Prop()
+  website?: string;
+
+  @Prop()
+  logoUrl?: string;
+
+  @Prop()
   employees?: number;
 
   @Prop()
