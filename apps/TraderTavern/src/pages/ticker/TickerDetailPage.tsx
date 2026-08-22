@@ -11,7 +11,9 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CandlestickChart from '@/pages/ticker/components/CandlestickChart';
+import FinancialsTab from '@/pages/ticker/components/financials/FinancialsTab';
 import {
   changePercentClassName,
   formatChangePercent,
@@ -122,6 +124,16 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
         )}
       </div>
 
+      <Tabs defaultValue="overview" className="min-h-0 flex-1">
+        <TabsList variant="line" className="shrink-0">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="financials">Financials</TabsTrigger>
+        </TabsList>
+
+        <TabsContent
+          value="overview"
+          className="flex min-h-0 flex-1 flex-col gap-4"
+        >
       <div className="grid shrink-0 gap-4 md:grid-cols-3">
         <Card>
           <CardHeader>
@@ -547,6 +559,16 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="financials" className="min-h-0 flex-1">
+          <FinancialsTab
+            ticker={ticker}
+            currency={tickerData?.currency ?? null}
+            marketCap={tickerData?.marketCap ?? null}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

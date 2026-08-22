@@ -330,6 +330,46 @@ paths:
         - cookie: []
       tags:
         - Finance
+  /finance/ticker/{id}/financial-history:
+    get:
+      operationId: getTickerFinancialHistory
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinancialHistoryDto'
+      security:
+        - cookie: []
+      tags:
+        - Finance
+  /finance/ticker/{id}/earnings-history:
+    get:
+      operationId: getTickerEarningsHistory
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EarningsHistoryDto'
+      security:
+        - cookie: []
+      tags:
+        - Finance
   /finance/ticker/{id}/chart:
     get:
       operationId: getTickerChart
@@ -662,6 +702,9 @@ components:
         totalDebt:
           type: number
           nullable: true
+        totalCash:
+          type: number
+          nullable: true
         debtToEquity:
           type: number
           nullable: true
@@ -744,6 +787,10 @@ components:
         operatingCashflow:
           type: number
           nullable: true
+        freeCashflow:
+          type: number
+          nullable: true
+          description: Free cash flow (TTM)
         capex:
           type: number
           nullable: true
@@ -859,6 +906,7 @@ components:
         - psRatio
         - ebitda
         - totalDebt
+        - totalCash
         - debtToEquity
         - enterpriseValue
         - revenue
@@ -883,6 +931,7 @@ components:
         - revenueGrowth
         - earningsGrowth
         - operatingCashflow
+        - freeCashflow
         - capex
         - fcfMargin
         - fcfYield
@@ -914,6 +963,107 @@ components:
         - avgVolume30d
         - avgVolume10d
         - refreshedAt
+    AnnualFinancialPeriodDto:
+      type: object
+      properties:
+        periodEnd:
+          format: date-time
+          type: string
+        revenue:
+          type: number
+          nullable: true
+        ebitda:
+          type: number
+          nullable: true
+        netIncome:
+          type: number
+          nullable: true
+        operatingCashflow:
+          type: number
+          nullable: true
+        capex:
+          type: number
+          nullable: true
+        freeCashflow:
+          type: number
+          nullable: true
+        cash:
+          type: number
+          nullable: true
+        totalDebt:
+          type: number
+          nullable: true
+        netDebt:
+          type: number
+          nullable: true
+      required:
+        - periodEnd
+        - revenue
+        - ebitda
+        - netIncome
+        - operatingCashflow
+        - capex
+        - freeCashflow
+        - cash
+        - totalDebt
+        - netDebt
+    FinancialHistoryDto:
+      type: object
+      properties:
+        ticker:
+          type: string
+        annual:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnnualFinancialPeriodDto'
+      required:
+        - ticker
+        - annual
+    EpsPeriodDto:
+      type: object
+      properties:
+        quarter:
+          format: date-time
+          type: string
+        actual:
+          type: number
+          nullable: true
+        estimate:
+          type: number
+          nullable: true
+      required:
+        - quarter
+        - actual
+        - estimate
+    RevenuePeriodDto:
+      type: object
+      properties:
+        quarter:
+          format: date-time
+          type: string
+        actual:
+          type: number
+          nullable: true
+      required:
+        - quarter
+        - actual
+    EarningsHistoryDto:
+      type: object
+      properties:
+        ticker:
+          type: string
+        eps:
+          type: array
+          items:
+            $ref: '#/components/schemas/EpsPeriodDto'
+        revenue:
+          type: array
+          items:
+            $ref: '#/components/schemas/RevenuePeriodDto'
+      required:
+        - ticker
+        - eps
+        - revenue
     CandleDto:
       type: object
       properties:

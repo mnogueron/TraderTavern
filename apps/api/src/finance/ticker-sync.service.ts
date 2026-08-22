@@ -30,12 +30,55 @@ import {
   TechnicalTickerDataDocument,
 } from './schemas/technical-ticker-data.schema';
 import { MarketHours, MarketHoursDocument } from './schemas/market-hours.schema';
+import {
+  TickerFinancialHistory,
+  TickerFinancialHistoryDocument,
+} from './schemas/ticker-financial-history.schema';
+import {
+  TickerEarningsHistory,
+  TickerEarningsHistoryDocument,
+} from './schemas/ticker-earnings-history.schema';
 
 const yahooFinance = new YahooFinance();
 
 // Covers just over a year of calendar days lookback, so the 1y/YTD change
 // calculations always have a reference close to compare against.
 const HISTORY_LOOKBACK_DAYS = 400;
+
+// How far back to pull the Financial History (annual) and Earnings History
+// (quarterly revenue) charts.
+const FINANCIAL_HISTORY_YEARS = 6;
+const QUARTERLY_REVENUE_HISTORY_YEARS = 2;
+
+// fundamentalsTimeSeries rows carry an internal TYPE/date envelope plus
+// dozens of module-specific fields; we only care about a handful, and only
+// the fields we read are typed here (the rest are untyped in yahoo-finance2
+// for these modules, see plan research notes).
+type FundamentalsTimeSeriesRow = {
+  date: Date;
+  totalRevenue?: number;
+  EBITDA?: number;
+  netIncome?: number;
+  operatingCashFlow?: number;
+  freeCashFlow?: number;
+  capitalExpenditure?: number;
+  cashAndCashEquivalents?: number;
+  totalDebt?: number;
+  netDebt?: number;
+};
+
+type AnnualFinancialPeriodDraft = {
+  periodEnd: Date;
+  revenue?: number;
+  ebitda?: number;
+  netIncome?: number;
+  operatingCashflow?: number;
+  capex?: number;
+  freeCashflow?: number;
+  cash?: number;
+  totalDebt?: number;
+  netDebt?: number;
+};
 
 type SyncTrigger = {
   type: SyncType;
@@ -72,6 +115,10 @@ export class TickerSyncService {
     private readonly technicalTickerDataModel: Model<TechnicalTickerDataDocument>,
     @InjectModel(MarketHours.name)
     private readonly marketHoursModel: Model<MarketHoursDocument>,
+    @InjectModel(TickerFinancialHistory.name)
+    private readonly tickerFinancialHistoryModel: Model<TickerFinancialHistoryDocument>,
+    @InjectModel(TickerEarningsHistory.name)
+    private readonly tickerEarningsHistoryModel: Model<TickerEarningsHistoryDocument>,
     private readonly configService: ConfigService,
   ) {}
 
@@ -264,6 +311,7 @@ export class TickerSyncService {
         'assetProfile',
         'financialData',
         'defaultKeyStatistics',
+        'earningsHistory',
       ],
     });
   }
@@ -277,6 +325,81 @@ export class TickerSyncService {
     });
   }
 
+  private async fetchFinancialHistory(ticker: string) {
+    const period1 = new Date();
+    period1.setFullYear(period1.getFullYear() - FINANCIAL_HISTORY_YEARS);
+
+    const [financials, cashFlow, balanceSheet] = await Promise.all([
+      yahooFinance.fundamentalsTimeSeries(ticker, {
+        period1,
+        type: 'annual',
+        module: 'financials',
+      }) as unknown as Promise<FundamentalsTimeSeriesRow[]>,
+      yahooFinance.fundamentalsTimeSeries(ticker, {
+        period1,
+        type: 'annual',
+        module: 'cash-flow',
+      }) as unknown as Promise<FundamentalsTimeSeriesRow[]>,
+      yahooFinance.fundamentalsTimeSeries(ticker, {
+        period1,
+        type: 'annual',
+        module: 'balance-sheet',
+      }) as unknown as Promise<FundamentalsTimeSeriesRow[]>,
+    ]);
+
+    const byPeriodEnd = new Map<string, AnnualFinancialPeriodDraft>();
+    const getOrCreate = (date: Date): AnnualFinancialPeriodDraft => {
+      const key = date.toISOString();
+      let entry = byPeriodEnd.get(key);
+      if (!entry) {
+        entry = { periodEnd: date };
+        byPeriodEnd.set(key, entry);
+      }
+      return entry;
+    };
+
+    for (const row of financials) {
+      const entry = getOrCreate(row.date);
+      entry.revenue = row.totalRevenue;
+      entry.ebitda = row.EBITDA;
+      entry.netIncome = row.netIncome;
+    }
+    for (const row of cashFlow) {
+      const entry = getOrCreate(row.date);
+      entry.operatingCashflow = row.operatingCashFlow;
+      entry.freeCashflow = row.freeCashFlow;
+      entry.capex = row.capitalExpenditure;
+    }
+    for (const row of balanceSheet) {
+      const entry = getOrCreate(row.date);
+      entry.cash = row.cashAndCashEquivalents;
+      entry.totalDebt = row.totalDebt;
+      entry.netDebt = row.netDebt;
+    }
+
+    return Array.from(byPeriodEnd.values()).sort(
+      (a, b) => a.periodEnd.getTime() - b.periodEnd.getTime(),
+    );
+  }
+
+  private async fetchQuarterlyRevenueHistory(
+    ticker: string,
+  ): Promise<{ quarter: Date; actual?: number }[]> {
+    const period1 = new Date();
+    period1.setFullYear(period1.getFullYear() - QUARTERLY_REVENUE_HISTORY_YEARS);
+
+    const rows = (await yahooFinance.fundamentalsTimeSeries(ticker, {
+      period1,
+      type: 'quarterly',
+      module: 'financials',
+    })) as unknown as FundamentalsTimeSeriesRow[];
+
+    return rows.map((row) => ({
+      quarter: row.date,
+      actual: row.totalRevenue,
+    }));
+  }
+
   private async syncTicker(ticker: string, syncDate: Date): Promise<void> {
     const [quoteSummary, chart] = await Promise.all([
       this.fetchQuoteSummary(ticker),
@@ -286,7 +409,37 @@ export class TickerSyncService {
     await this.updateStaticData(ticker, quoteSummary);
     await this.updateCompound(ticker, syncDate, quoteSummary, chart);
     await this.updateFundamental(ticker, syncDate, quoteSummary);
+    await this.updateFinancialHistory(ticker);
+    await this.updateEarningsHistory(ticker, quoteSummary);
     await this.syncTechnical(ticker);
+  }
+
+  private async updateFinancialHistory(ticker: string): Promise<void> {
+    const annual = await this.fetchFinancialHistory(ticker);
+
+    await this.tickerFinancialHistoryModel.updateOne(
+      { ticker },
+      { $set: { ticker, annual } },
+      { upsert: true },
+    );
+  }
+
+  private async updateEarningsHistory(
+    ticker: string,
+    quoteSummary: Awaited<ReturnType<typeof this.fetchQuoteSummary>>,
+  ): Promise<void> {
+    const eps = (quoteSummary.earningsHistory?.history ?? []).map((entry) => ({
+      quarter: entry.quarter,
+      actual: entry.epsActual ?? undefined,
+      estimate: entry.epsEstimate ?? undefined,
+    }));
+    const revenue = await this.fetchQuarterlyRevenueHistory(ticker);
+
+    await this.tickerEarningsHistoryModel.updateOne(
+      { ticker },
+      { $set: { ticker, eps, revenue } },
+      { upsert: true },
+    );
   }
 
   private async syncStatic(ticker: string): Promise<void> {
@@ -691,6 +844,7 @@ export class TickerSyncService {
           psRatio: summaryDetail?.priceToSalesTrailing12Months,
           ebitda,
           totalDebt,
+          totalCash,
           debtToEquity: financialData?.debtToEquity,
 
           // Company
@@ -729,6 +883,7 @@ export class TickerSyncService {
 
           // Cash flow & leverage
           operatingCashflow,
+          freeCashflow,
           capex,
           fcfMargin,
           fcfYield,

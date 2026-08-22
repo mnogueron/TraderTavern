@@ -20,6 +20,9 @@ export class FundamentalTickerDto {
   totalDebt: number | null;
 
   @ApiProperty({ nullable: true, type: Number })
+  totalCash: number | null;
+
+  @ApiProperty({ nullable: true, type: Number })
   debtToEquity: number | null;
 
   // Company
@@ -96,6 +99,9 @@ export class FundamentalTickerDto {
   // Cash flow & leverage
   @ApiProperty({ nullable: true, type: Number })
   operatingCashflow: number | null;
+
+  @ApiProperty({ nullable: true, type: Number, description: 'Free cash flow (TTM)' })
+  freeCashflow: number | null;
 
   @ApiProperty({ nullable: true, type: Number, description: 'Capital expenditure (TTM)' })
   capex: number | null;
@@ -206,6 +212,7 @@ export class FundamentalTickerDto {
     psRatio: number | null,
     ebitda: number | null,
     totalDebt: number | null,
+    totalCash: number | null,
     debtToEquity: number | null,
     enterpriseValue: number | null,
     revenue: number | null,
@@ -230,6 +237,7 @@ export class FundamentalTickerDto {
     revenueGrowth: number | null,
     earningsGrowth: number | null,
     operatingCashflow: number | null,
+    freeCashflow: number | null,
     capex: number | null,
     fcfMargin: number | null,
     fcfYield: number | null,
@@ -268,6 +276,7 @@ export class FundamentalTickerDto {
     this.psRatio = psRatio;
     this.ebitda = ebitda;
     this.totalDebt = totalDebt;
+    this.totalCash = totalCash;
     this.debtToEquity = debtToEquity;
     this.enterpriseValue = enterpriseValue;
     this.revenue = revenue;
@@ -292,6 +301,7 @@ export class FundamentalTickerDto {
     this.revenueGrowth = revenueGrowth;
     this.earningsGrowth = earningsGrowth;
     this.operatingCashflow = operatingCashflow;
+    this.freeCashflow = freeCashflow;
     this.capex = capex;
     this.fcfMargin = fcfMargin;
     this.fcfYield = fcfYield;

@@ -340,6 +340,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/finance/ticker/{id}/financial-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getTickerFinancialHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/ticker/{id}/earnings-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getTickerEarningsHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/finance/ticker/{id}/chart": {
         parameters: {
             query?: never;
@@ -481,6 +513,7 @@ export interface components {
             psRatio: number | null;
             ebitda: number | null;
             totalDebt: number | null;
+            totalCash: number | null;
             debtToEquity: number | null;
             enterpriseValue: number | null;
             /** @description Revenue (TTM) */
@@ -515,6 +548,8 @@ export interface components {
             /** @description In percent */
             earningsGrowth: number | null;
             operatingCashflow: number | null;
+            /** @description Free cash flow (TTM) */
+            freeCashflow: number | null;
             /** @description Capital expenditure (TTM) */
             capex: number | null;
             /** @description In percent */
@@ -563,6 +598,39 @@ export interface components {
              * @description When this fundamental data was last refreshed
              */
             refreshedAt: string | null;
+        };
+        AnnualFinancialPeriodDto: {
+            /** Format: date-time */
+            periodEnd: string;
+            revenue: number | null;
+            ebitda: number | null;
+            netIncome: number | null;
+            operatingCashflow: number | null;
+            capex: number | null;
+            freeCashflow: number | null;
+            cash: number | null;
+            totalDebt: number | null;
+            netDebt: number | null;
+        };
+        FinancialHistoryDto: {
+            ticker: string;
+            annual: components["schemas"]["AnnualFinancialPeriodDto"][];
+        };
+        EpsPeriodDto: {
+            /** Format: date-time */
+            quarter: string;
+            actual: number | null;
+            estimate: number | null;
+        };
+        RevenuePeriodDto: {
+            /** Format: date-time */
+            quarter: string;
+            actual: number | null;
+        };
+        EarningsHistoryDto: {
+            ticker: string;
+            eps: components["schemas"]["EpsPeriodDto"][];
+            revenue: components["schemas"]["RevenuePeriodDto"][];
         };
         CandleDto: {
             /** Format: date-time */
@@ -1004,6 +1072,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FundamentalTickerDto"];
+                };
+            };
+        };
+    };
+    getTickerFinancialHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinancialHistoryDto"];
+                };
+            };
+        };
+    };
+    getTickerEarningsHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EarningsHistoryDto"];
                 };
             };
         };
