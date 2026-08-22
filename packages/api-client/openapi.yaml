@@ -639,6 +639,14 @@ components:
           type: string
           nullable: true
           description: When the underlying technical data was last refreshed
+        website:
+          type: string
+          nullable: true
+          description: Company website URL
+        logoUrl:
+          type: string
+          nullable: true
+          description: Company logo image URL
       required:
         - ticker
         - companyName
@@ -672,6 +680,8 @@ components:
         - atr14
         - volumeRatio20d
         - refreshedAt
+        - website
+        - logoUrl
     TickerOptionDto:
       type: object
       properties:

@@ -454,6 +454,8 @@ export class TickerSyncService {
   ): Promise<void> {
     const { price, assetProfile, defaultKeyStatistics } = quoteSummary;
     const companyName = price?.longName ?? price?.shortName ?? ticker;
+    const website = assetProfile?.website;
+    const logoUrl = website ? this.logoUrlFromWebsite(website) : undefined;
 
     await this.tickerStaticDataModel.updateOne(
       { ticker },
@@ -467,6 +469,8 @@ export class TickerSyncService {
           description: assetProfile?.longBusinessSummary,
           market: price?.exchange,
           currency: price?.currency,
+          website,
+          logoUrl,
           employees: assetProfile?.fullTimeEmployees,
           fiscalYearEnd: defaultKeyStatistics?.lastFiscalYearEnd,
           mostRecentQuarter: defaultKeyStatistics?.mostRecentQuarter,
@@ -474,6 +478,15 @@ export class TickerSyncService {
       },
       { upsert: true },
     );
+  }
+
+  private logoUrlFromWebsite(website: string): string | undefined {
+    try {
+      const hostname = new URL(website).hostname.replace(/^www\./, '');
+      return `https://www.google.com/s2/favicons?sz=128&domain=${hostname}`;
+    } catch {
+      return undefined;
+    }
   }
 
   private async syncTechnical(ticker: string): Promise<void> {

@@ -370,6 +370,8 @@ export class FinanceService {
       technical?.atr14 ?? null,
       technical?.volumeRatio20d ?? null,
       technical?.updatedAt ?? null,
+      staticData.website ?? null,
+      staticData.logoUrl ?? null,
     );
   }
 

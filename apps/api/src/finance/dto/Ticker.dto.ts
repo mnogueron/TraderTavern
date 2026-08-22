@@ -112,6 +112,12 @@ export class TickerDto {
   })
   refreshedAt: Date | null;
 
+  @ApiProperty({ nullable: true, type: String, description: 'Company website URL' })
+  website: string | null;
+
+  @ApiProperty({ nullable: true, type: String, description: 'Company logo image URL' })
+  logoUrl: string | null;
+
   constructor(
     ticker: string,
     companyName: string,
@@ -145,6 +151,8 @@ export class TickerDto {
     atr14: number | null,
     volumeRatio20d: number | null,
     refreshedAt: Date | null,
+    website: string | null,
+    logoUrl: string | null,
   ) {
     this.ticker = ticker;
     this.companyName = companyName;
@@ -178,5 +186,7 @@ export class TickerDto {
     this.atr14 = atr14;
     this.volumeRatio20d = volumeRatio20d;
     this.refreshedAt = refreshedAt;
+    this.website = website;
+    this.logoUrl = logoUrl;
   }
 }
