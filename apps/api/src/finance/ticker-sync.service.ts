@@ -204,6 +204,17 @@ export class TickerSyncService {
     }
   }
 
+  async syncAllStatic(): Promise<void> {
+    for (const ticker of SCREENER_TICKERS) {
+      try {
+        await delay(YAHOO_REQUEST_DELAY_MS);
+        await this.syncStatic(ticker);
+      } catch (error) {
+        this.logger.warn(`Failed to sync static data for ${ticker}: ${error}`);
+      }
+    }
+  }
+
   async syncAllTechnical(): Promise<void> {
     for (const ticker of SCREENER_TICKERS) {
       try {
@@ -218,6 +229,11 @@ export class TickerSyncService {
     if (!SCREENER_TICKERS.includes(ticker)) {
       throw new NotFoundException(`Ticker ${ticker} not found`);
     }
+  }
+
+  async syncSingleTickerStatic(ticker: string): Promise<void> {
+    this.assertKnownTicker(ticker);
+    await this.syncStatic(ticker);
   }
 
   async syncSingleTickerFundamental(ticker: string): Promise<void> {
@@ -261,6 +277,22 @@ export class TickerSyncService {
       this.fetchDailyChart(ticker),
     ]);
 
+    await this.updateStaticData(ticker, quoteSummary);
+    await this.updateCompound(ticker, syncDate, quoteSummary, chart);
+    await this.updateFundamental(ticker, syncDate, quoteSummary);
+    await this.syncTechnical(ticker);
+  }
+
+  private async syncStatic(ticker: string): Promise<void> {
+    const quoteSummary = await this.fetchQuoteSummary(ticker);
+
+    await this.updateStaticData(ticker, quoteSummary);
+  }
+
+  private async updateStaticData(
+    ticker: string,
+    quoteSummary: Awaited<ReturnType<typeof this.fetchQuoteSummary>>,
+  ): Promise<void> {
     const { price, assetProfile } = quoteSummary;
     const companyName = price?.longName ?? price?.shortName ?? ticker;
 
@@ -273,16 +305,13 @@ export class TickerSyncService {
           sector: assetProfile?.sector,
           industry: assetProfile?.industry,
           country: assetProfile?.country,
+          description: assetProfile?.longBusinessSummary,
           market: price?.exchange,
           currency: price?.currency,
         },
       },
       { upsert: true },
     );
-
-    await this.updateCompound(ticker, syncDate, quoteSummary, chart);
-    await this.updateFundamental(ticker, syncDate, quoteSummary);
-    await this.syncTechnical(ticker);
   }
 
   private async syncTechnical(ticker: string): Promise<void> {

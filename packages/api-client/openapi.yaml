@@ -166,6 +166,17 @@ paths:
         - cookie: []
       tags:
         - Finance
+  /finance/sync/static:
+    post:
+      operationId: syncStatic
+      parameters: []
+      responses:
+        '204':
+          description: ''
+      security:
+        - cookie: []
+      tags:
+        - Finance
   /finance/sync/fundamental:
     post:
       operationId: syncFundamental
@@ -202,6 +213,22 @@ paths:
   /finance/ticker/{id}/sync:
     post:
       operationId: syncSingleTicker
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '204':
+          description: ''
+      security:
+        - cookie: []
+      tags:
+        - Finance
+  /finance/ticker/{id}/sync/static:
+    post:
+      operationId: syncSingleTickerStatic
       parameters:
         - name: id
           required: true
@@ -472,6 +499,10 @@ components:
         country:
           type: string
           nullable: true
+        description:
+          type: string
+          nullable: true
+          description: Basic description of the company
         market:
           type: string
           nullable: true
@@ -526,6 +557,7 @@ components:
         - peRatio
         - price
         - country
+        - description
         - market
         - currency
         - changePercent

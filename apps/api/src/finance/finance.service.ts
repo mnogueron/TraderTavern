@@ -214,6 +214,7 @@ export class FinanceService {
       fundamental?.peRatio ?? null,
       technical?.price ?? null,
       staticData.country ?? null,
+      staticData.description ?? null,
       marketLabel,
       staticData.currency ?? null,
       technical?.changePercent1d ?? null,

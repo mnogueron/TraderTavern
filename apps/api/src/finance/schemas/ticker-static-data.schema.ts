@@ -21,6 +21,9 @@ export class TickerStaticData {
   country?: string;
 
   @Prop()
+  description?: string;
+
+  @Prop()
   market?: string;
 
   @Prop()
