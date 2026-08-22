@@ -28,6 +28,9 @@ export class FundamentalTickerData {
   totalDebt?: number;
 
   @Prop()
+  totalCash?: number;
+
+  @Prop()
   debtToEquity?: number;
 
   // Company
@@ -104,6 +107,9 @@ export class FundamentalTickerData {
   // Cash flow & leverage
   @Prop()
   operatingCashflow?: number;
+
+  @Prop()
+  freeCashflow?: number;
 
   @Prop()
   capex?: number;

@@ -20,6 +20,14 @@ import {
   TechnicalTickerDataSchema,
 } from './schemas/technical-ticker-data.schema';
 import { MarketHours, MarketHoursSchema } from './schemas/market-hours.schema';
+import {
+  TickerFinancialHistory,
+  TickerFinancialHistorySchema,
+} from './schemas/ticker-financial-history.schema';
+import {
+  TickerEarningsHistory,
+  TickerEarningsHistorySchema,
+} from './schemas/ticker-earnings-history.schema';
 
 @Module({
   imports: [
@@ -35,6 +43,14 @@ import { MarketHours, MarketHoursSchema } from './schemas/market-hours.schema';
       { name: SyncHistory.name, schema: SyncHistorySchema },
       { name: TechnicalTickerData.name, schema: TechnicalTickerDataSchema },
       { name: MarketHours.name, schema: MarketHoursSchema },
+      {
+        name: TickerFinancialHistory.name,
+        schema: TickerFinancialHistorySchema,
+      },
+      {
+        name: TickerEarningsHistory.name,
+        schema: TickerEarningsHistorySchema,
+      },
     ]),
   ],
   controllers: [FinanceController],

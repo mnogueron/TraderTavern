@@ -24,6 +24,23 @@ import {
 import { MarketHours, MarketHoursDocument } from './schemas/market-hours.schema';
 import { MarketHoursDto } from './dto/MarketHours.dto';
 import { TickerOptionDto } from './dto/TickerOption.dto';
+import {
+  AnnualFinancialPeriodDto,
+  FinancialHistoryDto,
+} from './dto/FinancialHistory.dto';
+import {
+  EarningsHistoryDto,
+  EpsPeriodDto,
+  RevenuePeriodDto,
+} from './dto/EarningsHistory.dto';
+import {
+  TickerFinancialHistory,
+  TickerFinancialHistoryDocument,
+} from './schemas/ticker-financial-history.schema';
+import {
+  TickerEarningsHistory,
+  TickerEarningsHistoryDocument,
+} from './schemas/ticker-earnings-history.schema';
 
 type WithUpdatedAt = { updatedAt: Date };
 
@@ -41,6 +58,10 @@ export class FinanceService {
     private readonly technicalTickerDataModel: Model<TechnicalTickerDataDocument>,
     @InjectModel(MarketHours.name)
     private readonly marketHoursModel: Model<MarketHoursDocument>,
+    @InjectModel(TickerFinancialHistory.name)
+    private readonly tickerFinancialHistoryModel: Model<TickerFinancialHistoryDocument>,
+    @InjectModel(TickerEarningsHistory.name)
+    private readonly tickerEarningsHistoryModel: Model<TickerEarningsHistoryDocument>,
   ) {}
 
   async getScreenerTickerOptions(): Promise<TickerOptionDto[]> {
@@ -164,6 +185,7 @@ export class FinanceService {
       fundamental.psRatio ?? null,
       fundamental.ebitda ?? null,
       fundamental.totalDebt ?? null,
+      fundamental.totalCash ?? null,
       fundamental.debtToEquity ?? null,
       fundamental.enterpriseValue ?? null,
       fundamental.revenue ?? null,
@@ -188,6 +210,7 @@ export class FinanceService {
       fundamental.revenueGrowth ?? null,
       fundamental.earningsGrowth ?? null,
       fundamental.operatingCashflow ?? null,
+      fundamental.freeCashflow ?? null,
       fundamental.capex ?? null,
       fundamental.fcfMargin ?? null,
       fundamental.fcfYield ?? null,
@@ -219,6 +242,62 @@ export class FinanceService {
       fundamental.avgVolume30d ?? null,
       fundamental.avgVolume10d ?? null,
       fundamental.updatedAt ?? null,
+    );
+  }
+
+  async getFinancialHistory(ticker: string): Promise<FinancialHistoryDto> {
+    const financialHistory = await this.tickerFinancialHistoryModel
+      .findOne({ ticker })
+      .lean<TickerFinancialHistory | null>();
+
+    if (!financialHistory) {
+      throw new NotFoundException(
+        `Financial history for ${ticker} not found`,
+      );
+    }
+
+    return new FinancialHistoryDto(
+      ticker,
+      financialHistory.annual.map(
+        (period) =>
+          new AnnualFinancialPeriodDto(
+            period.periodEnd,
+            period.revenue ?? null,
+            period.ebitda ?? null,
+            period.netIncome ?? null,
+            period.operatingCashflow ?? null,
+            period.capex ?? null,
+            period.freeCashflow ?? null,
+            period.cash ?? null,
+            period.totalDebt ?? null,
+            period.netDebt ?? null,
+          ),
+      ),
+    );
+  }
+
+  async getEarningsHistory(ticker: string): Promise<EarningsHistoryDto> {
+    const earningsHistory = await this.tickerEarningsHistoryModel
+      .findOne({ ticker })
+      .lean<TickerEarningsHistory | null>();
+
+    if (!earningsHistory) {
+      throw new NotFoundException(`Earnings history for ${ticker} not found`);
+    }
+
+    return new EarningsHistoryDto(
+      ticker,
+      earningsHistory.eps.map(
+        (period) =>
+          new EpsPeriodDto(
+            period.quarter,
+            period.actual ?? null,
+            period.estimate ?? null,
+          ),
+      ),
+      earningsHistory.revenue.map(
+        (period) => new RevenuePeriodDto(period.quarter, period.actual ?? null),
+      ),
     );
   }
 

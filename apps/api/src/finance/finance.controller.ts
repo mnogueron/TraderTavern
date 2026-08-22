@@ -4,6 +4,8 @@ import { FinanceService } from './finance.service';
 import { TickerSyncService } from './ticker-sync.service';
 import { TickerDto } from './dto/Ticker.dto';
 import { FundamentalTickerDto } from './dto/FundamentalTicker.dto';
+import { FinancialHistoryDto } from './dto/FinancialHistory.dto';
+import { EarningsHistoryDto } from './dto/EarningsHistory.dto';
 import { TickerChartDto } from './dto/TickerChart.dto';
 import { GetTickerChartDto } from './dto/GetTickerChart.dto';
 import { MarketHoursDto } from './dto/MarketHours.dto';
@@ -120,6 +122,24 @@ export class FinanceController {
   @ApiOkResponse({ type: FundamentalTickerDto })
   getTickerFundamental(@Param('id') id: string): Promise<FundamentalTickerDto> {
     return this.financeService.getFundamental(id.toUpperCase());
+  }
+
+  @Get('ticker/:id/financial-history')
+  @Auth()
+  @ApiOkResponse({ type: FinancialHistoryDto })
+  getTickerFinancialHistory(
+    @Param('id') id: string,
+  ): Promise<FinancialHistoryDto> {
+    return this.financeService.getFinancialHistory(id.toUpperCase());
+  }
+
+  @Get('ticker/:id/earnings-history')
+  @Auth()
+  @ApiOkResponse({ type: EarningsHistoryDto })
+  getTickerEarningsHistory(
+    @Param('id') id: string,
+  ): Promise<EarningsHistoryDto> {
+    return this.financeService.getEarningsHistory(id.toUpperCase());
   }
 
   @Get('ticker/:id/chart')
