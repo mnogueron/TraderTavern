@@ -69,7 +69,7 @@ export const columns: ColumnDef<Ticker>[] = [
     ),
     cell: ({ row }) => (
       <div className="text-right tabular-nums">
-        {formatMarketCap(row.original.marketCap)}
+        {formatMarketCap(row.original.marketCap, row.original.currency)}
       </div>
     ),
   },
@@ -91,20 +91,72 @@ export const columns: ColumnDef<Ticker>[] = [
     ),
     cell: ({ row }) => (
       <div className="text-right tabular-nums">
-        {formatNumber(row.original.price)}
+        {formatNumber(row.original.price, 2, row.original.currency)}
       </div>
     ),
   },
   {
     accessorKey: 'changePercent',
     header: ({ column }) => (
-      <SortableHeader column={column} label="Change" align="right" />
+      <SortableHeader column={column} label="1D" align="right" />
     ),
     cell: ({ row }) => (
       <div
         className={`text-right tabular-nums ${changePercentClassName(row.original.changePercent)}`}
       >
         {formatChangePercent(row.original.changePercent)}
+      </div>
+    ),
+  },
+  {
+    accessorKey: 'changePercent1w',
+    header: ({ column }) => (
+      <SortableHeader column={column} label="1W" align="right" />
+    ),
+    cell: ({ row }) => (
+      <div
+        className={`text-right tabular-nums ${changePercentClassName(row.original.changePercent1w)}`}
+      >
+        {formatChangePercent(row.original.changePercent1w)}
+      </div>
+    ),
+  },
+  {
+    accessorKey: 'changePercent1m',
+    header: ({ column }) => (
+      <SortableHeader column={column} label="1M" align="right" />
+    ),
+    cell: ({ row }) => (
+      <div
+        className={`text-right tabular-nums ${changePercentClassName(row.original.changePercent1m)}`}
+      >
+        {formatChangePercent(row.original.changePercent1m)}
+      </div>
+    ),
+  },
+  {
+    accessorKey: 'changePercentYtd',
+    header: ({ column }) => (
+      <SortableHeader column={column} label="YTD" align="right" />
+    ),
+    cell: ({ row }) => (
+      <div
+        className={`text-right tabular-nums ${changePercentClassName(row.original.changePercentYtd)}`}
+      >
+        {formatChangePercent(row.original.changePercentYtd)}
+      </div>
+    ),
+  },
+  {
+    accessorKey: 'changePercent1y',
+    header: ({ column }) => (
+      <SortableHeader column={column} label="1Y" align="right" />
+    ),
+    cell: ({ row }) => (
+      <div
+        className={`text-right tabular-nums ${changePercentClassName(row.original.changePercent1y)}`}
+      >
+        {formatChangePercent(row.original.changePercent1y)}
       </div>
     ),
   },

@@ -25,7 +25,22 @@ export class CompoundTechnicalTickerData {
   changePercent5d?: number;
 
   @Prop()
+  changePercent1w?: number;
+
+  @Prop()
   changePercent1m?: number;
+
+  @Prop()
+  changePercent3m?: number;
+
+  @Prop()
+  changePercent6m?: number;
+
+  @Prop()
+  changePercentYtd?: number;
+
+  @Prop()
+  changePercent1y?: number;
 
   // Placeholder for future indicators, e.g. MACD bullish/bearish on a given timeframe.
   @Prop()

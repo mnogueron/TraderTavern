@@ -166,6 +166,103 @@ paths:
         - cookie: []
       tags:
         - Finance
+  /finance/sync/fundamental:
+    post:
+      operationId: syncFundamental
+      parameters: []
+      responses:
+        '204':
+          description: ''
+      security:
+        - cookie: []
+      tags:
+        - Finance
+  /finance/sync/compound:
+    post:
+      operationId: syncCompound
+      parameters: []
+      responses:
+        '204':
+          description: ''
+      security:
+        - cookie: []
+      tags:
+        - Finance
+  /finance/sync/technical:
+    post:
+      operationId: syncTechnical
+      parameters: []
+      responses:
+        '204':
+          description: ''
+      security:
+        - cookie: []
+      tags:
+        - Finance
+  /finance/ticker/{id}/sync:
+    post:
+      operationId: syncSingleTicker
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '204':
+          description: ''
+      security:
+        - cookie: []
+      tags:
+        - Finance
+  /finance/ticker/{id}/sync/fundamental:
+    post:
+      operationId: syncSingleTickerFundamental
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '204':
+          description: ''
+      security:
+        - cookie: []
+      tags:
+        - Finance
+  /finance/ticker/{id}/sync/compound:
+    post:
+      operationId: syncSingleTickerCompound
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '204':
+          description: ''
+      security:
+        - cookie: []
+      tags:
+        - Finance
+  /finance/ticker/{id}/sync/technical:
+    post:
+      operationId: syncSingleTickerTechnical
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '204':
+          description: ''
+      security:
+        - cookie: []
+      tags:
+        - Finance
   /finance/ticker/{id}:
     get:
       operationId: getTicker
@@ -379,10 +476,42 @@ components:
           type: string
           nullable: true
           description: Display name of the market the ticker trades on
+        currency:
+          type: string
+          nullable: true
+          description: ISO 4217 currency code the ticker is priced in (e.g. USD, EUR)
         changePercent:
           type: number
           nullable: true
-          description: Intraday change, in percent (e.g. 1.23 for +1.23%)
+          description: >-
+            Change since the last completed session close, in percent (e.g. 1.23
+            for +1.23%). While the market is open this compares the last two
+            completed closes; once the market has closed for the day it compares
+            today's close to yesterday's.
+        changePercent1w:
+          type: number
+          nullable: true
+          description: 1 week change, in percent
+        changePercent1m:
+          type: number
+          nullable: true
+          description: 1 month change, in percent
+        changePercent3m:
+          type: number
+          nullable: true
+          description: 3 month change, in percent
+        changePercent6m:
+          type: number
+          nullable: true
+          description: 6 month change, in percent
+        changePercentYtd:
+          type: number
+          nullable: true
+          description: Year-to-date change, in percent
+        changePercent1y:
+          type: number
+          nullable: true
+          description: 1 year change, in percent
         refreshedAt:
           format: date-time
           type: string
@@ -398,7 +527,14 @@ components:
         - price
         - country
         - market
+        - currency
         - changePercent
+        - changePercent1w
+        - changePercent1m
+        - changePercent3m
+        - changePercent6m
+        - changePercentYtd
+        - changePercent1y
         - refreshedAt
     TickerOptionDto:
       type: object

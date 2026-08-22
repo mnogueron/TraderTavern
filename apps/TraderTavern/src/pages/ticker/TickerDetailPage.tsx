@@ -99,7 +99,7 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
               <>
                 <span className="text-muted-foreground">Price</span>
                 <span className="text-right tabular-nums">
-                  {formatNumber(tickerData.price)}
+                  {formatNumber(tickerData.price, 2, tickerData.currency)}
                 </span>
                 <span className="text-muted-foreground">Change</span>
                 <span
@@ -122,7 +122,46 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
           </CardContent>
         </Card>
 
-        <Card className="md:col-span-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Performance</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isTickerPending || !tickerData ? (
+              <Skeleton className="h-16 w-full" />
+            ) : (
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {(
+                  [
+                    ['1D', tickerData.changePercent],
+                    ['1W', tickerData.changePercent1w],
+                    ['1M', tickerData.changePercent1m],
+                    ['3M', tickerData.changePercent3m],
+                    ['6M', tickerData.changePercent6m],
+                    ['YTD', tickerData.changePercentYtd],
+                    ['1Y', tickerData.changePercent1y],
+                  ] as const
+                ).map(([label, value]) => (
+                  <div
+                    key={label}
+                    className="flex shrink-0 flex-col items-center gap-1 rounded-md border bg-muted/40 px-3 py-2"
+                  >
+                    <span className="text-xs text-muted-foreground">
+                      {label}
+                    </span>
+                    <span
+                      className={`text-sm tabular-nums ${changePercentClassName(value)}`}
+                    >
+                      {formatChangePercent(value)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="md:col-span-3">
           <CardHeader>
             <CardTitle>Fundamentals</CardTitle>
           </CardHeader>
@@ -133,7 +172,7 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
               <div className="grid grid-cols-3 gap-y-2 text-sm">
                 <span className="text-muted-foreground">Market Cap</span>
                 <span className="text-right tabular-nums">
-                  {formatMarketCap(fundamental.marketCap)}
+                  {formatMarketCap(fundamental.marketCap, tickerData?.currency ?? null)}
                 </span>
                 <span />
                 <span className="text-muted-foreground">P/E</span>
@@ -148,12 +187,12 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
                 <span />
                 <span className="text-muted-foreground">EBITDA</span>
                 <span className="text-right tabular-nums">
-                  {formatMarketCap(fundamental.ebitda)}
+                  {formatMarketCap(fundamental.ebitda, tickerData?.currency ?? null)}
                 </span>
                 <span />
                 <span className="text-muted-foreground">Total Debt</span>
                 <span className="text-right tabular-nums">
-                  {formatMarketCap(fundamental.totalDebt)}
+                  {formatMarketCap(fundamental.totalDebt, tickerData?.currency ?? null)}
                 </span>
                 <span />
                 <span className="text-muted-foreground">Debt / Equity</span>
@@ -207,6 +246,7 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
               window={chart.window}
               marketHours={marketHours}
               showPreMarket={showPreMarket}
+              currency={tickerData?.currency}
             />
           )}
         </CardContent>

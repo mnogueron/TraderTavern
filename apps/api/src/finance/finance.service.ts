@@ -215,7 +215,14 @@ export class FinanceService {
       technical?.price ?? null,
       staticData.country ?? null,
       marketLabel,
+      staticData.currency ?? null,
       technical?.changePercent1d ?? null,
+      technical?.changePercent1w ?? null,
+      technical?.changePercent1m ?? null,
+      technical?.changePercent3m ?? null,
+      technical?.changePercent6m ?? null,
+      technical?.changePercentYtd ?? null,
+      technical?.changePercent1y ?? null,
       technical?.updatedAt ?? null,
     );
   }
