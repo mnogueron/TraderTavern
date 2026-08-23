@@ -23,7 +23,7 @@ const NumberFilterControl = ({ config, value, onChange }: NumberFilterControlPro
     <Popover>
       <PopoverTrigger
         render={
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="xs">
             {label}
             <RiArrowDownSLine data-icon="inline-end" />
           </Button>

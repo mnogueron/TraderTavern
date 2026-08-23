@@ -157,27 +157,35 @@ const ScreenerFilterBar = ({ configs, values, onChange, onReset }: ScreenerFilte
   };
 
   return (
-    <div className="flex flex-col gap-3 rounded-md border bg-background p-3">
+    <div className="flex flex-col gap-2 rounded-md border bg-background p-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Tabs value={tab} onValueChange={(next) => setTab(next as FilterTab)}>
-          <TabsList variant="line">
-            <TabsTrigger value="descriptive">Descriptive</TabsTrigger>
-            <TabsTrigger value="fundamental">Fundamental</TabsTrigger>
-            <TabsTrigger value="technical">Technical</TabsTrigger>
-            <TabsTrigger value="all">All</TabsTrigger>
+          <TabsList variant="line" className="h-6">
+            <TabsTrigger value="descriptive" className="text-xs">
+              Descriptive
+            </TabsTrigger>
+            <TabsTrigger value="fundamental" className="text-xs">
+              Fundamental
+            </TabsTrigger>
+            <TabsTrigger value="technical" className="text-xs">
+              Technical
+            </TabsTrigger>
+            <TabsTrigger value="all" className="text-xs">
+              All
+            </TabsTrigger>
           </TabsList>
         </Tabs>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span>{activeConfigs.length} filters active</span>
           {activeConfigs.length > 0 && (
-            <Button variant="ghost" size="sm" onClick={onReset}>
+            <Button variant="ghost" size="xs" onClick={onReset}>
               Reset
             </Button>
           )}
         </div>
       </div>
 
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
         {visibleCategories.map((category) => {
           const categoryConfigs = configs.filter((config) => config.category === category);
           if (categoryConfigs.length === 0) return null;
@@ -186,8 +194,8 @@ const ScreenerFilterBar = ({ configs, values, onChange, onReset }: ScreenerFilte
           ).length;
 
           return (
-            <div key={category} className="flex flex-col gap-2">
-              <div className="flex items-center gap-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            <div key={category} className="flex flex-col gap-1">
+              <div className="flex items-center gap-2 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
                 {SCREENER_FILTER_CATEGORY_LABELS[category]}
                 {categoryActiveCount > 0 && (
                   <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] normal-case">
@@ -195,7 +203,7 @@ const ScreenerFilterBar = ({ configs, values, onChange, onReset }: ScreenerFilte
                   </span>
                 )}
               </div>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
                 {categoryConfigs.map((config) => renderControl(config))}
               </div>
             </div>
@@ -204,7 +212,7 @@ const ScreenerFilterBar = ({ configs, values, onChange, onReset }: ScreenerFilte
       </div>
 
       {activeConfigs.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 border-t pt-3">
+        <div className="flex flex-wrap items-center gap-1.5 border-t pt-2">
           {activeConfigs.map((config) => (
             <span
               key={config.key}
@@ -220,7 +228,7 @@ const ScreenerFilterBar = ({ configs, values, onChange, onReset }: ScreenerFilte
               </button>
             </span>
           ))}
-          <Button variant="ghost" size="sm" onClick={onReset}>
+          <Button variant="ghost" size="xs" onClick={onReset}>
             Clear all
           </Button>
         </div>

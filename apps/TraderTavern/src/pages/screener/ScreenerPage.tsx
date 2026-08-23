@@ -46,7 +46,7 @@ const ScreenerPage = () => {
   );
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4">
+    <div className="flex h-full min-h-0 flex-col gap-3">
       <h1 className="shrink-0 text-2xl font-semibold">Screener</h1>
       {tickers && tickerOptions && (
         <ScreenerFilterBar
