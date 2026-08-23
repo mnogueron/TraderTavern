@@ -10,6 +10,8 @@ import {
   CANDLE_LOOKBACK_MULTIPLIER,
   CANDLE_WINDOW_DURATION_MS,
   DEFAULT_CANDLE_COUNT,
+  DEFAULT_SYNC_CONCURRENCY,
+  SYNC_CONCURRENCY_ENV_VAR,
   YAHOO_REQUEST_DELAY_MS,
 } from './constants/candle-windows';
 import { SyncType } from './enums/sync-type.enum';
@@ -88,6 +90,74 @@ type SyncTrigger = {
 const delay = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
+// Serializes Yahoo Finance requests to at most one per `minIntervalMs`,
+// shared across however many tickers are being synced concurrently. This
+// decouples ticker-level parallelism (which only speeds up non-Yahoo work
+// like DB writes) from the actual request rate hitting Yahoo, so raising
+// sync concurrency can't accidentally multiply the risk of rate limiting.
+class YahooRateLimiter {
+  private nextAvailableAt = 0;
+
+  constructor(private readonly minIntervalMs: number) {}
+
+  async schedule<T>(fn: () => Promise<T>): Promise<T> {
+    const now = Date.now();
+    const runAt = Math.max(now, this.nextAvailableAt);
+    this.nextAvailableAt = runAt + this.minIntervalMs;
+
+    const wait = runAt - now;
+    if (wait > 0) {
+      await delay(wait);
+    }
+
+    return fn();
+  }
+}
+
+// Mongo's duplicate-key error code, thrown when the sync_history "running"
+// partial unique index rejects a second concurrent lock claim.
+const MONGO_DUPLICATE_KEY_ERROR_CODE = 11000;
+
+const isDuplicateKeyError = (error: unknown): boolean =>
+  typeof error === 'object' &&
+  error !== null &&
+  'code' in error &&
+  (error as { code?: number }).code === MONGO_DUPLICATE_KEY_ERROR_CODE;
+
+// Runs `worker` over `items` with at most `concurrency` in flight at once,
+// collecting per-item failures instead of aborting the whole batch.
+async function runWithConcurrency<T>(
+  items: T[],
+  concurrency: number,
+  worker: (item: T) => Promise<void>,
+  onError: (item: T, error: unknown) => void,
+): Promise<number> {
+  let successCount = 0;
+  let cursor = 0;
+
+  const runNext = async (): Promise<void> => {
+    for (;;) {
+      const index = cursor++;
+      if (index >= items.length) {
+        return;
+      }
+
+      try {
+        await worker(items[index]);
+        successCount += 1;
+      } catch (error) {
+        onError(items[index], error);
+      }
+    }
+  };
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, runNext),
+  );
+
+  return successCount;
+}
+
 const startOfToday = (): Date => {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -101,6 +171,7 @@ const startOfTomorrow = (): Date => {
 @Injectable()
 export class TickerSyncService {
   private readonly logger = new Logger(TickerSyncService.name);
+  private readonly yahooRateLimiter = new YahooRateLimiter(YAHOO_REQUEST_DELAY_MS);
 
   constructor(
     @InjectModel(TickerStaticData.name)
@@ -141,6 +212,7 @@ export class TickerSyncService {
       marketHours.map((hours) => [hours.market, hours]),
     );
 
+    const dueTickers: string[] = [];
     for (const { ticker, market } of staticData) {
       const hours = market ? marketHoursByCode.get(market) : undefined;
       if (!hours || !this.isPastRegularClose(hours)) {
@@ -150,17 +222,19 @@ export class TickerSyncService {
       const alreadySynced = await this.compoundTechnicalTickerDataModel.exists(
         { ticker, syncDate },
       );
-      if (alreadySynced) {
-        continue;
-      }
-
-      try {
-        await delay(YAHOO_REQUEST_DELAY_MS);
-        await this.syncCompound(ticker, syncDate);
-      } catch (error) {
-        this.logger.warn(`Failed end-of-day sync for ${ticker}: ${error}`);
+      if (!alreadySynced) {
+        dueTickers.push(ticker);
       }
     }
+
+    await runWithConcurrency(
+      dueTickers,
+      this.getSyncConcurrency(),
+      (ticker) => this.syncCompound(ticker, syncDate),
+      (ticker, error) => {
+        this.logger.warn(`Failed end-of-day sync for ${ticker}: ${error}`);
+      },
+    );
   }
 
   private isPastRegularClose(hours: MarketHours): boolean {
@@ -182,34 +256,59 @@ export class TickerSyncService {
 
 
   async ensureSyncedToday(trigger: SyncTrigger): Promise<void> {
-    const alreadySynced = await this.syncHistoryModel.exists({
+    const alreadyHandled = await this.syncHistoryModel.exists({
       syncDate: { $gte: startOfToday(), $lt: startOfTomorrow() },
-      status: { $in: [SyncStatus.Success, SyncStatus.PartialSuccess] },
+      status: {
+        $in: [SyncStatus.Running, SyncStatus.Success, SyncStatus.PartialSuccess],
+      },
     });
 
-    if (alreadySynced) {
+    if (alreadyHandled) {
       return;
     }
 
     await this.syncAll(trigger);
   }
 
-  async syncAll(trigger: SyncTrigger): Promise<void> {
-    const syncDate = startOfToday();
-    const errors: Record<string, string> = {};
-    let successCount = 0;
+  private getSyncConcurrency(): number {
+    const raw = this.configService.get<string>(SYNC_CONCURRENCY_ENV_VAR);
+    const parsed = raw != null ? Number(raw) : undefined;
+    return parsed != null && Number.isFinite(parsed) && parsed > 0
+      ? parsed
+      : DEFAULT_SYNC_CONCURRENCY;
+  }
 
-    for (const ticker of SCREENER_TICKERS) {
-      try {
-        await delay(YAHOO_REQUEST_DELAY_MS);
-        await this.syncTicker(ticker, syncDate);
-        successCount += 1;
-      } catch (error) {
-        this.logger.warn(`Failed to sync ticker ${ticker}: ${error}`);
-        errors[ticker] = error instanceof Error ? error.message : String(error);
+  // Atomically claims the single "running" slot in sync_history via the
+  // partial unique index on { status: 'running' }. Returns null (and logs)
+  // if another sync is already in progress, so callers can skip cleanly
+  // instead of piling up overlapping full-collection syncs against Yahoo.
+  private async claimSyncLock(
+    trigger: SyncTrigger,
+    syncDate: Date,
+  ): Promise<SyncHistoryDocument | null> {
+    try {
+      return await this.syncHistoryModel.create({
+        type: trigger.type,
+        status: SyncStatus.Running,
+        syncDate,
+        triggeredByUserId: trigger.userId,
+      });
+    } catch (error) {
+      if (isDuplicateKeyError(error)) {
+        this.logger.warn(
+          `Skipping ${trigger.type} sync: another sync is already running`,
+        );
+        return null;
       }
+      throw error;
     }
+  }
 
+  private async finalizeSyncLock(
+    lock: SyncHistoryDocument,
+    successCount: number,
+    errors: Record<string, string>,
+  ): Promise<void> {
     const hasErrors = Object.keys(errors).length > 0;
     const status =
       successCount === 0
@@ -218,58 +317,69 @@ export class TickerSyncService {
           ? SyncStatus.PartialSuccess
           : SyncStatus.Success;
 
-    await this.syncHistoryModel.create({
-      type: trigger.type,
-      status,
-      syncDate,
-      triggeredByUserId: trigger.userId,
-      errors: hasErrors ? JSON.stringify(errors) : undefined,
-    });
+    await this.syncHistoryModel.updateOne(
+      { _id: lock._id },
+      { $set: { status, errors: hasErrors ? JSON.stringify(errors) : undefined } },
+    );
   }
 
-  async syncAllFundamental(): Promise<void> {
+  // Shared driver for every "sync all tickers" operation: claims the lock,
+  // fans the given per-ticker sync out across a limited concurrency pool
+  // (actual Yahoo request pacing is handled globally by yahooRateLimiter,
+  // not per worker), and records the final status.
+  private async runFullSync(
+    trigger: SyncTrigger,
+    label: string,
+    syncTicker: (ticker: string) => Promise<void>,
+  ): Promise<void> {
     const syncDate = startOfToday();
-    for (const ticker of SCREENER_TICKERS) {
-      try {
-        await delay(YAHOO_REQUEST_DELAY_MS);
-        await this.syncFundamental(ticker, syncDate);
-      } catch (error) {
-        this.logger.warn(`Failed to sync fundamental data for ${ticker}: ${error}`);
-      }
+    const lock = await this.claimSyncLock(trigger, syncDate);
+    if (!lock) {
+      return;
     }
+
+    const errors: Record<string, string> = {};
+    const successCount = await runWithConcurrency(
+      SCREENER_TICKERS,
+      this.getSyncConcurrency(),
+      syncTicker,
+      (ticker, error) => {
+        this.logger.warn(`Failed to sync ${label} for ${ticker}: ${error}`);
+        errors[ticker] = error instanceof Error ? error.message : String(error);
+      },
+    );
+
+    await this.finalizeSyncLock(lock, successCount, errors);
   }
 
-  async syncAllCompound(): Promise<void> {
-    const syncDate = startOfToday();
-    for (const ticker of SCREENER_TICKERS) {
-      try {
-        await delay(YAHOO_REQUEST_DELAY_MS);
-        await this.syncCompound(ticker, syncDate);
-      } catch (error) {
-        this.logger.warn(`Failed to sync compound data for ${ticker}: ${error}`);
-      }
-    }
+  async syncAll(trigger: SyncTrigger): Promise<void> {
+    await this.runFullSync(trigger, 'ticker', (ticker) =>
+      this.syncTicker(ticker, startOfToday()),
+    );
   }
 
-  async syncAllStatic(): Promise<void> {
-    for (const ticker of SCREENER_TICKERS) {
-      try {
-        await delay(YAHOO_REQUEST_DELAY_MS);
-        await this.syncStatic(ticker);
-      } catch (error) {
-        this.logger.warn(`Failed to sync static data for ${ticker}: ${error}`);
-      }
-    }
+  async syncAllFundamental(trigger: SyncTrigger): Promise<void> {
+    await this.runFullSync(trigger, 'fundamental data', (ticker) =>
+      this.syncFundamental(ticker, startOfToday()),
+    );
   }
 
-  async syncAllTechnical(): Promise<void> {
-    for (const ticker of SCREENER_TICKERS) {
-      try {
-        await this.syncTechnical(ticker);
-      } catch (error) {
-        this.logger.warn(`Failed to sync technical data for ${ticker}: ${error}`);
-      }
-    }
+  async syncAllCompound(trigger: SyncTrigger): Promise<void> {
+    await this.runFullSync(trigger, 'compound data', (ticker) =>
+      this.syncCompound(ticker, startOfToday()),
+    );
+  }
+
+  async syncAllStatic(trigger: SyncTrigger): Promise<void> {
+    await this.runFullSync(trigger, 'static data', (ticker) =>
+      this.syncStatic(ticker),
+    );
+  }
+
+  async syncAllTechnical(trigger: SyncTrigger): Promise<void> {
+    await this.runFullSync(trigger, 'technical data', (ticker) =>
+      this.syncTechnical(ticker),
+    );
   }
 
   private assertKnownTicker(ticker: string): void {
@@ -304,25 +414,29 @@ export class TickerSyncService {
   }
 
   private async fetchQuoteSummary(ticker: string) {
-    return yahooFinance.quoteSummary(ticker, {
-      modules: [
-        'price',
-        'summaryDetail',
-        'assetProfile',
-        'financialData',
-        'defaultKeyStatistics',
-        'earningsHistory',
-      ],
-    });
+    return this.yahooRateLimiter.schedule(() =>
+      yahooFinance.quoteSummary(ticker, {
+        modules: [
+          'price',
+          'summaryDetail',
+          'assetProfile',
+          'financialData',
+          'defaultKeyStatistics',
+          'earningsHistory',
+        ],
+      }),
+    );
   }
 
   private async fetchDailyChart(ticker: string) {
-    return yahooFinance.chart(ticker, {
-      period1: new Date(
-        Date.now() - HISTORY_LOOKBACK_DAYS * 24 * 60 * 60 * 1000,
-      ),
-      interval: '1d',
-    });
+    return this.yahooRateLimiter.schedule(() =>
+      yahooFinance.chart(ticker, {
+        period1: new Date(
+          Date.now() - HISTORY_LOOKBACK_DAYS * 24 * 60 * 60 * 1000,
+        ),
+        interval: '1d',
+      }),
+    );
   }
 
   private async fetchFinancialHistory(ticker: string) {
@@ -330,21 +444,30 @@ export class TickerSyncService {
     period1.setFullYear(period1.getFullYear() - FINANCIAL_HISTORY_YEARS);
 
     const [financials, cashFlow, balanceSheet] = await Promise.all([
-      yahooFinance.fundamentalsTimeSeries(ticker, {
-        period1,
-        type: 'annual',
-        module: 'financials',
-      }) as unknown as Promise<FundamentalsTimeSeriesRow[]>,
-      yahooFinance.fundamentalsTimeSeries(ticker, {
-        period1,
-        type: 'annual',
-        module: 'cash-flow',
-      }) as unknown as Promise<FundamentalsTimeSeriesRow[]>,
-      yahooFinance.fundamentalsTimeSeries(ticker, {
-        period1,
-        type: 'annual',
-        module: 'balance-sheet',
-      }) as unknown as Promise<FundamentalsTimeSeriesRow[]>,
+      this.yahooRateLimiter.schedule(
+        () =>
+          yahooFinance.fundamentalsTimeSeries(ticker, {
+            period1,
+            type: 'annual',
+            module: 'financials',
+          }) as unknown as Promise<FundamentalsTimeSeriesRow[]>,
+      ),
+      this.yahooRateLimiter.schedule(
+        () =>
+          yahooFinance.fundamentalsTimeSeries(ticker, {
+            period1,
+            type: 'annual',
+            module: 'cash-flow',
+          }) as unknown as Promise<FundamentalsTimeSeriesRow[]>,
+      ),
+      this.yahooRateLimiter.schedule(
+        () =>
+          yahooFinance.fundamentalsTimeSeries(ticker, {
+            period1,
+            type: 'annual',
+            module: 'balance-sheet',
+          }) as unknown as Promise<FundamentalsTimeSeriesRow[]>,
+      ),
     ]);
 
     const byPeriodEnd = new Map<string, AnnualFinancialPeriodDraft>();
@@ -388,11 +511,14 @@ export class TickerSyncService {
     const period1 = new Date();
     period1.setFullYear(period1.getFullYear() - QUARTERLY_REVENUE_HISTORY_YEARS);
 
-    const rows = (await yahooFinance.fundamentalsTimeSeries(ticker, {
-      period1,
-      type: 'quarterly',
-      module: 'financials',
-    })) as unknown as FundamentalsTimeSeriesRow[];
+    const rows = (await this.yahooRateLimiter.schedule(
+      () =>
+        yahooFinance.fundamentalsTimeSeries(ticker, {
+          period1,
+          type: 'quarterly',
+          module: 'financials',
+        }) as unknown as Promise<FundamentalsTimeSeriesRow[]>,
+    )) as FundamentalsTimeSeriesRow[];
 
     return rows.map((row) => ({
       quarter: row.date,
@@ -491,7 +617,6 @@ export class TickerSyncService {
 
   private async syncTechnical(ticker: string): Promise<void> {
     for (const window of Object.values(CandleWindow)) {
-      await delay(YAHOO_REQUEST_DELAY_MS);
       await this.syncCandles(ticker, window);
     }
   }
@@ -963,10 +1088,12 @@ export class TickerSyncService {
     const lookbackMs =
       count * CANDLE_WINDOW_DURATION_MS[window] * CANDLE_LOOKBACK_MULTIPLIER;
 
-    const chart = await yahooFinance.chart(ticker, {
-      period1: new Date(Date.now() - lookbackMs),
-      interval: window,
-    });
+    const chart = await this.yahooRateLimiter.schedule(() =>
+      yahooFinance.chart(ticker, {
+        period1: new Date(Date.now() - lookbackMs),
+        interval: window,
+      }),
+    );
 
     const candles = (chart.quotes ?? [])
       .filter(

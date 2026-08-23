@@ -24,3 +24,12 @@ export class SyncHistory {
 }
 
 export const SyncHistorySchema = SchemaFactory.createForClass(SyncHistory);
+
+// Acts as a distributed lock: at most one "running" sync can exist at a
+// time, so concurrent triggers (e.g. several requests to the screener
+// landing before the first sync finishes) can only start one real sync
+// instead of piling up overlapping full-collection syncs against Yahoo.
+SyncHistorySchema.index(
+  { status: 1 },
+  { unique: true, partialFilterExpression: { status: SyncStatus.Running } },
+);
