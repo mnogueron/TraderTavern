@@ -9,6 +9,7 @@ import {
 } from 'react-router';
 
 import '@/styles/global.css';
+import 'react-flagpack/dist/style.css';
 
 import { initClient } from '@trader-tavern/api-client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';

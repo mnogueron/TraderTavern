@@ -3,6 +3,7 @@ import type { ApiResponse } from '@trader-tavern/api-client';
 import { ArrowUpDown } from 'lucide-react';
 import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
+import CountryFlag from '@/components/CountryFlag';
 import {
   changePercentClassName,
   formatChangePercent,
@@ -163,6 +164,14 @@ export const columns: ColumnDef<Ticker>[] = [
   {
     accessorKey: 'country',
     header: 'Country',
-    cell: ({ row }) => row.original.country ?? '—',
+    cell: ({ row }) =>
+      row.original.country ? (
+        <div className="flex items-center gap-1.5">
+          <CountryFlag country={row.original.country} />
+          <span className="truncate">{row.original.country}</span>
+        </div>
+      ) : (
+        '—'
+      ),
   },
 ];

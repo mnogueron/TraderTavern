@@ -5,6 +5,7 @@ import type { ApiResponse } from '@trader-tavern/api-client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import CountryFlag from '@/components/CountryFlag';
 import {
   changePercentClassName,
   formatChangePercent,
@@ -49,11 +50,13 @@ const TickerHeader = ({ ticker, fundamental, isPending }: TickerHeaderProps) => 
     : null;
 
   const metaParts = [
-    ticker.market,
-    ticker.country,
-    ticker.sector,
-    ticker.industry,
-  ].filter((part): part is string => Boolean(part));
+    { value: ticker.market, flag: false },
+    { value: ticker.country, flag: true },
+    { value: ticker.sector, flag: false },
+    { value: ticker.industry, flag: false },
+  ].filter(
+    (part): part is { value: string; flag: boolean } => part.value !== null,
+  );
 
   return (
     <div className="flex shrink-0 flex-col gap-2 border-b bg-background py-3">
@@ -79,9 +82,13 @@ const TickerHeader = ({ ticker, fundamental, isPending }: TickerHeaderProps) => 
           {metaParts.length > 0 || websiteHostname ? (
             <div className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
               {metaParts.map((part, index) => (
-                <span key={part} className="flex items-center gap-1.5">
+                <span
+                  key={part.value}
+                  className="flex items-center gap-1.5"
+                >
                   {index > 0 && <span>·</span>}
-                  {part}
+                  {part.flag && <CountryFlag country={part.value} />}
+                  {part.value}
                 </span>
               ))}
               {websiteHostname && (
