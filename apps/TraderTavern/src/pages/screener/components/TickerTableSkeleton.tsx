@@ -14,10 +14,12 @@ type TickerTableSkeletonProps = {
 
 const TickerTableSkeleton = ({ rows }: TickerTableSkeletonProps) => {
   return (
-    <Table containerClassName="h-full">
+    <Table containerClassName="h-full" className="text-xs">
       <TableHeader>
         <TableRow>
-          <TableHead>Ticker</TableHead>
+          <TableHead className="sticky left-0 z-20 bg-background">
+            Ticker
+          </TableHead>
           <TableHead>Company</TableHead>
           <TableHead>Sector</TableHead>
           <TableHead>Industry</TableHead>
@@ -31,11 +33,14 @@ const TickerTableSkeleton = ({ rows }: TickerTableSkeletonProps) => {
       <TableBody>
         {Array.from({ length: rows }, (_, index) => (
           <TableRow key={index}>
-            <TableCell>
+            <TableCell className="sticky left-0 z-10 bg-background">
               <Skeleton className="h-4 w-14" />
             </TableCell>
             <TableCell>
-              <Skeleton className="h-4 w-40" />
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-4 w-4 shrink-0 rounded-sm" />
+                <Skeleton className="h-4 w-36" />
+              </div>
             </TableCell>
             <TableCell>
               <Skeleton className="h-4 w-24" />

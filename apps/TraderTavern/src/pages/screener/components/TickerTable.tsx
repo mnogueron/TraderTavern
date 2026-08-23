@@ -34,12 +34,19 @@ const TickerTable = ({ tickers }: TickerTableProps) => {
   });
 
   return (
-    <Table containerClassName="h-full">
+    <Table containerClassName="h-full" className="text-xs">
       <TableHeader>
         {table.getHeaderGroups().map((headerGroup) => (
           <TableRow key={headerGroup.id}>
             {headerGroup.headers.map((header) => (
-              <TableHead key={header.id}>
+              <TableHead
+                key={header.id}
+                className={
+                  header.column.columnDef.meta?.sticky
+                    ? 'sticky left-0 z-20 bg-background'
+                    : undefined
+                }
+              >
                 {header.isPlaceholder
                   ? null
                   : flexRender(
@@ -55,7 +62,14 @@ const TickerTable = ({ tickers }: TickerTableProps) => {
         {table.getRowModel().rows.map((row) => (
           <TableRow key={row.id}>
             {row.getVisibleCells().map((cell) => (
-              <TableCell key={cell.id}>
+              <TableCell
+                key={cell.id}
+                className={
+                  cell.column.columnDef.meta?.sticky
+                    ? 'sticky left-0 z-10 bg-background'
+                    : undefined
+                }
+              >
                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
               </TableCell>
             ))}
