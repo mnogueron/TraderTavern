@@ -18,9 +18,17 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { getPageNumbers } from '@/lib/pagination';
 
 const DEFAULT_LIMIT = 20;
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 
 const ScreenerPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -110,6 +118,17 @@ const ScreenerPage = () => {
     });
   };
 
+  const handleLimitChange = (value: string | null) => {
+    if (!value) {
+      return;
+    }
+    setSearchParams((params) => {
+      params.set('limit', value);
+      params.set('page', '1');
+      return params;
+    });
+  };
+
   const meta = data?.meta;
 
   return (
@@ -134,42 +153,58 @@ const ScreenerPage = () => {
           />
         )}
       </div>
-      {meta && meta.totalPages > 1 && (
-        <Pagination className="shrink-0">
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                href="#"
-                aria-disabled={meta.page <= 1}
-                onClick={(event) => handlePageChange(event, meta.page - 1)}
-              />
-            </PaginationItem>
-            {getPageNumbers(meta.page, meta.totalPages).map((pageNumber, index) =>
-              pageNumber === 'ellipsis' ? (
-                <PaginationItem key={`ellipsis-${index}`}>
-                  <PaginationEllipsis />
-                </PaginationItem>
-              ) : (
-                <PaginationItem key={pageNumber}>
-                  <PaginationLink
+      {meta && (
+        <div className="flex shrink-0 items-center justify-between gap-2">
+          <Select value={String(limit)} onValueChange={handleLimitChange}>
+            <SelectTrigger aria-label="Page size" size="sm">
+              <SelectValue placeholder="Page size" />
+            </SelectTrigger>
+            <SelectContent>
+              {PAGE_SIZE_OPTIONS.map((size) => (
+                <SelectItem key={size} value={String(size)}>
+                  {size} / page
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {meta.totalPages > 1 && (
+            <Pagination className="mx-0 w-auto justify-end">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
                     href="#"
-                    isActive={pageNumber === meta.page}
-                    onClick={(event) => handlePageChange(event, pageNumber)}
-                  >
-                    {pageNumber}
-                  </PaginationLink>
+                    aria-disabled={meta.page <= 1}
+                    onClick={(event) => handlePageChange(event, meta.page - 1)}
+                  />
                 </PaginationItem>
-              ),
-            )}
-            <PaginationItem>
-              <PaginationNext
-                href="#"
-                aria-disabled={meta.page >= meta.totalPages}
-                onClick={(event) => handlePageChange(event, meta.page + 1)}
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
+                {getPageNumbers(meta.page, meta.totalPages).map((pageNumber, index) =>
+                  pageNumber === 'ellipsis' ? (
+                    <PaginationItem key={`ellipsis-${index}`}>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  ) : (
+                    <PaginationItem key={pageNumber}>
+                      <PaginationLink
+                        href="#"
+                        isActive={pageNumber === meta.page}
+                        onClick={(event) => handlePageChange(event, pageNumber)}
+                      >
+                        {pageNumber}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ),
+                )}
+                <PaginationItem>
+                  <PaginationNext
+                    href="#"
+                    aria-disabled={meta.page >= meta.totalPages}
+                    onClick={(event) => handlePageChange(event, meta.page + 1)}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
+        </div>
       )}
     </div>
   );
