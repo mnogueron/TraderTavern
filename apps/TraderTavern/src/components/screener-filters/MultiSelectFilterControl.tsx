@@ -39,10 +39,10 @@ const MultiSelectFilterControl = ({
     <Popover>
       <PopoverTrigger
         render={
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="xs">
             {config.label}
             {value.values.length > 0 && (
-              <span className="ml-1 rounded-full bg-muted px-1.5 text-xs">
+              <span className="ml-1 rounded-full bg-muted px-1.5 text-[10px]">
                 {value.values.length}
               </span>
             )}

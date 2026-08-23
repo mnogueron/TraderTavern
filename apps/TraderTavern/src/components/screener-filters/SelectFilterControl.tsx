@@ -26,7 +26,7 @@ const SelectFilterControl = ({ config, value, onChange }: SelectFilterControlPro
         onChange({ type: 'select', value: next === ALL_VALUE ? null : (next as string) })
       }
     >
-      <SelectTrigger size="sm" className="min-w-32">
+      <SelectTrigger size="sm" className="h-6 min-w-28 text-xs">
         <SelectValue placeholder={config.label}>
           {(selected: string) =>
             selected === ALL_VALUE

@@ -36,7 +36,7 @@ const MinMaxFilterControl = ({ config, value, onChange }: MinMaxFilterControlPro
     <Popover>
       <PopoverTrigger
         render={
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="xs">
             {label}
             <RiArrowDownSLine data-icon="inline-end" />
           </Button>
