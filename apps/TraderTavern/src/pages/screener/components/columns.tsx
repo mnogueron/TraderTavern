@@ -12,7 +12,7 @@ import {
   formatNumber,
 } from '@/lib/format';
 
-export type Ticker = ApiResponse<'get', '/finance/screener'>[number];
+export type Ticker = ApiResponse<'get', '/finance/screener'>['data'][number];
 
 declare module '@tanstack/react-table' {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

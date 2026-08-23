@@ -8,8 +8,10 @@ import { FinancialHistoryDto } from './dto/FinancialHistory.dto';
 import { EarningsHistoryDto } from './dto/EarningsHistory.dto';
 import { TickerChartDto } from './dto/TickerChart.dto';
 import { GetTickerChartDto } from './dto/GetTickerChart.dto';
+import { GetScreenerDto } from './dto/GetScreener.dto';
+import { PaginatedTickerDto } from './dto/PaginatedTicker.dto';
+import { ScreenerFilterOptionsDto } from './dto/ScreenerFilterOptions.dto';
 import { MarketHoursDto } from './dto/MarketHours.dto';
-import { TickerOptionDto } from './dto/TickerOption.dto';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { JwtPayload } from '../auth/types/jwt-payload.type';
@@ -25,16 +27,16 @@ export class FinanceController {
 
   @Get('screener')
   @Auth()
-  @ApiOkResponse({ type: TickerDto, isArray: true })
-  getScreener(): Promise<TickerDto[]> {
-    return this.financeService.getScreener();
+  @ApiOkResponse({ type: PaginatedTickerDto })
+  getScreener(@Query() query: GetScreenerDto): Promise<PaginatedTickerDto> {
+    return this.financeService.getScreener(query);
   }
 
-  @Get('screener/filters/tickers')
+  @Get('screener/filters/options')
   @Auth()
-  @ApiOkResponse({ type: TickerOptionDto, isArray: true })
-  getScreenerTickerOptions(): Promise<TickerOptionDto[]> {
-    return this.financeService.getScreenerTickerOptions();
+  @ApiOkResponse({ type: ScreenerFilterOptionsDto })
+  getScreenerFilterOptions(): Promise<ScreenerFilterOptionsDto> {
+    return this.financeService.getScreenerFilterOptions();
   }
 
   @Post('sync')

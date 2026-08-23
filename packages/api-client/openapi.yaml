@@ -124,23 +124,55 @@ paths:
   /finance/screener:
     get:
       operationId: getScreener
-      parameters: []
+      parameters:
+        - name: page
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            default: 1
+            type: number
+        - name: limit
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            default: 20
+            type: number
+        - name: sortBy
+          required: false
+          in: query
+          description: Column to sort by
+          schema:
+            type: string
+        - name: sortOrder
+          required: false
+          in: query
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+        - name: filters
+          required: false
+          in: query
+          description: JSON-encoded map of filter key to filter value
+          schema:
+            type: string
       responses:
         '200':
           description: ''
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/TickerDto'
+                $ref: '#/components/schemas/PaginatedTickerDto'
       security:
         - cookie: []
       tags:
         - Finance
-  /finance/screener/filters/tickers:
+  /finance/screener/filters/options:
     get:
-      operationId: getScreenerTickerOptions
+      operationId: getScreenerFilterOptions
       parameters: []
       responses:
         '200':
@@ -148,9 +180,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/TickerOptionDto'
+                $ref: '#/components/schemas/ScreenerFilterOptionsDto'
       security:
         - cookie: []
       tags:
@@ -902,6 +932,18 @@ components:
         - sma200
         - beta
         - avgVolume10d
+    PaginatedTickerDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/TickerDto'
+        meta:
+          $ref: '#/components/schemas/PaginationMetaDto'
+      required:
+        - data
+        - meta
     TickerOptionDto:
       type: object
       properties:
@@ -912,6 +954,45 @@ components:
       required:
         - ticker
         - companyName
+    ScreenerFilterOptionsDto:
+      type: object
+      properties:
+        tickers:
+          type: array
+          items:
+            $ref: '#/components/schemas/TickerOptionDto'
+        sectors:
+          type: array
+          items:
+            type: string
+        industries:
+          type: array
+          items:
+            type: string
+        countries:
+          type: array
+          items:
+            type: string
+        markets:
+          type: array
+          items:
+            type: string
+        currencies:
+          type: array
+          items:
+            type: string
+        analystRatings:
+          type: array
+          items:
+            type: string
+      required:
+        - tickers
+        - sectors
+        - industries
+        - countries
+        - markets
+        - currencies
+        - analystRatings
     FundamentalTickerDto:
       type: object
       properties:

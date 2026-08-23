@@ -1,10 +1,9 @@
-import { useState } from 'react';
 import type { ApiResponse } from '@trader-tavern/api-client';
 import {
   flexRender,
   getCoreRowModel,
-  getSortedRowModel,
   useReactTable,
+  type OnChangeFn,
   type SortingState,
 } from '@tanstack/react-table';
 import {
@@ -18,19 +17,19 @@ import {
 import { columns } from '@/pages/screener/components/columns';
 
 type TickerTableProps = {
-  tickers: ApiResponse<'get', '/finance/screener'>;
+  tickers: ApiResponse<'get', '/finance/screener'>['data'];
+  sorting: SortingState;
+  onSortingChange: OnChangeFn<SortingState>;
 };
 
-const TickerTable = ({ tickers }: TickerTableProps) => {
-  const [sorting, setSorting] = useState<SortingState>([]);
-
+const TickerTable = ({ tickers, sorting, onSortingChange }: TickerTableProps) => {
   const table = useReactTable({
     data: tickers,
     columns,
     state: { sorting },
-    onSortingChange: setSorting,
+    onSortingChange,
+    manualSorting: true,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
   });
 
   return (

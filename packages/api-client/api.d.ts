@@ -132,14 +132,14 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/finance/screener/filters/tickers": {
+    "/finance/screener/filters/options": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["getScreenerTickerOptions"];
+        get: operations["getScreenerFilterOptions"];
         put?: never;
         post?: never;
         delete?: never;
@@ -576,9 +576,22 @@ export interface components {
             /** @description 10 day average volume */
             avgVolume10d: number | null;
         };
+        PaginatedTickerDto: {
+            data: components["schemas"]["TickerDto"][];
+            meta: components["schemas"]["PaginationMetaDto"];
+        };
         TickerOptionDto: {
             ticker: string;
             companyName: string;
+        };
+        ScreenerFilterOptionsDto: {
+            tickers: components["schemas"]["TickerOptionDto"][];
+            sectors: string[];
+            industries: string[];
+            countries: string[];
+            markets: string[];
+            currencies: string[];
+            analystRatings: string[];
         };
         FundamentalTickerDto: {
             ticker: string;
@@ -892,7 +905,15 @@ export interface operations {
     };
     getScreener: {
         parameters: {
-            query?: never;
+            query?: {
+                page?: number;
+                limit?: number;
+                /** @description Column to sort by */
+                sortBy?: string;
+                sortOrder?: "asc" | "desc";
+                /** @description JSON-encoded map of filter key to filter value */
+                filters?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -904,12 +925,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TickerDto"][];
+                    "application/json": components["schemas"]["PaginatedTickerDto"];
                 };
             };
         };
     };
-    getScreenerTickerOptions: {
+    getScreenerFilterOptions: {
         parameters: {
             query?: never;
             header?: never;
@@ -923,7 +944,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TickerOptionDto"][];
+                    "application/json": components["schemas"]["ScreenerFilterOptionsDto"];
                 };
             };
         };
