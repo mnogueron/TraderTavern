@@ -2,7 +2,9 @@
   "name": "@trader-tavern/TraderTavern",
   "private": true,
   "type": "module",
-  "scripts": {},
+  "scripts": {
+    "postinstall": "react-flagpack"
+  },
   "sideEffects": false,
   "dependencies": {
     "@base-ui/react": "^1.7.0",
@@ -21,6 +23,7 @@
     "lucide-react": "^1.31.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-flagpack": "^2.0.6",
     "react-router": "^7.14.2",
     "recharts": "^3.10.1",
     "shadcn": "^4.18.0",
