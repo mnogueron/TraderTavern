@@ -36,6 +36,18 @@ export const DEFAULT_CANDLE_COUNT: Record<CandleWindow, number> = {
 // holidays, after-hours) that leave gaps in the raw candle series.
 export const CANDLE_LOOKBACK_MULTIPLIER = 2;
 
-// Delay between successive Yahoo Finance requests during a sync run, to
-// spread calls out and avoid bursts that trigger rate limiting.
+// Minimum delay enforced between successive Yahoo Finance requests, to
+// spread calls out and avoid bursts that trigger rate limiting. Applied
+// globally across all in-flight tickers (see YahooRateLimiter), not
+// per-ticker, so raising SYNC_TICKER_CONCURRENCY doesn't multiply the
+// effective request rate.
 export const YAHOO_REQUEST_DELAY_MS = 250;
+
+// Env var holding how many tickers a sync run processes concurrently.
+export const SYNC_CONCURRENCY_ENV_VAR = 'SYNC_TICKER_CONCURRENCY';
+
+// Conservative default: overlapping ticker work (DB writes, JSON parsing)
+// runs in parallel while actual Yahoo requests still funnel through the
+// shared rate limiter, so this mostly shortens wall-clock time rather than
+// increasing Yahoo request pressure.
+export const DEFAULT_SYNC_CONCURRENCY = 5;

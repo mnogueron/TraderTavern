@@ -50,29 +50,41 @@ export class FinanceController {
   @Post('sync/static')
   @HttpCode(204)
   @Auth(Role.Admin)
-  syncStatic(): Promise<void> {
-    return this.tickerSyncService.syncAllStatic();
+  syncStatic(@CurrentUser() user: JwtPayload): Promise<void> {
+    return this.tickerSyncService.syncAllStatic({
+      type: SyncType.Manual,
+      userId: user.sub,
+    });
   }
 
   @Post('sync/fundamental')
   @HttpCode(204)
   @Auth(Role.Admin)
-  syncFundamental(): Promise<void> {
-    return this.tickerSyncService.syncAllFundamental();
+  syncFundamental(@CurrentUser() user: JwtPayload): Promise<void> {
+    return this.tickerSyncService.syncAllFundamental({
+      type: SyncType.Manual,
+      userId: user.sub,
+    });
   }
 
   @Post('sync/compound')
   @HttpCode(204)
   @Auth(Role.Admin)
-  syncCompound(): Promise<void> {
-    return this.tickerSyncService.syncAllCompound();
+  syncCompound(@CurrentUser() user: JwtPayload): Promise<void> {
+    return this.tickerSyncService.syncAllCompound({
+      type: SyncType.Manual,
+      userId: user.sub,
+    });
   }
 
   @Post('sync/technical')
   @HttpCode(204)
   @Auth(Role.Admin)
-  syncTechnical(): Promise<void> {
-    return this.tickerSyncService.syncAllTechnical();
+  syncTechnical(@CurrentUser() user: JwtPayload): Promise<void> {
+    return this.tickerSyncService.syncAllTechnical({
+      type: SyncType.Manual,
+      userId: user.sub,
+    });
   }
 
   @Post('ticker/:id/sync')
