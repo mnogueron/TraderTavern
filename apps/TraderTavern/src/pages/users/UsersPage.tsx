@@ -91,6 +91,9 @@ const UsersPage = () => {
               <PaginationPrevious
                 href="#"
                 aria-disabled={meta.page <= 1}
+                className={
+                  meta.page <= 1 ? 'pointer-events-none opacity-50' : undefined
+                }
                 onClick={(event) => handlePageChange(event, meta.page - 1)}
               />
             </PaginationItem>
