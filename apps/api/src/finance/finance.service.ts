@@ -41,6 +41,14 @@ import {
   TickerEarningsHistory,
   TickerEarningsHistoryDocument,
 } from './schemas/ticker-earnings-history.schema';
+import { GetScreenerDto } from './dto/GetScreener.dto';
+import { PaginatedTickerDto } from './dto/PaginatedTicker.dto';
+import { ScreenerFilterOptionsDto } from './dto/ScreenerFilterOptions.dto';
+import {
+  applyScreenerFilters,
+  parseScreenerFilters,
+  sortScreenerTickers,
+} from './screener-filters';
 
 type WithUpdatedAt = { updatedAt: Date };
 
@@ -64,7 +72,7 @@ export class FinanceService {
     private readonly tickerEarningsHistoryModel: Model<TickerEarningsHistoryDocument>,
   ) {}
 
-  async getScreenerTickerOptions(): Promise<TickerOptionDto[]> {
+  private async getScreenerTickerOptions(): Promise<TickerOptionDto[]> {
     const staticData = await this.tickerStaticDataModel
       .find()
       .select('ticker companyName')
@@ -76,7 +84,46 @@ export class FinanceService {
     );
   }
 
-  async getScreener(): Promise<TickerDto[]> {
+  async getScreener(query: GetScreenerDto): Promise<PaginatedTickerDto> {
+    const tickers = await this.buildScreenerTickers();
+
+    const filters = parseScreenerFilters(query.filters);
+    const filtered = applyScreenerFilters(tickers, filters);
+    const sorted = sortScreenerTickers(filtered, query.sortBy, query.sortOrder);
+
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const total = sorted.length;
+    const start = (page - 1) * limit;
+    const data = sorted.slice(start, start + limit);
+
+    return new PaginatedTickerDto(
+      data,
+      page,
+      limit,
+      total,
+      Math.max(Math.ceil(total / limit), 1),
+    );
+  }
+
+  async getScreenerFilterOptions(): Promise<ScreenerFilterOptionsDto> {
+    const [tickerOptions, tickers] = await Promise.all([
+      this.getScreenerTickerOptions(),
+      this.buildScreenerTickers(),
+    ]);
+
+    return new ScreenerFilterOptionsDto({
+      tickers: tickerOptions,
+      sectors: this.uniqueSorted(tickers.map((t) => t.sector)),
+      industries: this.uniqueSorted(tickers.map((t) => t.industry)),
+      countries: this.uniqueSorted(tickers.map((t) => t.country)),
+      markets: this.uniqueSorted(tickers.map((t) => t.market)),
+      currencies: this.uniqueSorted(tickers.map((t) => t.currency)),
+      analystRatings: this.uniqueSorted(tickers.map((t) => t.analystRating)),
+    });
+  }
+
+  private async buildScreenerTickers(): Promise<TickerDto[]> {
     await this.tickerSyncService.ensureSyncedToday({ type: SyncType.Auto });
 
     const [staticData, technicalData, fundamentalData, marketHours] =
@@ -109,6 +156,12 @@ export class FinanceService {
         (ticker.market && marketLabelByCode.get(ticker.market)) ?? null,
       ),
     );
+  }
+
+  private uniqueSorted(values: (string | null | undefined)[]): string[] {
+    const unique = Array.from(new Set(values.filter((v): v is string => !!v)));
+    unique.sort((a, b) => a.localeCompare(b));
+    return unique;
   }
 
   async getTicker(ticker: string): Promise<TickerDto> {
