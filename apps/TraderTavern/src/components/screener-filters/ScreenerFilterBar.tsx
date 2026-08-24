@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { RiCloseLine } from '@remixicon/react';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Field, FieldLabel } from '@/components/ui/field';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import MultiSelectFilterControl from '@/components/screener-filters/MultiSelectFilterControl';
 import SelectFilterControl from '@/components/screener-filters/SelectFilterControl';
@@ -20,8 +22,13 @@ import {
   type ScreenerFilterValues,
   type SelectScreenerFilterValue,
 } from '@/components/screener-filters/types';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 
-const DEFAULT_VALUE_BY_TYPE: Record<ScreenerFilterConfig['type'], ScreenerFilterValue> = {
+const DEFAULT_VALUE_BY_TYPE: Record<
+  ScreenerFilterConfig['type'],
+  ScreenerFilterValue
+> = {
   multiselect: { type: 'multiselect', values: [] },
   select: { type: 'select', value: null },
   minmax: { type: 'minmax', min: null, max: null },
@@ -51,11 +58,19 @@ type FilterTab = 'all' | 'descriptive' | 'fundamental' | 'technical';
 const TAB_CATEGORIES: Record<FilterTab, ScreenerFilterCategory[]> = {
   all: CATEGORY_ORDER,
   descriptive: ['descriptive'],
-  fundamental: ['valuation', 'profitability', 'balance-sheet', 'ownership-analyst'],
+  fundamental: [
+    'valuation',
+    'profitability',
+    'balance-sheet',
+    'ownership-analyst',
+  ],
   technical: ['performance-technical'],
 };
 
-const describeFilterValue = (config: ScreenerFilterConfig, value: ScreenerFilterValue): string => {
+const describeFilterValue = (
+  config: ScreenerFilterConfig,
+  value: ScreenerFilterValue,
+): string => {
   switch (value.type) {
     case 'multiselect': {
       if (config.type !== 'multiselect') return config.label;
@@ -67,7 +82,9 @@ const describeFilterValue = (config: ScreenerFilterConfig, value: ScreenerFilter
     }
     case 'select': {
       if (config.type !== 'select') return config.label;
-      const label = config.options.find((o) => o.value === value.value)?.label ?? value.value;
+      const label =
+        config.options.find((o) => o.value === value.value)?.label ??
+        value.value;
       return `${config.label}: ${label}`;
     }
     case 'minmax': {
@@ -96,10 +113,17 @@ type ScreenerFilterBarProps = {
   onReset: () => void;
 };
 
-const ScreenerFilterBar = ({ configs, values, onChange, onReset }: ScreenerFilterBarProps) => {
+const ScreenerFilterBar = ({
+  configs,
+  values,
+  onChange,
+  onReset,
+}: ScreenerFilterBarProps) => {
   const [tab, setTab] = useState<FilterTab>('all');
 
-  const activeConfigs = configs.filter((config) => isFilterValueActive(values[config.key]));
+  const activeConfigs = configs.filter((config) =>
+    isFilterValueActive(values[config.key]),
+  );
   const visibleCategories = TAB_CATEGORIES[tab];
 
   const renderControl = (config: ScreenerFilterConfig) => {
@@ -187,7 +211,9 @@ const ScreenerFilterBar = ({ configs, values, onChange, onReset }: ScreenerFilte
 
       <div className="flex flex-col gap-2">
         {visibleCategories.map((category) => {
-          const categoryConfigs = configs.filter((config) => config.category === category);
+          const categoryConfigs = configs.filter(
+            (config) => config.category === category,
+          );
           if (categoryConfigs.length === 0) return null;
           const categoryActiveCount = categoryConfigs.filter((config) =>
             isFilterValueActive(values[config.key]),
@@ -195,16 +221,37 @@ const ScreenerFilterBar = ({ configs, values, onChange, onReset }: ScreenerFilte
 
           return (
             <div key={category} className="flex flex-col gap-1">
-              <div className="flex items-center gap-2 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
+              <div className="flex items-center gap-2 text-[10px] font-bold tracking-wide text-muted-foreground uppercase min-h-[20px]">
                 {SCREENER_FILTER_CATEGORY_LABELS[category]}
                 {categoryActiveCount > 0 && (
-                  <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] normal-case">
+                  <Badge variant="secondary" className="text-[10px]">
                     {categoryActiveCount}
-                  </span>
+                  </Badge>
                 )}
+                <Separator className="flex-1" />
               </div>
-              <div className="flex flex-wrap items-center gap-1.5">
-                {categoryConfigs.map((config) => renderControl(config))}
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-x-3 gap-y-1.5">
+                {categoryConfigs.map((config) => (
+                  <Field
+                    key={config.key}
+                    orientation="horizontal"
+                    className="gap-1.5"
+                  >
+                    <FieldLabel
+                      className={cn(
+                        'w-20! shrink-0! grow-0! justify-end text-right text-[11px]',
+                        isFilterValueActive(values[config.key])
+                          ? 'font-medium text-foreground'
+                          : 'font-normal text-muted-foreground',
+                      )}
+                    >
+                      {config.label}
+                    </FieldLabel>
+                    <div className="min-w-0 flex-1">
+                      {renderControl(config)}
+                    </div>
+                  </Field>
+                ))}
               </div>
             </div>
           );
@@ -222,7 +269,9 @@ const ScreenerFilterBar = ({ configs, values, onChange, onReset }: ScreenerFilte
               <button
                 type="button"
                 className="rounded-full p-0.5 hover:bg-muted"
-                onClick={() => onChange(config.key, DEFAULT_VALUE_BY_TYPE[config.type])}
+                onClick={() =>
+                  onChange(config.key, DEFAULT_VALUE_BY_TYPE[config.type])
+                }
               >
                 <RiCloseLine className="size-3" />
               </button>

@@ -7,10 +7,15 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import type {
-  MultiSelectScreenerFilterConfig,
-  MultiSelectScreenerFilterValue,
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  isFilterValueActive,
+  type MultiSelectScreenerFilterConfig,
+  type MultiSelectScreenerFilterValue,
 } from '@/components/screener-filters/types';
 import { RiArrowDownSLine } from '@remixicon/react';
 
@@ -39,21 +44,29 @@ const MultiSelectFilterControl = ({
     <Popover>
       <PopoverTrigger
         render={
-          <Button variant="outline" size="xs">
-            {config.label}
-            {value.values.length > 0 && (
-              <span className="ml-1 rounded-full bg-muted px-1.5 text-[10px]">
-                {value.values.length}
-              </span>
-            )}
+          <Button
+            variant={isFilterValueActive(value) ? 'secondary' : 'outline'}
+            size="xs"
+            className="h-6 w-full justify-between font-normal"
+          >
+            <span className="truncate">
+              {value.values.length > 0
+                ? value.values.length === 1
+                  ? value.values[0]
+                  : `${value.values.length} selected`
+                : 'Any'}
+            </span>
             <RiArrowDownSLine data-icon="inline-end" />
           </Button>
         }
       />
       <PopoverContent className="w-64 p-0" align="start">
         <Command>
-          <CommandInput placeholder={`Search ${config.label.toLowerCase()}...`} />
-          <CommandList>
+          <CommandInput
+            placeholder={`Search ${config.label.toLowerCase()}...`}
+            className="text-xs"
+          />
+          <CommandList className="pt-1.5">
             <CommandEmpty>No results found.</CommandEmpty>
             <CommandGroup>
               {config.options.map((option) => (
@@ -62,6 +75,7 @@ const MultiSelectFilterControl = ({
                   value={option.label}
                   data-checked={value.values.includes(option.value)}
                   onSelect={() => toggleOption(option.value)}
+                  className="py-1 text-xs"
                 >
                   {option.label}
                 </CommandItem>

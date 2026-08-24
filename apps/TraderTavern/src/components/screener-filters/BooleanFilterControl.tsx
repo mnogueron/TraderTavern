@@ -10,15 +10,14 @@ type BooleanFilterControlProps = {
   onChange: (value: BooleanScreenerFilterValue) => void;
 };
 
-const BooleanFilterControl = ({ config, value, onChange }: BooleanFilterControlProps) => {
+const BooleanFilterControl = ({ value, onChange }: BooleanFilterControlProps) => {
   return (
-    <label className="flex h-6 items-center gap-1.5 text-xs">
-      <Checkbox className="size-3.5"
+    <div className="flex h-6 items-center">
+      <Checkbox
         checked={value.value}
         onCheckedChange={(checked) => onChange({ type: 'boolean', value: checked === true })}
       />
-      {config.label}
-    </label>
+    </div>
   );
 };
 

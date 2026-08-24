@@ -1,9 +1,10 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import type {
-  MinMaxScreenerFilterConfig,
-  MinMaxScreenerFilterValue,
+import {
+  isFilterValueActive,
+  type MinMaxScreenerFilterConfig,
+  type MinMaxScreenerFilterValue,
 } from '@/components/screener-filters/types';
 import { RiArrowDownSLine } from '@remixicon/react';
 
@@ -27,8 +28,8 @@ const MinMaxFilterControl = ({ config, value, onChange }: MinMaxFilterControlPro
 
   const label =
     value.min === null && value.max === null
-      ? config.label
-      : `${config.label}: ${formatBound(value.min, config.unit) || 'Min'} - ${
+      ? 'Any'
+      : `${formatBound(value.min, config.unit) || 'Min'} - ${
           formatBound(value.max, config.unit) || 'Max'
         }`;
 
@@ -36,8 +37,12 @@ const MinMaxFilterControl = ({ config, value, onChange }: MinMaxFilterControlPro
     <Popover>
       <PopoverTrigger
         render={
-          <Button variant="outline" size="xs">
-            {label}
+          <Button
+            variant={isFilterValueActive(value) ? 'secondary' : 'outline'}
+            size="xs"
+            className="h-6 w-full justify-between font-normal"
+          >
+            <span className="truncate">{label}</span>
             <RiArrowDownSLine data-icon="inline-end" />
           </Button>
         }
@@ -48,6 +53,7 @@ const MinMaxFilterControl = ({ config, value, onChange }: MinMaxFilterControlPro
             <Input
               type="number"
               placeholder="Min"
+              className="h-6 text-xs"
               value={value.min ?? ''}
               onChange={(e) =>
                 onChange({ ...value, min: parseInput(e.target.value) })
@@ -57,18 +63,28 @@ const MinMaxFilterControl = ({ config, value, onChange }: MinMaxFilterControlPro
             <Input
               type="number"
               placeholder="Max"
+              className="h-6 text-xs"
               value={value.max ?? ''}
               onChange={(e) =>
                 onChange({ ...value, max: parseInput(e.target.value) })
               }
             />
           </div>
-          {config.presets && config.presets.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {config.presets.map((preset) => (
+          <div className="flex flex-wrap gap-1.5">
+            <Button
+              variant={value.min === null && value.max === null ? 'secondary' : 'outline'}
+              size="xs"
+              onClick={() => onChange({ type: 'minmax', min: null, max: null })}
+            >
+              Any
+            </Button>
+            {config.presets?.map((preset) => {
+              const isSelected =
+                value.min === (preset.min ?? null) && value.max === (preset.max ?? null);
+              return (
                 <Button
                   key={preset.label}
-                  variant="secondary"
+                  variant={isSelected ? 'secondary' : 'outline'}
                   size="xs"
                   onClick={() =>
                     onChange({
@@ -80,18 +96,9 @@ const MinMaxFilterControl = ({ config, value, onChange }: MinMaxFilterControlPro
                 >
                   {preset.label}
                 </Button>
-              ))}
-            </div>
-          )}
-          {(value.min !== null || value.max !== null) && (
-            <Button
-              variant="ghost"
-              size="xs"
-              onClick={() => onChange({ type: 'minmax', min: null, max: null })}
-            >
-              Clear
-            </Button>
-          )}
+              );
+            })}
+          </div>
         </div>
       </PopoverContent>
     </Popover>
