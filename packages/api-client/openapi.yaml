@@ -185,6 +185,21 @@ paths:
         - cookie: []
       tags:
         - Finance
+  /finance/sync/status:
+    get:
+      operationId: getSyncStatus
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncStatusDto'
+      security:
+        - cookie: []
+      tags:
+        - Finance
   /finance/sync:
     post:
       operationId: syncScreener
@@ -993,6 +1008,15 @@ components:
         - markets
         - currencies
         - analystRatings
+    SyncStatusDto:
+      type: object
+      properties:
+        lastSyncDate:
+          format: date-time
+          type: string
+          nullable: true
+      required:
+        - lastSyncDate
     FundamentalTickerDto:
       type: object
       properties:

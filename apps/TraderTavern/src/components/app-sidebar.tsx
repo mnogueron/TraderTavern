@@ -1,5 +1,6 @@
 import { NavCollapse } from '@/components/nav-collapse';
 import { NavMain } from '@/components/nav-main';
+import { NavSyncStatus } from '@/components/nav-sync-status';
 import { NavUser } from '@/components/nav-user';
 import {
   Sidebar,
@@ -38,6 +39,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavMain items={navMain} />
       </SidebarContent>
       <SidebarFooter>
+        <NavSyncStatus />
         <NavCollapse />
         <NavUser />
       </SidebarFooter>

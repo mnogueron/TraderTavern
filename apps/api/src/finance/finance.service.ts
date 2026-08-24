@@ -44,6 +44,9 @@ import {
 import { GetScreenerDto } from './dto/GetScreener.dto';
 import { PaginatedTickerDto } from './dto/PaginatedTicker.dto';
 import { ScreenerFilterOptionsDto } from './dto/ScreenerFilterOptions.dto';
+import { SyncStatusDto } from './dto/SyncStatus.dto';
+import { SyncHistory, SyncHistoryDocument } from './schemas/sync-history.schema';
+import { SyncStatus } from './enums/sync-status.enum';
 import {
   applyScreenerFilters,
   parseScreenerFilters,
@@ -70,6 +73,8 @@ export class FinanceService {
     private readonly tickerFinancialHistoryModel: Model<TickerFinancialHistoryDocument>,
     @InjectModel(TickerEarningsHistory.name)
     private readonly tickerEarningsHistoryModel: Model<TickerEarningsHistoryDocument>,
+    @InjectModel(SyncHistory.name)
+    private readonly syncHistoryModel: Model<SyncHistoryDocument>,
   ) {}
 
   private async getScreenerTickerOptions(): Promise<TickerOptionDto[]> {
@@ -219,6 +224,15 @@ export class FinanceService {
       marketHours.regularClose,
       marketHours.postMarketClose ?? null,
     );
+  }
+
+  async getSyncStatus(): Promise<SyncStatusDto> {
+    const lastSync = await this.syncHistoryModel
+      .findOne({ status: { $in: [SyncStatus.Success, SyncStatus.PartialSuccess] } })
+      .sort({ syncDate: -1 })
+      .lean();
+
+    return new SyncStatusDto(lastSync?.syncDate ?? null);
   }
 
   async getFundamental(ticker: string): Promise<FundamentalTickerDto> {

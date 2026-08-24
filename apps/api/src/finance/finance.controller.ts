@@ -12,6 +12,7 @@ import { GetScreenerDto } from './dto/GetScreener.dto';
 import { PaginatedTickerDto } from './dto/PaginatedTicker.dto';
 import { ScreenerFilterOptionsDto } from './dto/ScreenerFilterOptions.dto';
 import { MarketHoursDto } from './dto/MarketHours.dto';
+import { SyncStatusDto } from './dto/SyncStatus.dto';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { JwtPayload } from '../auth/types/jwt-payload.type';
@@ -37,6 +38,13 @@ export class FinanceController {
   @ApiOkResponse({ type: ScreenerFilterOptionsDto })
   getScreenerFilterOptions(): Promise<ScreenerFilterOptionsDto> {
     return this.financeService.getScreenerFilterOptions();
+  }
+
+  @Get('sync/status')
+  @Auth()
+  @ApiOkResponse({ type: SyncStatusDto })
+  getSyncStatus(): Promise<SyncStatusDto> {
+    return this.financeService.getSyncStatus();
   }
 
   @Post('sync')

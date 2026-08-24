@@ -148,6 +148,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/finance/sync/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getSyncStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/finance/sync": {
         parameters: {
             query?: never;
@@ -593,6 +609,10 @@ export interface components {
             currencies: string[];
             analystRatings: string[];
         };
+        SyncStatusDto: {
+            /** Format: date-time */
+            lastSyncDate: string | null;
+        };
         FundamentalTickerDto: {
             ticker: string;
             marketCap: number | null;
@@ -945,6 +965,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScreenerFilterOptionsDto"];
+                };
+            };
+        };
+    };
+    getSyncStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncStatusDto"];
                 };
             };
         };
