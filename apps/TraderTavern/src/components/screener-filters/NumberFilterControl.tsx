@@ -14,17 +14,14 @@ type NumberFilterControlProps = {
 };
 
 const NumberFilterControl = ({ config, value, onChange }: NumberFilterControlProps) => {
-  const label =
-    value.value === null
-      ? config.label
-      : `${config.label}: ${value.value}${config.unit ?? ''}`;
+  const label = value.value === null ? 'Any' : `${value.value}${config.unit ?? ''}`;
 
   return (
     <Popover>
       <PopoverTrigger
         render={
-          <Button variant="outline" size="xs">
-            {label}
+          <Button variant="outline" size="xs" className="h-6 w-full justify-between font-normal">
+            <span className="truncate">{label}</span>
             <RiArrowDownSLine data-icon="inline-end" />
           </Button>
         }
@@ -33,6 +30,7 @@ const NumberFilterControl = ({ config, value, onChange }: NumberFilterControlPro
         <Input
           type="number"
           placeholder={config.label}
+          className="h-6 text-xs"
           value={value.value ?? ''}
           onChange={(e) => {
             const raw = e.target.value;

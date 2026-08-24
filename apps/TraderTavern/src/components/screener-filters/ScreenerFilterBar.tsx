@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { RiCloseLine } from '@remixicon/react';
 import { Button } from '@/components/ui/button';
+import { Field, FieldLabel } from '@/components/ui/field';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import MultiSelectFilterControl from '@/components/screener-filters/MultiSelectFilterControl';
 import SelectFilterControl from '@/components/screener-filters/SelectFilterControl';
@@ -203,8 +204,15 @@ const ScreenerFilterBar = ({ configs, values, onChange, onReset }: ScreenerFilte
                   </span>
                 )}
               </div>
-              <div className="flex flex-wrap items-center gap-1.5">
-                {categoryConfigs.map((config) => renderControl(config))}
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-x-3 gap-y-1.5">
+                {categoryConfigs.map((config) => (
+                  <Field key={config.key} orientation="horizontal" className="gap-2">
+                    <FieldLabel className="w-20! shrink-0! grow-0! text-[11px] font-normal text-muted-foreground">
+                      {config.label}
+                    </FieldLabel>
+                    <div className="min-w-0 flex-1">{renderControl(config)}</div>
+                  </Field>
+                ))}
               </div>
             </div>
           );

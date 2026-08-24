@@ -39,13 +39,10 @@ const MultiSelectFilterControl = ({
     <Popover>
       <PopoverTrigger
         render={
-          <Button variant="outline" size="xs">
-            {config.label}
-            {value.values.length > 0 && (
-              <span className="ml-1 rounded-full bg-muted px-1.5 text-[10px]">
-                {value.values.length}
-              </span>
-            )}
+          <Button variant="outline" size="xs" className="h-6 w-full justify-between font-normal">
+            <span className="truncate">
+              {value.values.length > 0 ? `${value.values.length} selected` : 'Any'}
+            </span>
             <RiArrowDownSLine data-icon="inline-end" />
           </Button>
         }

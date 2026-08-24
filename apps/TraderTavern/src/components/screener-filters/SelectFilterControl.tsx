@@ -18,25 +18,33 @@ type SelectFilterControlProps = {
   onChange: (value: SelectScreenerFilterValue) => void;
 };
 
-const SelectFilterControl = ({ config, value, onChange }: SelectFilterControlProps) => {
+const SelectFilterControl = ({
+  config,
+  value,
+  onChange,
+}: SelectFilterControlProps) => {
   return (
     <Select
       value={value.value ?? ALL_VALUE}
       onValueChange={(next) =>
-        onChange({ type: 'select', value: next === ALL_VALUE ? null : (next as string) })
+        onChange({
+          type: 'select',
+          value: next === ALL_VALUE ? null : (next as string),
+        })
       }
     >
-      <SelectTrigger size="sm" className="h-6 min-w-28 text-xs">
-        <SelectValue placeholder={config.label}>
+      <SelectTrigger size="sm" className="h-6 w-full text-xs">
+        <SelectValue placeholder="Any">
           {(selected: string) =>
             selected === ALL_VALUE
-              ? `All ${config.label}`
-              : (config.options.find((option) => option.value === selected)?.label ?? selected)
+              ? 'Any'
+              : (config.options.find((option) => option.value === selected)
+                  ?.label ?? selected)
           }
         </SelectValue>
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value={ALL_VALUE}>All {config.label}</SelectItem>
+        <SelectItem value={ALL_VALUE}>Any</SelectItem>
         {config.options.map((option) => (
           <SelectItem key={option.value} value={option.value}>
             {option.label}
