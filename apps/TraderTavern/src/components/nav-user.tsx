@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router';
 import { useClientMutation } from '@trader-tavern/api-client';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useTheme } from '@/hooks/useTheme';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -9,6 +10,9 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -17,12 +21,20 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { RiArrowUpDownLine, RiSettingsLine, RiLogoutBoxLine, RiTeamLine } from '@remixicon/react';
+import {
+  RiArrowUpDownLine,
+  RiSettingsLine,
+  RiLogoutBoxLine,
+  RiTeamLine,
+  RiMoonLine,
+  RiSunLine,
+} from '@remixicon/react';
 
 export function NavUser() {
   const { isMobile } = useSidebar();
   const navigate = useNavigate();
   const { data: currentUser } = useCurrentUser();
+  const { theme, toggleTheme } = useTheme();
 
   const logoutMutation = useClientMutation('post', '/auth/logout', {
     onSuccess: () => navigate('/login'),
@@ -80,10 +92,18 @@ export function NavUser() {
                   Users
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem>
-                <RiSettingsLine />
-                Settings
-              </DropdownMenuItem>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <RiSettingsLine />
+                  Settings
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem onClick={toggleTheme}>
+                    {theme === 'dark' ? <RiSunLine /> : <RiMoonLine />}
+                    {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => logoutMutation.mutate({})}>
