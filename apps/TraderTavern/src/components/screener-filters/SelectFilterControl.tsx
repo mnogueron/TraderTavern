@@ -5,9 +5,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type {
-  SelectScreenerFilterConfig,
-  SelectScreenerFilterValue,
+import { cn } from '@/lib/utils';
+import {
+  isFilterValueActive,
+  type SelectScreenerFilterConfig,
+  type SelectScreenerFilterValue,
 } from '@/components/screener-filters/types';
 
 const ALL_VALUE = '__all__';
@@ -33,7 +35,15 @@ const SelectFilterControl = ({
         })
       }
     >
-      <SelectTrigger size="sm" className="h-6 w-full text-xs">
+      <SelectTrigger
+        size="sm"
+        className={cn(
+          'h-6 w-full text-xs',
+          isFilterValueActive(value)
+            ? 'border-transparent bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)]'
+            : 'border-border bg-background hover:bg-muted hover:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50',
+        )}
+      >
         <SelectValue placeholder="Any">
           {(selected: string) =>
             selected === ALL_VALUE

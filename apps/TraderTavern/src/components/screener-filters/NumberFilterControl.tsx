@@ -1,9 +1,10 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import type {
-  NumberScreenerFilterConfig,
-  NumberScreenerFilterValue,
+import {
+  isFilterValueActive,
+  type NumberScreenerFilterConfig,
+  type NumberScreenerFilterValue,
 } from '@/components/screener-filters/types';
 import { RiArrowDownSLine } from '@remixicon/react';
 
@@ -20,7 +21,11 @@ const NumberFilterControl = ({ config, value, onChange }: NumberFilterControlPro
     <Popover>
       <PopoverTrigger
         render={
-          <Button variant="outline" size="xs" className="h-6 w-full justify-between font-normal">
+          <Button
+            variant={isFilterValueActive(value) ? 'secondary' : 'outline'}
+            size="xs"
+            className="h-6 w-full justify-between font-normal"
+          >
             <span className="truncate">{label}</span>
             <RiArrowDownSLine data-icon="inline-end" />
           </Button>

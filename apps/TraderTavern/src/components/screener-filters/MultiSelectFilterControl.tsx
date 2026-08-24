@@ -7,10 +7,15 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import type {
-  MultiSelectScreenerFilterConfig,
-  MultiSelectScreenerFilterValue,
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  isFilterValueActive,
+  type MultiSelectScreenerFilterConfig,
+  type MultiSelectScreenerFilterValue,
 } from '@/components/screener-filters/types';
 import { RiArrowDownSLine } from '@remixicon/react';
 
@@ -39,9 +44,17 @@ const MultiSelectFilterControl = ({
     <Popover>
       <PopoverTrigger
         render={
-          <Button variant="outline" size="xs" className="h-6 w-full justify-between font-normal">
+          <Button
+            variant={isFilterValueActive(value) ? 'secondary' : 'outline'}
+            size="xs"
+            className="h-6 w-full justify-between font-normal"
+          >
             <span className="truncate">
-              {value.values.length > 0 ? `${value.values.length} selected` : 'Any'}
+              {value.values.length > 0
+                ? value.values.length === 1
+                  ? value.values[0]
+                  : `${value.values.length} selected`
+                : 'Any'}
             </span>
             <RiArrowDownSLine data-icon="inline-end" />
           </Button>

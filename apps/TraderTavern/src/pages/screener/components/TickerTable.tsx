@@ -1,3 +1,4 @@
+import { useState, type UIEvent } from 'react';
 import type { ApiResponse } from '@trader-tavern/api-client';
 import {
   flexRender,
@@ -14,6 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { cn } from '@/lib/utils';
 import { columns } from '@/pages/screener/components/columns';
 
 type TickerTableProps = {
@@ -22,7 +24,13 @@ type TickerTableProps = {
   onSortingChange: OnChangeFn<SortingState>;
 };
 
+const StickyEdgeGradient = () => (
+  <div className="pointer-events-none absolute inset-y-0 right-0 w-3 translate-x-full bg-gradient-to-r from-black/10 to-transparent dark:from-black/30" />
+);
+
 const TickerTable = ({ tickers, sorting, onSortingChange }: TickerTableProps) => {
+  const [isScrolled, setIsScrolled] = useState(false);
+
   const table = useReactTable({
     data: tickers,
     columns,
@@ -32,8 +40,16 @@ const TickerTable = ({ tickers, sorting, onSortingChange }: TickerTableProps) =>
     getCoreRowModel: getCoreRowModel(),
   });
 
+  const handleScroll = (event: UIEvent<HTMLDivElement>) => {
+    setIsScrolled(event.currentTarget.scrollLeft > 0);
+  };
+
   return (
-    <Table containerClassName="h-full" className="text-xs">
+    <Table
+      containerClassName="h-full"
+      className="text-xs"
+      onScroll={handleScroll}
+    >
       <TableHeader>
         {table.getHeaderGroups().map((headerGroup) => (
           <TableRow key={headerGroup.id}>
@@ -52,6 +68,9 @@ const TickerTable = ({ tickers, sorting, onSortingChange }: TickerTableProps) =>
                       header.column.columnDef.header,
                       header.getContext(),
                     )}
+                {header.column.columnDef.meta?.sticky && isScrolled && (
+                  <StickyEdgeGradient />
+                )}
               </TableHead>
             ))}
           </TableRow>
@@ -63,13 +82,15 @@ const TickerTable = ({ tickers, sorting, onSortingChange }: TickerTableProps) =>
             {row.getVisibleCells().map((cell) => (
               <TableCell
                 key={cell.id}
-                className={
-                  cell.column.columnDef.meta?.sticky
-                    ? 'sticky left-0 z-10 bg-background'
-                    : undefined
-                }
+                className={cn(
+                  cell.column.columnDef.meta?.sticky &&
+                    'sticky left-0 z-10 bg-background',
+                )}
               >
                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                {cell.column.columnDef.meta?.sticky && isScrolled && (
+                  <StickyEdgeGradient />
+                )}
               </TableCell>
             ))}
           </TableRow>
