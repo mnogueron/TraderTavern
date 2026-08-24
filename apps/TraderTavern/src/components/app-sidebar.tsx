@@ -1,3 +1,4 @@
+import { NavCollapse } from '@/components/nav-collapse';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import {
@@ -37,6 +38,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavMain items={navMain} />
       </SidebarContent>
       <SidebarFooter>
+        <NavCollapse />
         <NavUser />
       </SidebarFooter>
       <SidebarRail />
