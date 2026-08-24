@@ -49,8 +49,11 @@ const MultiSelectFilterControl = ({
       />
       <PopoverContent className="w-64 p-0" align="start">
         <Command>
-          <CommandInput placeholder={`Search ${config.label.toLowerCase()}...`} />
-          <CommandList>
+          <CommandInput
+            placeholder={`Search ${config.label.toLowerCase()}...`}
+            className="text-xs"
+          />
+          <CommandList className="pt-1.5">
             <CommandEmpty>No results found.</CommandEmpty>
             <CommandGroup>
               {config.options.map((option) => (
@@ -59,6 +62,7 @@ const MultiSelectFilterControl = ({
                   value={option.label}
                   data-checked={value.values.includes(option.value)}
                   onSelect={() => toggleOption(option.value)}
+                  className="py-1 text-xs"
                 >
                   {option.label}
                 </CommandItem>
