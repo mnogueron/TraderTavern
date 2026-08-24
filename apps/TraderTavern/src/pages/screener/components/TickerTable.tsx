@@ -28,7 +28,11 @@ const StickyEdgeGradient = () => (
   <div className="pointer-events-none absolute inset-y-0 right-0 w-3 translate-x-full bg-gradient-to-r from-black/10 to-transparent dark:from-black/30" />
 );
 
-const TickerTable = ({ tickers, sorting, onSortingChange }: TickerTableProps) => {
+const TickerTable = ({
+  tickers,
+  sorting,
+  onSortingChange,
+}: TickerTableProps) => {
   const [isScrolled, setIsScrolled] = useState(false);
 
   const table = useReactTable({
@@ -50,7 +54,7 @@ const TickerTable = ({ tickers, sorting, onSortingChange }: TickerTableProps) =>
       className="text-xs"
       onScroll={handleScroll}
     >
-      <TableHeader>
+      <TableHeader className="z-20">
         {table.getHeaderGroups().map((headerGroup) => (
           <TableRow key={headerGroup.id}>
             {headerGroup.headers.map((header) => (
