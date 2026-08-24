@@ -76,34 +76,43 @@ const ScreenerPage = () => {
   ) => {
     const next = typeof updater === 'function' ? updater(sorting) : updater;
     const nextSort = next[0];
-    setSearchParams((params) => {
-      if (nextSort) {
-        params.set('sortBy', nextSort.id);
-        params.set('sortOrder', nextSort.desc ? 'desc' : 'asc');
-      } else {
-        params.delete('sortBy');
-        params.delete('sortOrder');
-      }
-      params.set('page', '1');
-      return params;
-    });
+    setSearchParams(
+      (params) => {
+        if (nextSort) {
+          params.set('sortBy', nextSort.id);
+          params.set('sortOrder', nextSort.desc ? 'desc' : 'asc');
+        } else {
+          params.delete('sortBy');
+          params.delete('sortOrder');
+        }
+        params.set('page', '1');
+        return params;
+      },
+      { replace: true },
+    );
   };
 
   const handleFilterChange = (key: string, value: ScreenerFilterValue) => {
     const next = { ...filterValues, [key]: value };
-    setSearchParams((params) => {
-      params.set('filters', JSON.stringify(next));
-      params.set('page', '1');
-      return params;
-    });
+    setSearchParams(
+      (params) => {
+        params.set('filters', JSON.stringify(next));
+        params.set('page', '1');
+        return params;
+      },
+      { replace: true },
+    );
   };
 
   const handleFilterReset = () => {
-    setSearchParams((params) => {
-      params.set('filters', JSON.stringify(getDefaultScreenerFilterValues(configs)));
-      params.set('page', '1');
-      return params;
-    });
+    setSearchParams(
+      (params) => {
+        params.set('filters', JSON.stringify(getDefaultScreenerFilterValues(configs)));
+        params.set('page', '1');
+        return params;
+      },
+      { replace: true },
+    );
   };
 
   const handlePageChange = (event: MouseEvent, targetPage: number) => {
@@ -112,21 +121,27 @@ const ScreenerPage = () => {
     if (targetPage < 1 || targetPage > totalPages || targetPage === page) {
       return;
     }
-    setSearchParams((params) => {
-      params.set('page', String(targetPage));
-      return params;
-    });
+    setSearchParams(
+      (params) => {
+        params.set('page', String(targetPage));
+        return params;
+      },
+      { replace: true },
+    );
   };
 
   const handleLimitChange = (value: string | null) => {
     if (!value) {
       return;
     }
-    setSearchParams((params) => {
-      params.set('limit', value);
-      params.set('page', '1');
-      return params;
-    });
+    setSearchParams(
+      (params) => {
+        params.set('limit', value);
+        params.set('page', '1');
+        return params;
+      },
+      { replace: true },
+    );
   };
 
   const meta = data?.meta;
