@@ -11,6 +11,7 @@ import {
   formatMarketCap,
   formatNumber,
 } from '@/lib/format';
+import CurrencyCell from '@/pages/screener/components/CurrencyCell';
 
 export type Ticker = ApiResponse<'get', '/finance/screener'>['data'][number];
 
@@ -104,9 +105,11 @@ export const columns: ColumnDef<Ticker>[] = [
       <SortableHeader column={column} label="Market Cap" align="right" />
     ),
     cell: ({ row }) => (
-      <div className="text-right tabular-nums">
-        {formatMarketCap(row.original.marketCap, row.original.currency)}
-      </div>
+      <CurrencyCell
+        value={row.original.marketCap}
+        currency={row.original.currency}
+        format={(value) => formatMarketCap(value)}
+      />
     ),
   },
   {
@@ -126,9 +129,11 @@ export const columns: ColumnDef<Ticker>[] = [
       <SortableHeader column={column} label="Price" align="right" />
     ),
     cell: ({ row }) => (
-      <div className="text-right tabular-nums">
-        {formatNumber(row.original.price, 2, row.original.currency)}
-      </div>
+      <CurrencyCell
+        value={row.original.price}
+        currency={row.original.currency}
+        format={(value) => formatNumber(value, 2)}
+      />
     ),
   },
   {
