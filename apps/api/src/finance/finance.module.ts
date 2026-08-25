@@ -5,6 +5,7 @@ import { FinanceController } from './finance.controller';
 import { FinanceService } from './finance.service';
 import { TickerSyncService } from './ticker-sync.service';
 import { AuthModule } from '../auth/auth.module';
+import { UserModule } from '../user/user.module';
 import { TickerStaticData, TickerStaticDataSchema } from './schemas/ticker-static-data.schema';
 import {
   CompoundTechnicalTickerData,
@@ -28,13 +29,23 @@ import {
   TickerEarningsHistory,
   TickerEarningsHistorySchema,
 } from './schemas/ticker-earnings-history.schema';
+import { TickerBind, TickerBindSchema } from './schemas/ticker-bind.schema';
+
+const tickerBindFeature = MongooseModule.forFeature([
+  { name: TickerBind.name, schema: TickerBindSchema },
+]);
+
+const tickerStaticDataFeature = MongooseModule.forFeature([
+  { name: TickerStaticData.name, schema: TickerStaticDataSchema },
+]);
 
 @Module({
   imports: [
     AuthModule,
+    UserModule,
     ScheduleModule.forRoot(),
+    tickerStaticDataFeature,
     MongooseModule.forFeature([
-      { name: TickerStaticData.name, schema: TickerStaticDataSchema },
       {
         name: CompoundTechnicalTickerData.name,
         schema: CompoundTechnicalTickerDataSchema,
@@ -52,8 +63,10 @@ import {
         schema: TickerEarningsHistorySchema,
       },
     ]),
+    tickerBindFeature,
   ],
   controllers: [FinanceController],
   providers: [FinanceService, TickerSyncService],
+  exports: [tickerBindFeature, tickerStaticDataFeature],
 })
 export class FinanceModule {}

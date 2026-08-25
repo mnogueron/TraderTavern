@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { TickerDto } from './dto/Ticker.dto';
 import { FundamentalTickerDto } from './dto/FundamentalTicker.dto';
 import { CandleDto } from './dto/Candle.dto';
@@ -52,8 +52,11 @@ import {
   parseScreenerFilters,
   sortScreenerTickers,
 } from './screener-filters';
+import { TickerBind, TickerBindDocument } from './schemas/ticker-bind.schema';
 
 type WithUpdatedAt = { updatedAt: Date };
+
+const YAHOO_FINANCE_SOURCE = 'yahoo-finance';
 
 @Injectable()
 export class FinanceService {
@@ -75,11 +78,16 @@ export class FinanceService {
     private readonly tickerEarningsHistoryModel: Model<TickerEarningsHistoryDocument>,
     @InjectModel(SyncHistory.name)
     private readonly syncHistoryModel: Model<SyncHistoryDocument>,
+    @InjectModel(TickerBind.name)
+    private readonly tickerBindModel: Model<TickerBindDocument>,
   ) {}
 
-  private async getScreenerTickerOptions(): Promise<TickerOptionDto[]> {
+  private async getScreenerTickerOptions(
+    allowedTickers: string[] | null,
+  ): Promise<TickerOptionDto[]> {
+    const filter = allowedTickers ? { ticker: { $in: allowedTickers } } : {};
     const staticData = await this.tickerStaticDataModel
-      .find()
+      .find(filter)
       .select('ticker companyName')
       .sort({ ticker: 1 })
       .lean();
@@ -89,8 +97,27 @@ export class FinanceService {
     );
   }
 
-  async getScreener(query: GetScreenerDto): Promise<PaginatedTickerDto> {
-    const tickers = await this.buildScreenerTickers();
+  private async getAllowedTickers(
+    userId: string,
+    tickerSource: string,
+  ): Promise<string[] | null> {
+    if (tickerSource === YAHOO_FINANCE_SOURCE) {
+      return null;
+    }
+
+    const binding = await this.tickerBindModel
+      .findOne({ userId: new Types.ObjectId(userId), source: tickerSource })
+      .lean();
+
+    return binding?.tickers ?? [];
+  }
+
+  async getScreener(
+    query: GetScreenerDto,
+    userId: string,
+    tickerSource: string,
+  ): Promise<PaginatedTickerDto> {
+    const tickers = await this.buildScreenerTickers(userId, tickerSource);
 
     const filters = parseScreenerFilters(query.filters);
     const filtered = applyScreenerFilters(tickers, filters);
@@ -111,10 +138,14 @@ export class FinanceService {
     );
   }
 
-  async getScreenerFilterOptions(): Promise<ScreenerFilterOptionsDto> {
+  async getScreenerFilterOptions(
+    userId: string,
+    tickerSource: string,
+  ): Promise<ScreenerFilterOptionsDto> {
+    const allowedTickers = await this.getAllowedTickers(userId, tickerSource);
     const [tickerOptions, tickers] = await Promise.all([
-      this.getScreenerTickerOptions(),
-      this.buildScreenerTickers(),
+      this.getScreenerTickerOptions(allowedTickers),
+      this.buildScreenerTickers(userId, tickerSource),
     ]);
 
     return new ScreenerFilterOptionsDto({
@@ -128,12 +159,20 @@ export class FinanceService {
     });
   }
 
-  private async buildScreenerTickers(): Promise<TickerDto[]> {
+  private async buildScreenerTickers(
+    userId: string,
+    tickerSource: string,
+  ): Promise<TickerDto[]> {
     await this.tickerSyncService.ensureSyncedToday({ type: SyncType.Auto });
+
+    const allowedTickers = await this.getAllowedTickers(userId, tickerSource);
+    const staticDataFilter = allowedTickers
+      ? { ticker: { $in: allowedTickers } }
+      : {};
 
     const [staticData, technicalData, fundamentalData, marketHours] =
       await Promise.all([
-        this.tickerStaticDataModel.find().lean(),
+        this.tickerStaticDataModel.find(staticDataFilter).lean(),
         this.latestPerTicker<CompoundTechnicalTickerData & WithUpdatedAt>(
           this.compoundTechnicalTickerDataModel,
         ),

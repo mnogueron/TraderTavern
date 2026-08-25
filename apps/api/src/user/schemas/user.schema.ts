@@ -23,6 +23,9 @@ export class User {
 
   @Prop()
   resetPasswordExpiresAt?: Date;
+
+  @Prop({ default: 'yahoo-finance' })
+  tickerSource!: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
