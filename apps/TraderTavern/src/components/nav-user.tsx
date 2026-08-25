@@ -92,10 +92,14 @@ export function NavUser() {
                   Users
                 </DropdownMenuItem>
               )}
+              <DropdownMenuItem onClick={() => navigate('/settings')}>
+                <RiSettingsLine />
+                Settings
+              </DropdownMenuItem>
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
-                  <RiSettingsLine />
-                  Settings
+                  {theme === 'dark' ? <RiSunLine /> : <RiMoonLine />}
+                  Theme
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
                   <DropdownMenuItem onClick={toggleTheme}>
