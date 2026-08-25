@@ -1573,6 +1573,8 @@ components:
             - xtb
         credentials:
           type: object
+          additionalProperties:
+            type: string
           description: >-
             Broker credential fields with secret fields omitted and sensitive
             fields masked
@@ -1595,7 +1597,11 @@ components:
             - xtb
         credentials:
           type: object
-          description: Broker-specific credential fields (e.g. email/password, or apiKey)
+          additionalProperties:
+            type: string
+          description: >-
+            Broker-specific credential fields (e.g. accountId/password, or
+            apiKey)
       required:
         - broker
         - credentials

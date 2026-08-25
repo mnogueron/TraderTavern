@@ -10,7 +10,8 @@ export class BrokerConnectionDto {
   broker: BrokerType;
 
   @ApiProperty({
-    type: Object,
+    type: 'object',
+    additionalProperties: { type: 'string' },
     description: 'Broker credential fields with secret fields omitted and sensitive fields masked',
   })
   credentials: Record<string, string>;

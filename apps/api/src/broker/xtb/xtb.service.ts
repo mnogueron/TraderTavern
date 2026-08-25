@@ -9,7 +9,7 @@ import {
 } from '../../finance/schemas/ticker-static-data.schema';
 import { BrokerType } from '../enums/broker-type.enum';
 
-const XTB_WS_URL = 'wss://ws.xtb.com/real';
+const XTB_WS_URL = 'wss://ws.xapi.pro/real';
 const RESPONSE_TIMEOUT_MS = 15_000;
 
 interface XtbSymbol {
@@ -76,7 +76,7 @@ export class XtbService {
     credentials: Record<string, string>,
   ): Promise<void> {
     const response = await this.send(socket, 'login', {
-      userId: credentials.email,
+      userId: credentials.accountId,
       password: credentials.password,
     });
 

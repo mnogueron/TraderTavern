@@ -105,7 +105,7 @@ const BrokersSection = () => {
                   <p className="font-medium">{BROKER_LABELS[broker]}</p>
                   {connection ? (
                     <p className="text-sm text-muted-foreground tabular-nums">
-                      {connection.credentials.email}
+                      {connection.credentials.accountId}
                     </p>
                   ) : null}
                 </div>

@@ -827,15 +827,19 @@ export interface components {
             /** @enum {string} */
             broker: "xtb";
             /** @description Broker credential fields with secret fields omitted and sensitive fields masked */
-            credentials: Record<string, never>;
+            credentials: {
+                [key: string]: string;
+            };
             /** @enum {string} */
             status: "connected" | "error";
         };
         AddBrokerConnectionDto: {
             /** @enum {string} */
             broker: "xtb";
-            /** @description Broker-specific credential fields (e.g. email/password, or apiKey) */
-            credentials: Record<string, never>;
+            /** @description Broker-specific credential fields (e.g. accountId/password, or apiKey) */
+            credentials: {
+                [key: string]: string;
+            };
         };
     };
     responses: never;

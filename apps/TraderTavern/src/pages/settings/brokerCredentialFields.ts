@@ -12,7 +12,7 @@ export const BROKER_LABELS: Record<BrokerType, string> = {
 
 export const BROKER_CREDENTIAL_FIELDS: Record<BrokerType, BrokerCredentialField[]> = {
   xtb: [
-    { key: 'email', label: 'Email', type: 'email' },
+    { key: 'accountId', label: 'Account ID', type: 'text' },
     { key: 'password', label: 'Password', type: 'password' },
   ],
 };

@@ -8,8 +8,9 @@ export class AddBrokerConnectionDto {
   broker!: BrokerType;
 
   @ApiProperty({
-    type: Object,
-    description: 'Broker-specific credential fields (e.g. email/password, or apiKey)',
+    type: 'object',
+    additionalProperties: { type: 'string' },
+    description: 'Broker-specific credential fields (e.g. accountId/password, or apiKey)',
   })
   @IsObject()
   credentials!: Record<string, string>;
