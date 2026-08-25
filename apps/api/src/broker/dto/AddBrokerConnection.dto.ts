@@ -1,0 +1,17 @@
+import { ApiProperty } from '@nestjs/swagger';
+import { IsEnum, IsObject } from 'class-validator';
+import { BrokerType } from '../enums/broker-type.enum';
+
+export class AddBrokerConnectionDto {
+  @ApiProperty({ enum: BrokerType })
+  @IsEnum(BrokerType)
+  broker!: BrokerType;
+
+  @ApiProperty({
+    type: 'object',
+    additionalProperties: { type: 'string' },
+    description: 'Broker-specific credential fields (e.g. accountId/password, or apiKey)',
+  })
+  @IsObject()
+  credentials!: Record<string, string>;
+}

@@ -18,26 +18,43 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { JwtPayload } from '../auth/types/jwt-payload.type';
 import { Role } from '../shared/role.enum';
 import { SyncType } from './enums/sync-type.enum';
+import { UserService } from '../user/user.service';
 
 @Controller('finance')
 export class FinanceController {
   constructor(
     private readonly financeService: FinanceService,
     private readonly tickerSyncService: TickerSyncService,
+    private readonly userService: UserService,
   ) {}
+
+  private async resolveTickerSource(userId: string): Promise<string> {
+    const user = await this.userService.findById(userId);
+    return user?.tickerSource ?? 'yahoo-finance';
+  }
 
   @Get('screener')
   @Auth()
   @ApiOkResponse({ type: PaginatedTickerDto })
-  getScreener(@Query() query: GetScreenerDto): Promise<PaginatedTickerDto> {
-    return this.financeService.getScreener(query);
+  async getScreener(
+    @Query() query: GetScreenerDto,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<PaginatedTickerDto> {
+    const tickerSource = await this.resolveTickerSource(user.sub);
+    return this.financeService.getScreener(query, user.sub, tickerSource);
   }
 
   @Get('screener/filters/options')
   @Auth()
   @ApiOkResponse({ type: ScreenerFilterOptionsDto })
-  getScreenerFilterOptions(): Promise<ScreenerFilterOptionsDto> {
-    return this.financeService.getScreenerFilterOptions();
+  async getScreenerFilterOptions(
+    @CurrentUser() user: JwtPayload,
+  ): Promise<ScreenerFilterOptionsDto> {
+    const tickerSource = await this.resolveTickerSource(user.sub);
+    return this.financeService.getScreenerFilterOptions(
+      user.sub,
+      tickerSource,
+    );
   }
 
   @Get('sync/status')
