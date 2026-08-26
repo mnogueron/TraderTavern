@@ -6,6 +6,7 @@ import { DatabaseModule } from '../database/database.module';
 import { UserModule } from '../user/user.module';
 import { AuthModule } from '../auth/auth.module';
 import { FinanceModule } from '../finance/finance.module';
+import { TickerSourceModule } from '../ticker-source/ticker-source.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { FinanceModule } from '../finance/finance.module';
     UserModule,
     AuthModule,
     FinanceModule,
+    TickerSourceModule,
   ],
   controllers: [AppController],
   providers: [AppService],
