@@ -19,7 +19,13 @@ import { ChartContext } from './ChartContext';
 // Excludes "Custom" (lightweight-charts' plugin API for user-defined series
 // views) since it takes a view instance rather than a plain options object
 // and doesn't fit this component's data/options shape.
-type SeriesKind = 'Area' | 'Bar' | 'Baseline' | 'Candlestick' | 'Histogram' | 'Line';
+type SeriesKind =
+  | 'Area'
+  | 'Bar'
+  | 'Baseline'
+  | 'Candlestick'
+  | 'Histogram'
+  | 'Line';
 
 const SERIES_DEFINITIONS: { [T in SeriesKind]: SeriesDefinition<T> } = {
   Area: AreaSeries,
@@ -66,6 +72,8 @@ function Series<T extends SeriesKind>({
     );
     seriesRef.current = series;
     onCreated?.(series);
+
+    return;
 
     return () => {
       context.chart.removeSeries(series);
