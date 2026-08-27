@@ -374,6 +374,7 @@ export class FinanceService {
       fundamental.floatShares ?? null,
       fundamental.insidersPercent ?? null,
       fundamental.institutionsPercent ?? null,
+      fundamental.piotroskiScore ?? null,
       fundamental.sma50 ?? null,
       fundamental.sma200 ?? null,
       fundamental.beta ?? null,

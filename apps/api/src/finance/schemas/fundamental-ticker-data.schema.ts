@@ -190,6 +190,12 @@ export class FundamentalTickerData {
   @Prop()
   institutionsPercent?: number;
 
+  // Quality
+  // Not exposed by any Yahoo Finance module; computed from annual financial
+  // history (see ticker-sync.service.ts#computePiotroskiScore).
+  @Prop()
+  piotroskiScore?: number;
+
   // Technical (Yahoo-provided, no computation)
   @Prop()
   sma50?: number;

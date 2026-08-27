@@ -66,12 +66,19 @@ type FundamentalsTimeSeriesRow = {
   totalRevenue?: number;
   EBITDA?: number;
   netIncome?: number;
+  grossProfit?: number;
   operatingCashFlow?: number;
   freeCashFlow?: number;
   capitalExpenditure?: number;
   cashAndCashEquivalents?: number;
   totalDebt?: number;
   netDebt?: number;
+  totalAssets?: number;
+  currentAssets?: number;
+  currentLiabilities?: number;
+  longTermDebt?: number;
+  ordinarySharesNumber?: number;
+  shareIssued?: number;
 };
 
 type AnnualFinancialPeriodDraft = {
@@ -85,6 +92,108 @@ type AnnualFinancialPeriodDraft = {
   cash?: number;
   totalDebt?: number;
   netDebt?: number;
+};
+
+// Inputs for the Piotroski F-Score, gathered from the same annual
+// financials/cash-flow/balance-sheet rows as AnnualFinancialPeriodDraft but
+// kept separate since these fields aren't part of the public financial
+// history feature (see ticker-financial-history.schema.ts).
+type PiotroskiPeriodDraft = {
+  periodEnd: Date;
+  netIncome?: number;
+  totalAssets?: number;
+  operatingCashflow?: number;
+  longTermDebt?: number;
+  currentAssets?: number;
+  currentLiabilities?: number;
+  grossProfit?: number;
+  revenue?: number;
+  sharesOutstanding?: number;
+};
+
+// Yahoo Finance doesn't expose a Piotroski F-Score in any quoteSummary or
+// fundamentalsTimeSeries module, so it's always computed here from the two
+// most recent annual periods rather than read directly from the API.
+// Returns undefined if either period is missing a required figure.
+const computePiotroskiScore = (
+  current: PiotroskiPeriodDraft,
+  prior: PiotroskiPeriodDraft,
+): number | undefined => {
+  const {
+    netIncome: netIncomeCur,
+    totalAssets: totalAssetsCur,
+    operatingCashflow: operatingCashflowCur,
+    longTermDebt: longTermDebtCur,
+    currentAssets: currentAssetsCur,
+    currentLiabilities: currentLiabilitiesCur,
+    grossProfit: grossProfitCur,
+    revenue: revenueCur,
+    sharesOutstanding: sharesOutstandingCur,
+  } = current;
+  const {
+    netIncome: netIncomePrior,
+    totalAssets: totalAssetsPrior,
+    operatingCashflow: operatingCashflowPrior,
+    longTermDebt: longTermDebtPrior,
+    currentAssets: currentAssetsPrior,
+    currentLiabilities: currentLiabilitiesPrior,
+    grossProfit: grossProfitPrior,
+    revenue: revenuePrior,
+    sharesOutstanding: sharesOutstandingPrior,
+  } = prior;
+
+  if (
+    netIncomeCur == null ||
+    totalAssetsCur == null ||
+    operatingCashflowCur == null ||
+    longTermDebtCur == null ||
+    currentAssetsCur == null ||
+    currentLiabilitiesCur == null ||
+    grossProfitCur == null ||
+    revenueCur == null ||
+    sharesOutstandingCur == null ||
+    netIncomePrior == null ||
+    totalAssetsPrior == null ||
+    operatingCashflowPrior == null ||
+    longTermDebtPrior == null ||
+    currentAssetsPrior == null ||
+    currentLiabilitiesPrior == null ||
+    grossProfitPrior == null ||
+    revenuePrior == null ||
+    sharesOutstandingPrior == null ||
+    totalAssetsCur === 0 ||
+    totalAssetsPrior === 0 ||
+    currentLiabilitiesCur === 0 ||
+    currentLiabilitiesPrior === 0 ||
+    revenueCur === 0 ||
+    revenuePrior === 0
+  ) {
+    return undefined;
+  }
+
+  const roaCur = netIncomeCur / totalAssetsCur;
+  const roaPrior = netIncomePrior / totalAssetsPrior;
+  const leverageCur = longTermDebtCur / totalAssetsCur;
+  const leveragePrior = longTermDebtPrior / totalAssetsPrior;
+  const currentRatioCur = currentAssetsCur / currentLiabilitiesCur;
+  const currentRatioPrior = currentAssetsPrior / currentLiabilitiesPrior;
+  const grossMarginCur = grossProfitCur / revenueCur;
+  const grossMarginPrior = grossProfitPrior / revenuePrior;
+  const assetTurnoverCur = revenueCur / totalAssetsCur;
+  const assetTurnoverPrior = revenuePrior / totalAssetsPrior;
+
+  let score = 0;
+  if (roaCur > 0) score += 1; // profitable
+  if (operatingCashflowCur > 0) score += 1; // positive operating cash flow
+  if (roaCur > roaPrior) score += 1; // improving profitability
+  if (operatingCashflowCur > netIncomeCur) score += 1; // earnings quality
+  if (leverageCur < leveragePrior) score += 1; // decreasing leverage
+  if (currentRatioCur > currentRatioPrior) score += 1; // improving liquidity
+  if (sharesOutstandingCur <= sharesOutstandingPrior) score += 1; // no dilution
+  if (grossMarginCur > grossMarginPrior) score += 1; // improving margin
+  if (assetTurnoverCur > assetTurnoverPrior) score += 1; // improving efficiency
+
+  return score;
 };
 
 type SyncTrigger = {
@@ -650,28 +759,67 @@ export class TickerSyncService {
       return entry;
     };
 
+    const piotroskiByPeriodEnd = new Map<string, PiotroskiPeriodDraft>();
+    const getOrCreatePiotroski = (date: Date): PiotroskiPeriodDraft => {
+      const key = date.toISOString();
+      let entry = piotroskiByPeriodEnd.get(key);
+      if (!entry) {
+        entry = { periodEnd: date };
+        piotroskiByPeriodEnd.set(key, entry);
+      }
+      return entry;
+    };
+
     for (const row of financials) {
       const entry = getOrCreate(row.date);
       entry.revenue = row.totalRevenue;
       entry.ebitda = row.EBITDA;
       entry.netIncome = row.netIncome;
+
+      const piotroski = getOrCreatePiotroski(row.date);
+      piotroski.revenue = row.totalRevenue;
+      piotroski.netIncome = row.netIncome;
+      piotroski.grossProfit = row.grossProfit;
     }
     for (const row of cashFlow) {
       const entry = getOrCreate(row.date);
       entry.operatingCashflow = row.operatingCashFlow;
       entry.freeCashflow = row.freeCashFlow;
       entry.capex = row.capitalExpenditure;
+
+      const piotroski = getOrCreatePiotroski(row.date);
+      piotroski.operatingCashflow = row.operatingCashFlow;
     }
     for (const row of balanceSheet) {
       const entry = getOrCreate(row.date);
       entry.cash = row.cashAndCashEquivalents;
       entry.totalDebt = row.totalDebt;
       entry.netDebt = row.netDebt;
+
+      const piotroski = getOrCreatePiotroski(row.date);
+      piotroski.totalAssets = row.totalAssets;
+      piotroski.currentAssets = row.currentAssets;
+      piotroski.currentLiabilities = row.currentLiabilities;
+      piotroski.longTermDebt = row.longTermDebt;
+      piotroski.sharesOutstanding = row.ordinarySharesNumber ?? row.shareIssued;
     }
 
-    return Array.from(byPeriodEnd.values()).sort(
+    const piotroskiPeriods = Array.from(piotroskiByPeriodEnd.values()).sort(
       (a, b) => a.periodEnd.getTime() - b.periodEnd.getTime(),
     );
+    const [priorPiotroskiPeriod, latestPiotroskiPeriod] =
+      piotroskiPeriods.slice(-2);
+    const piotroskiScore =
+      latestPiotroskiPeriod && priorPiotroskiPeriod
+        ? computePiotroskiScore(latestPiotroskiPeriod, priorPiotroskiPeriod)
+        : undefined;
+
+    return {
+      periods: Array.from(byPeriodEnd.values()).sort(
+        (a, b) => a.periodEnd.getTime() - b.periodEnd.getTime(),
+      ),
+      piotroskiScore,
+    };
   }
 
   private async fetchQuarterlyRevenueHistory(
@@ -703,20 +851,26 @@ export class TickerSyncService {
 
     await this.updateStaticData(ref, quoteSummary);
     await this.updateCompound(ref, syncDate, quoteSummary, chart);
-    await this.updateFundamental(ref, syncDate, quoteSummary);
-    await this.updateFinancialHistory(ref);
+    const piotroskiScore = await this.updateFinancialHistory(ref);
+    await this.updateFundamental(ref, syncDate, quoteSummary, piotroskiScore);
     await this.updateEarningsHistory(ref, quoteSummary);
     await this.syncTechnical(ref);
   }
 
-  private async updateFinancialHistory(ref: TickerRef): Promise<void> {
-    const annual = await this.fetchFinancialHistory(ref.ticker);
+  private async updateFinancialHistory(
+    ref: TickerRef,
+  ): Promise<number | undefined> {
+    const { periods, piotroskiScore } = await this.fetchFinancialHistory(
+      ref.ticker,
+    );
 
     await this.tickerFinancialHistoryModel.updateOne(
       { isin: ref.isin },
-      { $set: { isin: ref.isin, ticker: ref.ticker, annual } },
+      { $set: { isin: ref.isin, ticker: ref.ticker, annual: periods } },
       { upsert: true },
     );
+
+    return piotroskiScore;
   }
 
   private async updateEarningsHistory(
@@ -1106,9 +1260,24 @@ export class TickerSyncService {
     ref: TickerRef,
     syncDate: Date,
     quoteSummary: Awaited<ReturnType<typeof this.fetchQuoteSummary>>,
+    piotroskiScore?: number,
   ): Promise<void> {
     const { price, summaryDetail, financialData, defaultKeyStatistics } =
       quoteSummary;
+
+    // The score only changes with annual filings and is freshly computed by
+    // updateFinancialHistory as part of the full ticker sync; on syncs that
+    // don't recompute it (e.g. the fundamental-only cadence), carry the last
+    // known value forward instead of dropping it from that day's snapshot.
+    const resolvedPiotroskiScore =
+      piotroskiScore ??
+      (
+        await this.fundamentalTickerDataModel
+          .findOne({ isin: ref.isin })
+          .sort({ syncDate: -1 })
+          .select('piotroskiScore')
+          .lean()
+      )?.piotroskiScore;
 
     const totalRevenue = financialData?.totalRevenue;
     const freeCashflow = financialData?.freeCashflow;
@@ -1228,6 +1397,9 @@ export class TickerSyncService {
           institutionsPercent: toPercent(
             defaultKeyStatistics?.heldPercentInstitutions,
           ),
+
+          // Quality
+          piotroskiScore: resolvedPiotroskiScore,
 
           // Technical (directly from Yahoo, no computation)
           sma50: summaryDetail?.fiftyDayAverage,

@@ -179,6 +179,14 @@ export class FundamentalTickerDto {
   @ApiProperty({ nullable: true, type: Number, description: 'In percent' })
   institutionsPercent: number | null;
 
+  // Quality
+  @ApiProperty({
+    nullable: true,
+    type: Number,
+    description: 'Piotroski F-Score (0-9)',
+  })
+  piotroskiScore: number | null;
+
   // Technical
   @ApiProperty({ nullable: true, type: Number })
   sma50: number | null;
@@ -262,6 +270,7 @@ export class FundamentalTickerDto {
     floatShares: number | null,
     insidersPercent: number | null,
     institutionsPercent: number | null,
+    piotroskiScore: number | null,
     sma50: number | null,
     sma200: number | null,
     beta: number | null,
@@ -326,6 +335,7 @@ export class FundamentalTickerDto {
     this.floatShares = floatShares;
     this.insidersPercent = insidersPercent;
     this.institutionsPercent = institutionsPercent;
+    this.piotroskiScore = piotroskiScore;
     this.sma50 = sma50;
     this.sma200 = sma200;
     this.beta = beta;
