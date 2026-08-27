@@ -1350,6 +1350,10 @@ components:
           type: number
           nullable: true
           description: In percent
+        piotroskiScore:
+          type: number
+          nullable: true
+          description: Piotroski F-Score (0-9)
         sma50:
           type: number
           nullable: true
@@ -1433,6 +1437,7 @@ components:
         - floatShares
         - insidersPercent
         - institutionsPercent
+        - piotroskiScore
         - sma50
         - sma200
         - beta
