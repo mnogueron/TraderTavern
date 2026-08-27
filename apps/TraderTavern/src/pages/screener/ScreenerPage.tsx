@@ -53,7 +53,7 @@ const ScreenerPage = () => {
   );
 
   const configs = useMemo(
-    () => buildScreenerFilterConfigs(filterOptions ?? { tickers: [], sectors: [], industries: [], countries: [], markets: [], currencies: [], analystRatings: [] }),
+    () => buildScreenerFilterConfigs(filterOptions ?? { sectors: [], industries: [], countries: [], markets: [], currencies: [], analystRatings: [] }),
     [filterOptions],
   );
 

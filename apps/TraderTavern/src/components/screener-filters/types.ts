@@ -34,6 +34,16 @@ export type MultiSelectScreenerFilterConfig = {
   options: ScreenerFilterOption[];
 };
 
+// Like `multiselect`, but the option list is paginated/searched from the
+// server rather than known upfront (e.g. tickers, which can number in the
+// thousands), so there's no static `options` array.
+export type AsyncMultiSelectScreenerFilterConfig = {
+  type: 'async-multiselect';
+  key: string;
+  label: string;
+  category: ScreenerFilterCategory;
+};
+
 export type SelectScreenerFilterConfig = {
   type: 'select';
   key: string;
@@ -68,6 +78,7 @@ export type BooleanScreenerFilterConfig = {
 
 export type ScreenerFilterConfig =
   | MultiSelectScreenerFilterConfig
+  | AsyncMultiSelectScreenerFilterConfig
   | SelectScreenerFilterConfig
   | MinMaxScreenerFilterConfig
   | NumberScreenerFilterConfig

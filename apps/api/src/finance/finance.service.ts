@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { UserService } from '../user/user.service';
+import { TickerSource, TickerSourceDocument } from '../ticker-source/schemas/ticker-source.schema';
 import { TickerDto } from './dto/Ticker.dto';
 import { FundamentalTickerDto } from './dto/FundamentalTicker.dto';
 import { CandleDto } from './dto/Candle.dto';
@@ -42,7 +44,9 @@ import {
   TickerEarningsHistoryDocument,
 } from './schemas/ticker-earnings-history.schema';
 import { GetScreenerDto } from './dto/GetScreener.dto';
+import { GetScreenerTickerOptionsDto } from './dto/GetScreenerTickerOptions.dto';
 import { PaginatedTickerDto } from './dto/PaginatedTicker.dto';
+import { PaginatedTickerOptionDto } from './dto/PaginatedTickerOption.dto';
 import { ScreenerFilterOptionsDto } from './dto/ScreenerFilterOptions.dto';
 import { SyncStatusDto } from './dto/SyncStatus.dto';
 import { SyncHistory, SyncHistoryDocument } from './schemas/sync-history.schema';
@@ -59,6 +63,9 @@ type WithUpdatedAt = { updatedAt: Date };
 export class FinanceService {
   constructor(
     private readonly tickerSyncService: TickerSyncService,
+    private readonly userService: UserService,
+    @InjectModel(TickerSource.name)
+    private readonly tickerSourceModel: Model<TickerSourceDocument>,
     @InjectModel(TickerStaticData.name)
     private readonly tickerStaticDataModel: Model<TickerStaticDataDocument>,
     @InjectModel(CompoundTechnicalTickerData.name)
@@ -77,15 +84,84 @@ export class FinanceService {
     private readonly syncHistoryModel: Model<SyncHistoryDocument>,
   ) {}
 
-  private async getScreenerTickerOptions(): Promise<TickerOptionDto[]> {
-    const staticData = await this.tickerStaticDataModel
-      .find()
-      .select('ticker companyName')
-      .sort({ ticker: 1 })
-      .lean();
+  // Escapes regex metacharacters so user-provided search text can be used
+  // safely inside a MongoDB $regex match.
+  private escapeRegex(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
 
-    return staticData.map(
-      (ticker) => new TickerOptionDto(ticker.ticker, ticker.companyName),
+  async getScreenerTickerOptions(
+    userId: string,
+    query: GetScreenerTickerOptionsDto,
+  ): Promise<PaginatedTickerOptionDto> {
+    const user = await this.userService.findById(userId);
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const skip = (page - 1) * limit;
+
+    const searchMatch = query.search?.trim()
+      ? {
+          $or: [
+            { ticker: { $regex: this.escapeRegex(query.search.trim()), $options: 'i' } },
+            {
+              companyName: {
+                $regex: this.escapeRegex(query.search.trim()),
+                $options: 'i',
+              },
+            },
+          ],
+        }
+      : null;
+
+    const [result] = await this.tickerSourceModel.aggregate<{
+      data: { isin: string; ticker: string; companyName: string }[];
+      totalCount: { count: number }[];
+    }>([
+      { $match: { source: user.tickerSource } },
+      {
+        $lookup: {
+          from: 'ticker_static_data',
+          localField: 'isin',
+          foreignField: 'isin',
+          as: 'staticData',
+        },
+      },
+      {
+        $addFields: {
+          companyName: {
+            $ifNull: [{ $arrayElemAt: ['$staticData.companyName', 0] }, '$ticker'],
+          },
+        },
+      },
+      ...(searchMatch ? [{ $match: searchMatch }] : []),
+      { $sort: { companyName: 1, ticker: 1 } },
+      {
+        $facet: {
+          data: [
+            { $skip: skip },
+            { $limit: limit },
+            { $project: { _id: 0, isin: 1, ticker: 1, companyName: 1 } },
+          ],
+          totalCount: [{ $count: 'count' }],
+        },
+      },
+    ]);
+
+    const total = result?.totalCount[0]?.count ?? 0;
+    const data = (result?.data ?? []).map(
+      (row) => new TickerOptionDto(row.isin, row.ticker, row.companyName),
+    );
+
+    return new PaginatedTickerOptionDto(
+      data,
+      page,
+      limit,
+      total,
+      Math.max(Math.ceil(total / limit), 1),
     );
   }
 
@@ -112,13 +188,9 @@ export class FinanceService {
   }
 
   async getScreenerFilterOptions(): Promise<ScreenerFilterOptionsDto> {
-    const [tickerOptions, tickers] = await Promise.all([
-      this.getScreenerTickerOptions(),
-      this.buildScreenerTickers(),
-    ]);
+    const tickers = await this.buildScreenerTickers();
 
     return new ScreenerFilterOptionsDto({
-      tickers: tickerOptions,
       sectors: this.uniqueSorted(tickers.map((t) => t.sector)),
       industries: this.uniqueSorted(tickers.map((t) => t.industry)),
       countries: this.uniqueSorted(tickers.map((t) => t.country)),
@@ -143,11 +215,11 @@ export class FinanceService {
         this.marketHoursModel.find().lean(),
       ]);
 
-    const technicalByTicker = new Map(
-      technicalData.map((doc) => [doc.ticker, doc]),
+    const technicalByIsin = new Map(
+      technicalData.map((doc) => [doc.isin, doc]),
     );
-    const fundamentalByTicker = new Map(
-      fundamentalData.map((doc) => [doc.ticker, doc]),
+    const fundamentalByIsin = new Map(
+      fundamentalData.map((doc) => [doc.isin, doc]),
     );
     const marketLabelByCode = new Map(
       marketHours.map((doc) => [doc.market, doc.label]),
@@ -156,8 +228,8 @@ export class FinanceService {
     return staticData.map((ticker) =>
       this.toTickerDto(
         ticker,
-        technicalByTicker.get(ticker.ticker),
-        fundamentalByTicker.get(ticker.ticker),
+        technicalByIsin.get(ticker.isin),
+        fundamentalByIsin.get(ticker.isin),
         (ticker.market && marketLabelByCode.get(ticker.market)) ?? null,
       ),
     );
@@ -405,6 +477,7 @@ export class FinanceService {
     marketLabel: string | null,
   ): TickerDto {
     return new TickerDto({
+      isin: staticData.isin,
       ticker: staticData.ticker,
       companyName: staticData.companyName,
       sector: staticData.sector ?? null,
@@ -492,13 +565,13 @@ export class FinanceService {
     });
   }
 
-  private latestPerTicker<T extends { ticker: string; syncDate: Date }>(
+  private latestPerTicker<T extends { isin: string; syncDate: Date }>(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     model: Model<any>,
   ): Promise<T[]> {
     return model.aggregate<T>([
       { $sort: { syncDate: -1 } },
-      { $group: { _id: '$ticker', doc: { $first: '$$ROOT' } } },
+      { $group: { _id: '$isin', doc: { $first: '$$ROOT' } } },
       { $replaceRoot: { newRoot: '$doc' } },
     ]);
   }

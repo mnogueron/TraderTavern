@@ -8,6 +8,7 @@ import { TickerSourceType } from './enums/ticker-source-type.enum';
 import { TickerSourceSyncStatusDto } from './dto/TickerSourceSyncStatus.dto';
 import { parseXtbOmiText } from './xtb-omi.parser';
 import { SCREENER_TICKERS } from '../finance/constants/tickers';
+import { YahooRateLimiterService } from '../shared/yahoo-rate-limiter.service';
 
 const yahooFinance = new YahooFinance();
 
@@ -46,6 +47,7 @@ export class TickerSourceService {
   constructor(
     @InjectModel(TickerSource.name)
     private readonly tickerSourceModel: Model<TickerSourceDocument>,
+    private readonly yahooRateLimiter: YahooRateLimiterService,
   ) {}
 
   isSyncing(source: TickerSourceType): boolean {
@@ -101,6 +103,15 @@ export class TickerSourceService {
     }) != null;
   }
 
+  // Reverse lookup for admin single-ticker sync endpoints, which are
+  // addressed by the Yahoo ticker symbol rather than the ISIN.
+  async findIsinByYahooTicker(ticker: string): Promise<string | null> {
+    const found = await this.tickerSourceModel
+      .findOne({ ticker, source: TickerSourceType.Yahoo })
+      .lean();
+    return found?.isin ?? null;
+  }
+
   // Resolves an ISIN to its Yahoo Finance ticker symbol, since tickers from
   // other sources (e.g. XTB) aren't the same string Yahoo expects. Results
   // are cached in ticker_sources (source=yahoo) so this only costs a Yahoo
@@ -114,11 +125,14 @@ export class TickerSourceService {
       return existing.ticker;
     }
 
-    const result = (await yahooFinance.search(
-      isin,
-      { quotesCount: 5 },
-      { validateResult: false },
+    const startedAt = Date.now();
+    this.logger.debug(`Resolving Yahoo ticker for ISIN ${isin}...`);
+    const result = (await this.yahooRateLimiter.schedule(() =>
+      yahooFinance.search(isin, { quotesCount: 5 }, { validateResult: false }),
     )) as { quotes?: RawYahooSearchQuote[] };
+    this.logger.debug(
+      `Resolved Yahoo ticker lookup for ISIN ${isin} in ${Date.now() - startedAt}ms`,
+    );
 
     // Unlike a ticker->ISIN search, Yahoo's ISIN->ticker search results don't
     // carry an `isin` field to match against — searching by ISIN already
@@ -192,10 +206,8 @@ export class TickerSourceService {
     isin?: string;
     currency?: string;
   }> {
-    const result = (await yahooFinance.search(
-      ticker,
-      { quotesCount: 5 },
-      { validateResult: false },
+    const result = (await this.yahooRateLimiter.schedule(() =>
+      yahooFinance.search(ticker, { quotesCount: 5 }, { validateResult: false }),
     )) as { quotes?: RawYahooSearchQuote[] };
 
     const match = (result.quotes ?? []).find((quote) => quote.symbol === ticker);

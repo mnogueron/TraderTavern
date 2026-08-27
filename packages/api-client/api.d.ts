@@ -164,6 +164,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/finance/screener/filters/tickers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getScreenerTickerOptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/finance/sync/status": {
         parameters: {
             query?: never;
@@ -529,6 +545,7 @@ export interface components {
             success?: boolean;
         };
         TickerDto: {
+            isin: string;
             ticker: string;
             companyName: string;
             sector: string | null;
@@ -666,18 +683,22 @@ export interface components {
             data: components["schemas"]["TickerDto"][];
             meta: components["schemas"]["PaginationMetaDto"];
         };
-        TickerOptionDto: {
-            ticker: string;
-            companyName: string;
-        };
         ScreenerFilterOptionsDto: {
-            tickers: components["schemas"]["TickerOptionDto"][];
             sectors: string[];
             industries: string[];
             countries: string[];
             markets: string[];
             currencies: string[];
             analystRatings: string[];
+        };
+        TickerOptionDto: {
+            isin: string;
+            ticker: string;
+            companyName: string;
+        };
+        PaginatedTickerOptionDto: {
+            data: components["schemas"]["TickerOptionDto"][];
+            meta: components["schemas"]["PaginationMetaDto"];
         };
         SyncStatusDto: {
             /** Format: date-time */
@@ -1068,6 +1089,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScreenerFilterOptionsDto"];
+                };
+            };
+        };
+    };
+    getScreenerTickerOptions: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                /** @description Fuzzy search on ticker or company name */
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedTickerOptionDto"];
                 };
             };
         };

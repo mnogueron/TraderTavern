@@ -40,14 +40,10 @@ export const buildScreenerFilterConfigs = (
 ): ScreenerFilterConfig[] => [
   // Descriptive
   {
-    type: 'multiselect',
+    type: 'async-multiselect',
     key: 'ticker',
     label: 'Ticker',
     category: 'descriptive',
-    options: filterOptions.tickers.map((option) => ({
-      value: option.ticker,
-      label: `${option.ticker} · ${option.companyName}`,
-    })),
   },
   {
     type: 'multiselect',

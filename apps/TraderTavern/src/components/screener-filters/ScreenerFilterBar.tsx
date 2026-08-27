@@ -5,10 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import MultiSelectFilterControl from '@/components/screener-filters/MultiSelectFilterControl';
+import AsyncMultiSelectFilterControl from '@/components/screener-filters/AsyncMultiSelectFilterControl';
 import SelectFilterControl from '@/components/screener-filters/SelectFilterControl';
 import MinMaxFilterControl from '@/components/screener-filters/MinMaxFilterControl';
 import NumberFilterControl from '@/components/screener-filters/NumberFilterControl';
 import BooleanFilterControl from '@/components/screener-filters/BooleanFilterControl';
+import { getCachedTickerLabel } from '@/components/screener-filters/tickerLabelCache';
 import {
   isFilterValueActive,
   SCREENER_FILTER_CATEGORY_LABELS,
@@ -30,6 +32,7 @@ const DEFAULT_VALUE_BY_TYPE: Record<
   ScreenerFilterValue
 > = {
   multiselect: { type: 'multiselect', values: [] },
+  'async-multiselect': { type: 'multiselect', values: [] },
   select: { type: 'select', value: null },
   minmax: { type: 'minmax', min: null, max: null },
   number: { type: 'number', value: null },
@@ -73,6 +76,11 @@ const describeFilterValue = (
 ): string => {
   switch (value.type) {
     case 'multiselect': {
+      if (config.type === 'async-multiselect') {
+        const labels = value.values.map((v) => getCachedTickerLabel(v) ?? v);
+        if (labels.length <= 2) return `${config.label}: ${labels.join(', ')}`;
+        return `${config.label}: ${labels.slice(0, 2).join(', ')} +${labels.length - 2}`;
+      }
       if (config.type !== 'multiselect') return config.label;
       const labels = value.values.map(
         (v) => config.options.find((o) => o.value === v)?.label ?? v,
@@ -133,6 +141,15 @@ const ScreenerFilterBar = ({
       case 'multiselect':
         return (
           <MultiSelectFilterControl
+            key={config.key}
+            config={config}
+            value={value as MultiSelectScreenerFilterValue}
+            onChange={(next) => onChange(config.key, next)}
+          />
+        );
+      case 'async-multiselect':
+        return (
+          <AsyncMultiSelectFilterControl
             key={config.key}
             config={config}
             value={value as MultiSelectScreenerFilterValue}

@@ -7,6 +7,9 @@ export type CompoundTechnicalTickerDataDocument =
 @Schema({ collection: 'compound_technical_ticker_data', timestamps: true })
 export class CompoundTechnicalTickerData {
   @Prop({ required: true })
+  isin!: string;
+
+  @Prop({ required: true })
   ticker!: string;
 
   @Prop({ required: true })
@@ -77,6 +80,6 @@ export const CompoundTechnicalTickerDataSchema = SchemaFactory.createForClass(
   CompoundTechnicalTickerData,
 );
 CompoundTechnicalTickerDataSchema.index(
-  { ticker: 1, syncDate: -1 },
+  { isin: 1, syncDate: -1 },
   { unique: true },
 );
