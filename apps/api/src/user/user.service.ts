@@ -5,9 +5,16 @@ import { PaginationDto } from '../shared/Pagination.dto';
 import { PaginatedUserDto } from './PaginatedUser.dto';
 import { UserDto } from '../shared/User.dto';
 import { User, UserDocument } from './schemas/user.schema';
+import { TickerSourceType } from '../ticker-source/enums/ticker-source-type.enum';
 
 const toUserDto = (user: UserDocument): UserDto =>
-  new UserDto(user._id.toString(), user.username, user.email, user.role);
+  new UserDto(
+    user._id.toString(),
+    user.username,
+    user.email,
+    user.role,
+    user.tickerSource,
+  );
 
 @Injectable()
 export class UserService {
@@ -46,6 +53,13 @@ export class UserService {
 
   async findById(id: string): Promise<UserDocument | null> {
     return this.userModel.findById(id).exec();
+  }
+
+  async updateTickerSource(
+    id: string,
+    tickerSource: TickerSourceType,
+  ): Promise<UserDocument | null> {
+    return this.userModel.findByIdAndUpdate(id, { tickerSource }, { new: true }).exec();
   }
 
   async create(user: {

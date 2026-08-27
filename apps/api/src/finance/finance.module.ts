@@ -5,6 +5,10 @@ import { FinanceController } from './finance.controller';
 import { FinanceService } from './finance.service';
 import { TickerSyncService } from './ticker-sync.service';
 import { AuthModule } from '../auth/auth.module';
+import { UserModule } from '../user/user.module';
+import { SharedModule } from '../shared/shared.module';
+import { TickerSourceModule } from '../ticker-source/ticker-source.module';
+import { TickerSource, TickerSourceSchema } from '../ticker-source/schemas/ticker-source.schema';
 import { TickerStaticData, TickerStaticDataSchema } from './schemas/ticker-static-data.schema';
 import {
   CompoundTechnicalTickerData,
@@ -32,6 +36,9 @@ import {
 @Module({
   imports: [
     AuthModule,
+    UserModule,
+    SharedModule,
+    TickerSourceModule,
     ScheduleModule.forRoot(),
     MongooseModule.forFeature([
       { name: TickerStaticData.name, schema: TickerStaticDataSchema },
@@ -51,6 +58,7 @@ import {
         name: TickerEarningsHistory.name,
         schema: TickerEarningsHistorySchema,
       },
+      { name: TickerSource.name, schema: TickerSourceSchema },
     ]),
   ],
   controllers: [FinanceController],

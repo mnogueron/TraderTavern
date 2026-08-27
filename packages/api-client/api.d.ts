@@ -36,6 +36,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/user/me/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["updateSettings"];
+        trace?: never;
+    };
     "/auth/register": {
         parameters: {
             query?: never;
@@ -140,6 +156,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getScreenerFilterOptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/screener/filters/tickers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getScreenerTickerOptions"];
         put?: never;
         post?: never;
         delete?: never;
@@ -420,6 +452,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/ticker-source/{source}/sync/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getTickerSourceSyncStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ticker-source/yahoo/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["syncYahoo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ticker-source/xtb/sync/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["syncXtb"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -429,6 +509,8 @@ export interface components {
             username: string;
             email: string;
             role: string;
+            /** @enum {string} */
+            tickerSource: "yahoo" | "xtb";
         };
         PaginationMetaDto: {
             page: number;
@@ -439,6 +521,10 @@ export interface components {
         PaginatedUserDto: {
             data: components["schemas"]["UserDto"][];
             meta: components["schemas"]["PaginationMetaDto"];
+        };
+        UpdateUserSettingsDto: {
+            /** @enum {string} */
+            tickerSource: "yahoo" | "xtb";
         };
         RegisterDto: {
             username: string;
@@ -459,6 +545,7 @@ export interface components {
             success?: boolean;
         };
         TickerDto: {
+            isin: string;
             ticker: string;
             companyName: string;
             sector: string | null;
@@ -596,18 +683,22 @@ export interface components {
             data: components["schemas"]["TickerDto"][];
             meta: components["schemas"]["PaginationMetaDto"];
         };
-        TickerOptionDto: {
-            ticker: string;
-            companyName: string;
-        };
         ScreenerFilterOptionsDto: {
-            tickers: components["schemas"]["TickerOptionDto"][];
             sectors: string[];
             industries: string[];
             countries: string[];
             markets: string[];
             currencies: string[];
             analystRatings: string[];
+        };
+        TickerOptionDto: {
+            isin: string;
+            ticker: string;
+            companyName: string;
+        };
+        PaginatedTickerOptionDto: {
+            data: components["schemas"]["TickerOptionDto"][];
+            meta: components["schemas"]["PaginationMetaDto"];
         };
         SyncStatusDto: {
             /** Format: date-time */
@@ -770,6 +861,16 @@ export interface components {
             /** @description HH:mm, local to timezone */
             postMarketClose: string | null;
         };
+        TickerSourceSyncStatusDto: {
+            /** @enum {string} */
+            source: "yahoo" | "xtb";
+            /** Format: date-time */
+            lastSyncedAt: string | null;
+            /** Format: date-time */
+            sourceUpdatedAt: string | null;
+            tickerCount: number;
+            isSyncing: boolean;
+        };
     };
     responses: never;
     parameters: never;
@@ -814,6 +915,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedUserDto"];
+                };
+            };
+        };
+    };
+    updateSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateUserSettingsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserDto"];
                 };
             };
         };
@@ -965,6 +1089,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScreenerFilterOptionsDto"];
+                };
+            };
+        };
+    };
+    getScreenerTickerOptions: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                /** @description Fuzzy search on ticker or company name */
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedTickerOptionDto"];
                 };
             };
         };
@@ -1293,6 +1441,68 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["MarketHoursDto"];
                 };
+            };
+        };
+    };
+    getTickerSourceSyncStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source: "yahoo" | "xtb";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TickerSourceSyncStatusDto"];
+                };
+            };
+        };
+    };
+    syncYahoo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    syncXtb: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

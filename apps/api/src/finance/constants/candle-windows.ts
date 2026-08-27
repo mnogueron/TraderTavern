@@ -51,3 +51,11 @@ export const SYNC_CONCURRENCY_ENV_VAR = 'SYNC_TICKER_CONCURRENCY';
 // shared rate limiter, so this mostly shortens wall-clock time rather than
 // increasing Yahoo request pressure.
 export const DEFAULT_SYNC_CONCURRENCY = 5;
+
+// Env var holding how many tickers make up one sync_history chunk.
+export const SYNC_CHUNK_SIZE_ENV_VAR = 'SYNC_CHUNK_SIZE';
+
+// With ~8000 tickers across all configured sources, one chunk per
+// EVERY_10_MINUTES cron tick spreads a full day's sync out over several
+// hours instead of one long run that would trip Yahoo's rate limiting.
+export const DEFAULT_SYNC_CHUNK_SIZE = 200;

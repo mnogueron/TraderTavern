@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { Role } from '../../shared/role.enum';
+import { TickerSourceType } from '../../ticker-source/enums/ticker-source-type.enum';
 
 export type UserDocument = HydratedDocument<User>;
 
@@ -17,6 +18,14 @@ export class User {
 
   @Prop({ type: String, required: true, enum: Role, default: Role.User })
   role!: Role;
+
+  @Prop({
+    type: String,
+    required: true,
+    enum: TickerSourceType,
+    default: TickerSourceType.Yahoo,
+  })
+  tickerSource!: TickerSourceType;
 
   @Prop()
   resetPasswordTokenHash?: string;

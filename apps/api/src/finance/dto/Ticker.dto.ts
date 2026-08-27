@@ -2,6 +2,9 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class TickerDto {
   @ApiProperty()
+  isin!: string;
+
+  @ApiProperty()
   ticker!: string;
 
   @ApiProperty()
@@ -274,6 +277,7 @@ export class TickerDto {
   avgVolume10d!: number | null;
 
   constructor(fields: {
+    isin: string;
     ticker: string;
     companyName: string;
     sector: string | null;

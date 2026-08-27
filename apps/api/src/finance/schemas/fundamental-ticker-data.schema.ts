@@ -7,6 +7,9 @@ export type FundamentalTickerDataDocument =
 @Schema({ collection: 'fundamental_ticker_data', timestamps: true })
 export class FundamentalTickerData {
   @Prop({ required: true })
+  isin!: string;
+
+  @Prop({ required: true })
   ticker!: string;
 
   @Prop({ required: true })
@@ -211,6 +214,6 @@ export const FundamentalTickerDataSchema = SchemaFactory.createForClass(
   FundamentalTickerData,
 );
 FundamentalTickerDataSchema.index(
-  { ticker: 1, syncDate: -1 },
+  { isin: 1, syncDate: -1 },
   { unique: true },
 );

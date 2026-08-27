@@ -1,10 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { TickerOptionDto } from './TickerOption.dto';
 
 export class ScreenerFilterOptionsDto {
-  @ApiProperty({ type: TickerOptionDto, isArray: true })
-  tickers!: TickerOptionDto[];
-
   @ApiProperty({ type: String, isArray: true })
   sectors!: string[];
 
@@ -24,7 +20,6 @@ export class ScreenerFilterOptionsDto {
   analystRatings!: string[];
 
   constructor(fields: {
-    tickers: TickerOptionDto[];
     sectors: string[];
     industries: string[];
     countries: string[];

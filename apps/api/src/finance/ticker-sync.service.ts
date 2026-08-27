@@ -1,22 +1,27 @@
+import { createHash } from 'crypto';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Model } from 'mongoose';
 import YahooFinance from 'yahoo-finance2';
-import { SCREENER_TICKERS } from './constants/tickers';
 import {
   CANDLE_COUNT_ENV_VAR,
   CANDLE_LOOKBACK_MULTIPLIER,
   CANDLE_WINDOW_DURATION_MS,
   DEFAULT_CANDLE_COUNT,
+  DEFAULT_SYNC_CHUNK_SIZE,
   DEFAULT_SYNC_CONCURRENCY,
+  SYNC_CHUNK_SIZE_ENV_VAR,
   SYNC_CONCURRENCY_ENV_VAR,
-  YAHOO_REQUEST_DELAY_MS,
 } from './constants/candle-windows';
 import { SyncType } from './enums/sync-type.enum';
 import { SyncStatus } from './enums/sync-status.enum';
+import { SyncKind } from './enums/sync-kind.enum';
 import { CandleWindow } from './enums/candle-window.enum';
+import { YahooRateLimiterService } from '../shared/yahoo-rate-limiter.service';
+import { TickerSourceService } from '../ticker-source/ticker-source.service';
+import { User, UserDocument } from '../user/schemas/user.schema';
 import { TickerStaticData, TickerStaticDataDocument } from './schemas/ticker-static-data.schema';
 import {
   CompoundTechnicalTickerData,
@@ -87,32 +92,20 @@ type SyncTrigger = {
   userId?: string;
 };
 
-const delay = (ms: number): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, ms));
+// A ticker paired with the stable cross-source identity (ISIN) it was
+// resolved from, threaded through the whole sync pipeline so every write
+// keys its document by ISIN rather than the source-specific ticker string.
+type TickerRef = {
+  isin: string;
+  ticker: string;
+};
 
-// Serializes Yahoo Finance requests to at most one per `minIntervalMs`,
-// shared across however many tickers are being synced concurrently. This
-// decouples ticker-level parallelism (which only speeds up non-Yahoo work
-// like DB writes) from the actual request rate hitting Yahoo, so raising
-// sync concurrency can't accidentally multiply the risk of rate limiting.
-class YahooRateLimiter {
-  private nextAvailableAt = 0;
-
-  constructor(private readonly minIntervalMs: number) {}
-
-  async schedule<T>(fn: () => Promise<T>): Promise<T> {
-    const now = Date.now();
-    const runAt = Math.max(now, this.nextAvailableAt);
-    this.nextAvailableAt = runAt + this.minIntervalMs;
-
-    const wait = runAt - now;
-    if (wait > 0) {
-      await delay(wait);
-    }
-
-    return fn();
-  }
-}
+// A "running" lock older than this is assumed abandoned (e.g. the process
+// crashed or was restarted mid-chunk) rather than genuinely still in
+// progress, and is reclaimed so the chunk can be retried. Comfortably above
+// the worst-case chunk duration (a few hundred Yahoo requests, throttled to
+// one per YAHOO_REQUEST_DELAY_MS).
+const STALE_LOCK_MS = 30 * 60 * 1000;
 
 // Mongo's duplicate-key error code, thrown when the sync_history "running"
 // partial unique index rejects a second concurrent lock claim.
@@ -158,6 +151,20 @@ async function runWithConcurrency<T>(
   return successCount;
 }
 
+const chunkArray = <T,>(items: T[], size: number): T[][] => {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
+};
+
+// Content hash of a chunk's ISINs, used as the idempotency key for that
+// chunk in sync_history (order-independent, so the same set of ISINs always
+// hashes the same way regardless of how the universe was assembled).
+const hashIsinChunk = (isins: string[]): string =>
+  createHash('sha256').update([...isins].sort().join(',')).digest('hex');
+
 const startOfToday = (): Date => {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -171,7 +178,6 @@ const startOfTomorrow = (): Date => {
 @Injectable()
 export class TickerSyncService {
   private readonly logger = new Logger(TickerSyncService.name);
-  private readonly yahooRateLimiter = new YahooRateLimiter(YAHOO_REQUEST_DELAY_MS);
 
   constructor(
     @InjectModel(TickerStaticData.name)
@@ -190,12 +196,26 @@ export class TickerSyncService {
     private readonly tickerFinancialHistoryModel: Model<TickerFinancialHistoryDocument>,
     @InjectModel(TickerEarningsHistory.name)
     private readonly tickerEarningsHistoryModel: Model<TickerEarningsHistoryDocument>,
+    @InjectModel(User.name)
+    private readonly userModel: Model<UserDocument>,
+    private readonly tickerSourceService: TickerSourceService,
     private readonly configService: ConfigService,
+    private readonly yahooRateLimiter: YahooRateLimiterService,
   ) {}
 
-  @Cron(CronExpression.EVERY_DAY_AT_1AM)
-  async handleDailyCron(): Promise<void> {
-    await this.ensureSyncedToday({ type: SyncType.Auto });
+  // Drives the day's full ticker sync one chunk at a time: each tick either
+  // claims and processes the next not-yet-done chunk for today, or is a
+  // cheap no-op once all of today's chunks are done. Spreads ~8000 tickers
+  // out over many hours instead of one long run that would trip Yahoo's
+  // rate limiting.
+  @Cron(CronExpression.EVERY_10_MINUTES)
+  async handleChunkedTickerSync(): Promise<void> {
+    await this.runChunkedSync(
+      { type: SyncType.Auto },
+      SyncKind.Ticker,
+      false,
+      (ref) => this.syncTicker(ref, startOfToday()),
+    );
   }
 
   // Refreshes tickers whose market has just closed for the day, so
@@ -205,34 +225,34 @@ export class TickerSyncService {
   async handleEndOfDayRefresh(): Promise<void> {
     const syncDate = startOfToday();
     const [staticData, marketHours] = await Promise.all([
-      this.tickerStaticDataModel.find().select('ticker market').lean(),
+      this.tickerStaticDataModel.find().select('isin ticker market').lean(),
       this.marketHoursModel.find().lean(),
     ]);
     const marketHoursByCode = new Map(
       marketHours.map((hours) => [hours.market, hours]),
     );
 
-    const dueTickers: string[] = [];
-    for (const { ticker, market } of staticData) {
+    const dueTickers: TickerRef[] = [];
+    for (const { isin, ticker, market } of staticData) {
       const hours = market ? marketHoursByCode.get(market) : undefined;
       if (!hours || !this.isPastRegularClose(hours)) {
         continue;
       }
 
       const alreadySynced = await this.compoundTechnicalTickerDataModel.exists(
-        { ticker, syncDate },
+        { isin, syncDate },
       );
       if (!alreadySynced) {
-        dueTickers.push(ticker);
+        dueTickers.push({ isin, ticker });
       }
     }
 
     await runWithConcurrency(
       dueTickers,
       this.getSyncConcurrency(),
-      (ticker) => this.syncCompound(ticker, syncDate),
-      (ticker, error) => {
-        this.logger.warn(`Failed end-of-day sync for ${ticker}: ${error}`);
+      (ref) => this.syncCompound(ref, syncDate),
+      (ref, error) => {
+        this.logger.warn(`Failed end-of-day sync for ${ref.ticker}: ${error}`);
       },
     );
   }
@@ -255,19 +275,24 @@ export class TickerSyncService {
   }
 
 
+  // A sync is considered "started" for today once any chunk of the main
+  // ticker sync has been claimed; from then on, the periodic
+  // handleChunkedTickerSync cron carries it forward one chunk per tick. This
+  // only kicks off the very first chunk immediately (e.g. on first screener
+  // load of the day) rather than blocking on the full ~8000-ticker universe.
   async ensureSyncedToday(trigger: SyncTrigger): Promise<void> {
-    const alreadyHandled = await this.syncHistoryModel.exists({
+    const alreadyStarted = await this.syncHistoryModel.exists({
       syncDate: { $gte: startOfToday(), $lt: startOfTomorrow() },
-      status: {
-        $in: [SyncStatus.Running, SyncStatus.Success, SyncStatus.PartialSuccess],
-      },
+      kind: SyncKind.Ticker,
     });
 
-    if (alreadyHandled) {
+    if (alreadyStarted) {
       return;
     }
 
-    await this.syncAll(trigger);
+    await this.runChunkedSync(trigger, SyncKind.Ticker, false, (ref) =>
+      this.syncTicker(ref, startOfToday()),
+    );
   }
 
   private getSyncConcurrency(): number {
@@ -278,29 +303,74 @@ export class TickerSyncService {
       : DEFAULT_SYNC_CONCURRENCY;
   }
 
-  // Atomically claims the single "running" slot in sync_history via the
-  // partial unique index on { status: 'running' }. Returns null (and logs)
-  // if another sync is already in progress, so callers can skip cleanly
-  // instead of piling up overlapping full-collection syncs against Yahoo.
-  private async claimSyncLock(
+  private getSyncChunkSize(): number {
+    const raw = this.configService.get<string>(SYNC_CHUNK_SIZE_ENV_VAR);
+    const parsed = raw != null ? Number(raw) : undefined;
+    return parsed != null && Number.isFinite(parsed) && parsed > 0
+      ? parsed
+      : DEFAULT_SYNC_CHUNK_SIZE;
+  }
+
+  // The set of ISINs any user's configured ticker source actually needs
+  // synced: union across every source currently selected by at least one
+  // user, deduplicated.
+  private async buildIsinUniverse(): Promise<string[]> {
+    const sources = await this.userModel.distinct('tickerSource');
+    return this.tickerSourceService.getIsinsForSources(sources);
+  }
+
+  // Atomically claims a chunk's "running" slot in sync_history, both via the
+  // { syncDate, kind, chunkHash } unique index (this exact chunk hasn't been
+  // processed today) and the { kind, status: 'running' } partial unique
+  // index (no other chunk of this kind is in flight). Returns null (and
+  // logs) if either lock is already held, so callers can skip cleanly.
+  private async claimChunkLock(
     trigger: SyncTrigger,
+    kind: SyncKind,
     syncDate: Date,
+    chunkHash: string,
+    tickerCount: number,
   ): Promise<SyncHistoryDocument | null> {
     try {
       return await this.syncHistoryModel.create({
         type: trigger.type,
+        kind,
         status: SyncStatus.Running,
         syncDate,
+        chunkHash,
+        tickerCount,
         triggeredByUserId: trigger.userId,
       });
     } catch (error) {
       if (isDuplicateKeyError(error)) {
         this.logger.warn(
-          `Skipping ${trigger.type} sync: another sync is already running`,
+          `Skipping ${kind} chunk sync: already done or in progress`,
         );
         return null;
       }
       throw error;
+    }
+  }
+
+  // Marks any "running" lock of this kind older than STALE_LOCK_MS as failed,
+  // freeing up both the chunk-hash and the kind-wide "running" slot so a
+  // genuinely abandoned sync (e.g. after a process restart) doesn't block
+  // all future retries for the rest of the day.
+  private async reclaimStaleLocks(kind: SyncKind): Promise<void> {
+    const staleCutoff = new Date(Date.now() - STALE_LOCK_MS);
+    const result = await this.syncHistoryModel.updateMany(
+      { kind, status: SyncStatus.Running, updatedAt: { $lt: staleCutoff } },
+      {
+        $set: {
+          status: SyncStatus.Failed,
+          errors: JSON.stringify({ _lock: 'Reclaimed: stale running lock, likely an abandoned process' }),
+        },
+      },
+    );
+    if (result.modifiedCount > 0) {
+      this.logger.warn(
+        `Reclaimed ${result.modifiedCount} stale ${kind} sync lock(s)`,
+      );
     }
   }
 
@@ -323,94 +393,193 @@ export class TickerSyncService {
     );
   }
 
-  // Shared driver for every "sync all tickers" operation: claims the lock,
-  // fans the given per-ticker sync out across a limited concurrency pool
-  // (actual Yahoo request pacing is handled globally by yahooRateLimiter,
-  // not per worker), and records the final status.
-  private async runFullSync(
+  // Shared driver for every "sync all tickers" operation. Builds the ISIN
+  // universe, splits it into fixed-size chunks, and for each chunk not
+  // already done today: resolves each ISIN to its Yahoo ticker (cached in
+  // ticker_sources), fans the given per-ticker sync out across a limited
+  // concurrency pool (actual Yahoo request pacing is handled globally by
+  // yahooRateLimiter, not per worker), and records the chunk's status.
+  //
+  // `processAllChunks` controls how much of the universe one call covers:
+  // false (the automatic/cron path) processes at most one chunk per call, so
+  // a full day's sync is spread across many cron ticks; true (manual admin
+  // triggers) processes every remaining chunk before returning, matching the
+  // previous blocking-until-done behaviour.
+  private async runChunkedSync(
     trigger: SyncTrigger,
-    label: string,
-    syncTicker: (ticker: string) => Promise<void>,
+    kind: SyncKind,
+    processAllChunks: boolean,
+    syncTicker: (ref: TickerRef) => Promise<void>,
   ): Promise<void> {
-    const syncDate = startOfToday();
-    const lock = await this.claimSyncLock(trigger, syncDate);
-    if (!lock) {
+    await this.reclaimStaleLocks(kind);
+
+    const isinUniverse = await this.buildIsinUniverse();
+    if (isinUniverse.length === 0) {
       return;
     }
 
-    const errors: Record<string, string> = {};
-    const successCount = await runWithConcurrency(
-      SCREENER_TICKERS,
-      this.getSyncConcurrency(),
-      syncTicker,
-      (ticker, error) => {
-        this.logger.warn(`Failed to sync ${label} for ${ticker}: ${error}`);
-        errors[ticker] = error instanceof Error ? error.message : String(error);
-      },
-    );
+    const syncDate = startOfToday();
+    const chunks = chunkArray(isinUniverse, this.getSyncChunkSize());
 
-    await this.finalizeSyncLock(lock, successCount, errors);
+    for (const isinChunk of chunks) {
+      const chunkHash = hashIsinChunk(isinChunk);
+      const alreadyDone = await this.syncHistoryModel.exists({
+        syncDate,
+        kind,
+        chunkHash,
+        status: { $in: [SyncStatus.Running, SyncStatus.Success, SyncStatus.PartialSuccess] },
+      });
+      if (alreadyDone) {
+        continue;
+      }
+
+      const lock = await this.claimChunkLock(
+        trigger,
+        kind,
+        syncDate,
+        chunkHash,
+        isinChunk.length,
+      );
+      if (!lock) {
+        if (!processAllChunks) {
+          return;
+        }
+        continue;
+      }
+
+      const chunkStartedAt = Date.now();
+      this.logger.log(
+        `Starting ${kind} chunk sync: ${isinChunk.length} ISIN(s) (lock ${lock._id})`,
+      );
+
+      const refs: TickerRef[] = [];
+      const errors: Record<string, string> = {};
+      let resolved = 0;
+      for (const isin of isinChunk) {
+        try {
+          const ticker = await this.tickerSourceService.resolveYahooTicker(isin);
+          if (ticker) {
+            refs.push({ isin, ticker });
+          } else {
+            errors[isin] = 'No Yahoo ticker could be resolved for this ISIN';
+          }
+        } catch (error) {
+          this.logger.warn(`Failed to resolve Yahoo ticker for ${isin}: ${error}`);
+          errors[isin] = error instanceof Error ? error.message : String(error);
+        }
+
+        resolved += 1;
+        if (resolved % 25 === 0 || resolved === isinChunk.length) {
+          this.logger.log(
+            `${kind} chunk sync: resolved ${resolved}/${isinChunk.length} ISIN(s) ` +
+              `(${Date.now() - chunkStartedAt}ms elapsed)`,
+          );
+        }
+      }
+
+      this.logger.log(
+        `${kind} chunk sync: ISIN resolution done in ${Date.now() - chunkStartedAt}ms, ` +
+          `syncing ${refs.length} ticker(s)`,
+      );
+
+      let synced = 0;
+      const syncStartedAt = Date.now();
+      const successCount = await runWithConcurrency(
+        refs,
+        this.getSyncConcurrency(),
+        async (ref) => {
+          await syncTicker(ref);
+          synced += 1;
+          if (synced % 25 === 0 || synced === refs.length) {
+            this.logger.log(
+              `${kind} chunk sync: synced ${synced}/${refs.length} ticker(s) ` +
+                `(${Date.now() - syncStartedAt}ms elapsed)`,
+            );
+          }
+        },
+        (ref, error) => {
+          this.logger.warn(`Failed to sync ${kind} for ${ref.ticker}: ${error}`);
+          errors[ref.ticker] = error instanceof Error ? error.message : String(error);
+        },
+      );
+
+      await this.finalizeSyncLock(lock, successCount, errors);
+
+      this.logger.log(
+        `Finished ${kind} chunk sync in ${Date.now() - chunkStartedAt}ms: ` +
+          `${successCount}/${refs.length} succeeded, ${Object.keys(errors).length} error(s)`,
+      );
+
+      if (!processAllChunks) {
+        return;
+      }
+    }
   }
 
   async syncAll(trigger: SyncTrigger): Promise<void> {
-    await this.runFullSync(trigger, 'ticker', (ticker) =>
-      this.syncTicker(ticker, startOfToday()),
+    await this.runChunkedSync(trigger, SyncKind.Ticker, true, (ref) =>
+      this.syncTicker(ref, startOfToday()),
     );
   }
 
   async syncAllFundamental(trigger: SyncTrigger): Promise<void> {
-    await this.runFullSync(trigger, 'fundamental data', (ticker) =>
-      this.syncFundamental(ticker, startOfToday()),
+    await this.runChunkedSync(trigger, SyncKind.Fundamental, true, (ref) =>
+      this.syncFundamental(ref, startOfToday()),
     );
   }
 
   async syncAllCompound(trigger: SyncTrigger): Promise<void> {
-    await this.runFullSync(trigger, 'compound data', (ticker) =>
-      this.syncCompound(ticker, startOfToday()),
+    await this.runChunkedSync(trigger, SyncKind.Compound, true, (ref) =>
+      this.syncCompound(ref, startOfToday()),
     );
   }
 
   async syncAllStatic(trigger: SyncTrigger): Promise<void> {
-    await this.runFullSync(trigger, 'static data', (ticker) =>
-      this.syncStatic(ticker),
+    await this.runChunkedSync(trigger, SyncKind.Static, true, (ref) =>
+      this.syncStatic(ref),
     );
   }
 
   async syncAllTechnical(trigger: SyncTrigger): Promise<void> {
-    await this.runFullSync(trigger, 'technical data', (ticker) =>
-      this.syncTechnical(ticker),
+    await this.runChunkedSync(trigger, SyncKind.Technical, true, (ref) =>
+      this.syncTechnical(ref),
     );
   }
 
-  private assertKnownTicker(ticker: string): void {
-    if (!SCREENER_TICKERS.includes(ticker)) {
+  // Admin single-ticker sync endpoints are addressed by Yahoo ticker symbol
+  // rather than ISIN; resolve the ISIN once so the rest of the sync
+  // pipeline can key its writes by it like every other sync path.
+  private async resolveRefForTicker(ticker: string): Promise<TickerRef> {
+    const isin = await this.tickerSourceService.findIsinByYahooTicker(ticker);
+    if (!isin) {
       throw new NotFoundException(`Ticker ${ticker} not found`);
     }
+    return { isin, ticker };
   }
 
   async syncSingleTickerStatic(ticker: string): Promise<void> {
-    this.assertKnownTicker(ticker);
-    await this.syncStatic(ticker);
+    const ref = await this.resolveRefForTicker(ticker);
+    await this.syncStatic(ref);
   }
 
   async syncSingleTickerFundamental(ticker: string): Promise<void> {
-    this.assertKnownTicker(ticker);
-    await this.syncFundamental(ticker, startOfToday());
+    const ref = await this.resolveRefForTicker(ticker);
+    await this.syncFundamental(ref, startOfToday());
   }
 
   async syncSingleTickerCompound(ticker: string): Promise<void> {
-    this.assertKnownTicker(ticker);
-    await this.syncCompound(ticker, startOfToday());
+    const ref = await this.resolveRefForTicker(ticker);
+    await this.syncCompound(ref, startOfToday());
   }
 
   async syncSingleTickerTechnical(ticker: string): Promise<void> {
-    this.assertKnownTicker(ticker);
-    await this.syncTechnical(ticker);
+    const ref = await this.resolveRefForTicker(ticker);
+    await this.syncTechnical(ref);
   }
 
   async syncSingleTicker(ticker: string): Promise<void> {
-    this.assertKnownTicker(ticker);
-    await this.syncTicker(ticker, startOfToday());
+    const ref = await this.resolveRefForTicker(ticker);
+    await this.syncTicker(ref, startOfToday());
   }
 
   private async fetchQuoteSummary(ticker: string) {
@@ -526,32 +695,32 @@ export class TickerSyncService {
     }));
   }
 
-  private async syncTicker(ticker: string, syncDate: Date): Promise<void> {
+  private async syncTicker(ref: TickerRef, syncDate: Date): Promise<void> {
     const [quoteSummary, chart] = await Promise.all([
-      this.fetchQuoteSummary(ticker),
-      this.fetchDailyChart(ticker),
+      this.fetchQuoteSummary(ref.ticker),
+      this.fetchDailyChart(ref.ticker),
     ]);
 
-    await this.updateStaticData(ticker, quoteSummary);
-    await this.updateCompound(ticker, syncDate, quoteSummary, chart);
-    await this.updateFundamental(ticker, syncDate, quoteSummary);
-    await this.updateFinancialHistory(ticker);
-    await this.updateEarningsHistory(ticker, quoteSummary);
-    await this.syncTechnical(ticker);
+    await this.updateStaticData(ref, quoteSummary);
+    await this.updateCompound(ref, syncDate, quoteSummary, chart);
+    await this.updateFundamental(ref, syncDate, quoteSummary);
+    await this.updateFinancialHistory(ref);
+    await this.updateEarningsHistory(ref, quoteSummary);
+    await this.syncTechnical(ref);
   }
 
-  private async updateFinancialHistory(ticker: string): Promise<void> {
-    const annual = await this.fetchFinancialHistory(ticker);
+  private async updateFinancialHistory(ref: TickerRef): Promise<void> {
+    const annual = await this.fetchFinancialHistory(ref.ticker);
 
     await this.tickerFinancialHistoryModel.updateOne(
-      { ticker },
-      { $set: { ticker, annual } },
+      { isin: ref.isin },
+      { $set: { isin: ref.isin, ticker: ref.ticker, annual } },
       { upsert: true },
     );
   }
 
   private async updateEarningsHistory(
-    ticker: string,
+    ref: TickerRef,
     quoteSummary: Awaited<ReturnType<typeof this.fetchQuoteSummary>>,
   ): Promise<void> {
     const eps = (quoteSummary.earningsHistory?.history ?? []).map((entry) => ({
@@ -559,35 +728,36 @@ export class TickerSyncService {
       actual: entry.epsActual ?? undefined,
       estimate: entry.epsEstimate ?? undefined,
     }));
-    const revenue = await this.fetchQuarterlyRevenueHistory(ticker);
+    const revenue = await this.fetchQuarterlyRevenueHistory(ref.ticker);
 
     await this.tickerEarningsHistoryModel.updateOne(
-      { ticker },
-      { $set: { ticker, eps, revenue } },
+      { isin: ref.isin },
+      { $set: { isin: ref.isin, ticker: ref.ticker, eps, revenue } },
       { upsert: true },
     );
   }
 
-  private async syncStatic(ticker: string): Promise<void> {
-    const quoteSummary = await this.fetchQuoteSummary(ticker);
+  private async syncStatic(ref: TickerRef): Promise<void> {
+    const quoteSummary = await this.fetchQuoteSummary(ref.ticker);
 
-    await this.updateStaticData(ticker, quoteSummary);
+    await this.updateStaticData(ref, quoteSummary);
   }
 
   private async updateStaticData(
-    ticker: string,
+    ref: TickerRef,
     quoteSummary: Awaited<ReturnType<typeof this.fetchQuoteSummary>>,
   ): Promise<void> {
     const { price, assetProfile, defaultKeyStatistics } = quoteSummary;
-    const companyName = price?.longName ?? price?.shortName ?? ticker;
+    const companyName = price?.longName ?? price?.shortName ?? ref.ticker;
     const website = assetProfile?.website;
     const logoUrl = website ? this.logoUrlFromWebsite(website) : undefined;
 
     await this.tickerStaticDataModel.updateOne(
-      { ticker },
+      { isin: ref.isin },
       {
         $set: {
-          ticker,
+          isin: ref.isin,
+          ticker: ref.ticker,
           companyName,
           sector: assetProfile?.sector,
           industry: assetProfile?.industry,
@@ -615,29 +785,29 @@ export class TickerSyncService {
     }
   }
 
-  private async syncTechnical(ticker: string): Promise<void> {
+  private async syncTechnical(ref: TickerRef): Promise<void> {
     for (const window of Object.values(CandleWindow)) {
-      await this.syncCandles(ticker, window);
+      await this.syncCandles(ref, window);
     }
   }
 
-  private async syncCompound(ticker: string, syncDate: Date): Promise<void> {
+  private async syncCompound(ref: TickerRef, syncDate: Date): Promise<void> {
     const [quoteSummary, chart] = await Promise.all([
-      this.fetchQuoteSummary(ticker),
-      this.fetchDailyChart(ticker),
+      this.fetchQuoteSummary(ref.ticker),
+      this.fetchDailyChart(ref.ticker),
     ]);
 
-    await this.updateCompound(ticker, syncDate, quoteSummary, chart);
+    await this.updateCompound(ref, syncDate, quoteSummary, chart);
   }
 
-  private async syncFundamental(ticker: string, syncDate: Date): Promise<void> {
-    const quoteSummary = await this.fetchQuoteSummary(ticker);
+  private async syncFundamental(ref: TickerRef, syncDate: Date): Promise<void> {
+    const quoteSummary = await this.fetchQuoteSummary(ref.ticker);
 
-    await this.updateFundamental(ticker, syncDate, quoteSummary);
+    await this.updateFundamental(ref, syncDate, quoteSummary);
   }
 
   private async updateCompound(
-    ticker: string,
+    ref: TickerRef,
     syncDate: Date,
     quoteSummary: Awaited<ReturnType<typeof this.fetchQuoteSummary>>,
     chart: Awaited<ReturnType<typeof this.fetchDailyChart>>,
@@ -703,10 +873,11 @@ export class TickerSyncService {
     const startOfYear = new Date(new Date().getFullYear(), 0, 1);
 
     await this.compoundTechnicalTickerDataModel.updateOne(
-      { ticker, syncDate },
+      { isin: ref.isin, syncDate },
       {
         $set: {
-          ticker,
+          isin: ref.isin,
+          ticker: ref.ticker,
           syncDate,
           price: latestClose,
           changePercent1d,
@@ -932,7 +1103,7 @@ export class TickerSyncService {
   }
 
   private async updateFundamental(
-    ticker: string,
+    ref: TickerRef,
     syncDate: Date,
     quoteSummary: Awaited<ReturnType<typeof this.fetchQuoteSummary>>,
   ): Promise<void> {
@@ -972,10 +1143,11 @@ export class TickerSyncService {
       value != null ? value * 100 : undefined;
 
     await this.fundamentalTickerDataModel.updateOne(
-      { ticker, syncDate },
+      { isin: ref.isin, syncDate },
       {
         $set: {
-          ticker,
+          isin: ref.isin,
+          ticker: ref.ticker,
           syncDate,
           marketCap,
           peRatio: summaryDetail?.trailingPE,
@@ -1081,7 +1253,7 @@ export class TickerSyncService {
   }
 
   private async syncCandles(
-    ticker: string,
+    ref: TickerRef,
     window: CandleWindow,
   ): Promise<void> {
     const count = this.getCandleCount(window);
@@ -1089,7 +1261,7 @@ export class TickerSyncService {
       count * CANDLE_WINDOW_DURATION_MS[window] * CANDLE_LOOKBACK_MULTIPLIER;
 
     const chart = await this.yahooRateLimiter.schedule(() =>
-      yahooFinance.chart(ticker, {
+      yahooFinance.chart(ref.ticker, {
         period1: new Date(Date.now() - lookbackMs),
         interval: window,
       }),
@@ -1119,10 +1291,11 @@ export class TickerSyncService {
     const durationMs = CANDLE_WINDOW_DURATION_MS[window];
 
     await this.technicalTickerDataModel.updateOne(
-      { ticker, window },
+      { isin: ref.isin, window },
       {
         $set: {
-          ticker,
+          isin: ref.isin,
+          ticker: ref.ticker,
           window,
           candles: candles.map((candle) => ({
             startTime: candle.date,

@@ -39,6 +39,9 @@ export type TickerFinancialHistoryDocument =
 @Schema({ collection: 'ticker_financial_history', timestamps: true })
 export class TickerFinancialHistory {
   @Prop({ required: true, unique: true })
+  isin!: string;
+
+  @Prop({ required: true })
   ticker!: string;
 
   @Prop({ type: [Object], default: [] })

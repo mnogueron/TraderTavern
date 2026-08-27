@@ -9,7 +9,9 @@ import { EarningsHistoryDto } from './dto/EarningsHistory.dto';
 import { TickerChartDto } from './dto/TickerChart.dto';
 import { GetTickerChartDto } from './dto/GetTickerChart.dto';
 import { GetScreenerDto } from './dto/GetScreener.dto';
+import { GetScreenerTickerOptionsDto } from './dto/GetScreenerTickerOptions.dto';
 import { PaginatedTickerDto } from './dto/PaginatedTicker.dto';
+import { PaginatedTickerOptionDto } from './dto/PaginatedTickerOption.dto';
 import { ScreenerFilterOptionsDto } from './dto/ScreenerFilterOptions.dto';
 import { MarketHoursDto } from './dto/MarketHours.dto';
 import { SyncStatusDto } from './dto/SyncStatus.dto';
@@ -38,6 +40,16 @@ export class FinanceController {
   @ApiOkResponse({ type: ScreenerFilterOptionsDto })
   getScreenerFilterOptions(): Promise<ScreenerFilterOptionsDto> {
     return this.financeService.getScreenerFilterOptions();
+  }
+
+  @Get('screener/filters/tickers')
+  @Auth()
+  @ApiOkResponse({ type: PaginatedTickerOptionDto })
+  getScreenerTickerOptions(
+    @CurrentUser() user: JwtPayload,
+    @Query() query: GetScreenerTickerOptionsDto,
+  ): Promise<PaginatedTickerOptionDto> {
+    return this.financeService.getScreenerTickerOptions(user.sub, query);
   }
 
   @Get('sync/status')

@@ -38,6 +38,27 @@ paths:
         - cookie: []
       tags:
         - User
+  /user/me/settings:
+    patch:
+      operationId: updateSettings
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserSettingsDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDto'
+      security:
+        - cookie: []
+      tags:
+        - User
   /auth/register:
     post:
       operationId: register
@@ -181,6 +202,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ScreenerFilterOptionsDto'
+      security:
+        - cookie: []
+      tags:
+        - Finance
+  /finance/screener/filters/tickers:
+    get:
+      operationId: getScreenerTickerOptions
+      parameters:
+        - name: page
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            default: 1
+            type: number
+        - name: limit
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            default: 20
+            type: number
+        - name: search
+          required: false
+          in: query
+          description: Fuzzy search on ticker or company name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTickerOptionDto'
       security:
         - cookie: []
       tags:
@@ -465,6 +521,63 @@ paths:
         - cookie: []
       tags:
         - Finance
+  /ticker-source/{source}/sync/status:
+    get:
+      operationId: getTickerSourceSyncStatus
+      parameters:
+        - name: source
+          required: true
+          in: path
+          schema:
+            enum:
+              - yahoo
+              - xtb
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TickerSourceSyncStatusDto'
+      security:
+        - cookie: []
+      tags:
+        - TickerSource
+  /ticker-source/yahoo/sync:
+    post:
+      operationId: syncYahoo
+      parameters: []
+      responses:
+        '204':
+          description: ''
+      security:
+        - cookie: []
+      tags:
+        - TickerSource
+  /ticker-source/xtb/sync/upload:
+    post:
+      operationId: syncXtb
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+                - file
+      responses:
+        '204':
+          description: ''
+      security:
+        - cookie: []
+      tags:
+        - TickerSource
 info:
   title: TraderTavern API
   description: The TraderTavern API documentation
@@ -485,11 +598,17 @@ components:
           type: string
         role:
           type: string
+        tickerSource:
+          type: string
+          enum:
+            - yahoo
+            - xtb
       required:
         - id
         - username
         - email
         - role
+        - tickerSource
     PaginationMetaDto:
       type: object
       properties:
@@ -518,6 +637,16 @@ components:
       required:
         - data
         - meta
+    UpdateUserSettingsDto:
+      type: object
+      properties:
+        tickerSource:
+          type: string
+          enum:
+            - yahoo
+            - xtb
+      required:
+        - tickerSource
     RegisterDto:
       type: object
       properties:
@@ -562,6 +691,8 @@ components:
     TickerDto:
       type: object
       properties:
+        isin:
+          type: string
         ticker:
           type: string
         companyName:
@@ -863,6 +994,7 @@ components:
           nullable: true
           description: 10 day average volume
       required:
+        - isin
         - ticker
         - companyName
         - sector
@@ -959,23 +1091,9 @@ components:
       required:
         - data
         - meta
-    TickerOptionDto:
-      type: object
-      properties:
-        ticker:
-          type: string
-        companyName:
-          type: string
-      required:
-        - ticker
-        - companyName
     ScreenerFilterOptionsDto:
       type: object
       properties:
-        tickers:
-          type: array
-          items:
-            $ref: '#/components/schemas/TickerOptionDto'
         sectors:
           type: array
           items:
@@ -1001,13 +1119,37 @@ components:
           items:
             type: string
       required:
-        - tickers
         - sectors
         - industries
         - countries
         - markets
         - currencies
         - analystRatings
+    TickerOptionDto:
+      type: object
+      properties:
+        isin:
+          type: string
+        ticker:
+          type: string
+        companyName:
+          type: string
+      required:
+        - isin
+        - ticker
+        - companyName
+    PaginatedTickerOptionDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/TickerOptionDto'
+        meta:
+          $ref: '#/components/schemas/PaginationMetaDto'
+      required:
+        - data
+        - meta
     SyncStatusDto:
       type: object
       properties:
@@ -1478,3 +1620,29 @@ components:
         - regularOpen
         - regularClose
         - postMarketClose
+    TickerSourceSyncStatusDto:
+      type: object
+      properties:
+        source:
+          type: string
+          enum:
+            - yahoo
+            - xtb
+        lastSyncedAt:
+          format: date-time
+          type: string
+          nullable: true
+        sourceUpdatedAt:
+          format: date-time
+          type: string
+          nullable: true
+        tickerCount:
+          type: number
+        isSyncing:
+          type: boolean
+      required:
+        - source
+        - lastSyncedAt
+        - sourceUpdatedAt
+        - tickerCount
+        - isSyncing

@@ -33,6 +33,9 @@ export type TechnicalTickerDataDocument = HydratedDocument<TechnicalTickerData>;
 @Schema({ collection: 'technical_ticker_data', timestamps: true })
 export class TechnicalTickerData {
   @Prop({ required: true })
+  isin!: string;
+
+  @Prop({ required: true })
   ticker!: string;
 
   @Prop({ type: String, required: true, enum: CandleWindow })
@@ -45,4 +48,4 @@ export class TechnicalTickerData {
 export const TechnicalTickerDataSchema = SchemaFactory.createForClass(
   TechnicalTickerData,
 );
-TechnicalTickerDataSchema.index({ ticker: 1, window: 1 }, { unique: true });
+TechnicalTickerDataSchema.index({ isin: 1, window: 1 }, { unique: true });

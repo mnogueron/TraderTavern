@@ -112,7 +112,7 @@ export const SCREENER_FILTER_TYPES: Record<string, ScreenerFilterValue['type']> 
 
 export const SCREENER_FILTER_ACCESSORS: Record<string, ScreenerFilterAccessor> = {
   // Descriptive
-  ticker: (ticker) => ticker.ticker,
+  ticker: (ticker) => ticker.isin,
   sector: (ticker) => ticker.sector,
   industry: (ticker) => ticker.industry,
   country: (ticker) => ticker.country,
