@@ -6,6 +6,7 @@ import {
   useReactTable,
   type OnChangeFn,
   type SortingState,
+  type VisibilityState,
 } from '@tanstack/react-table';
 import {
   Table,
@@ -22,6 +23,7 @@ type TickerTableProps = {
   tickers: ApiResponse<'get', '/finance/screener'>['data'];
   sorting: SortingState;
   onSortingChange: OnChangeFn<SortingState>;
+  columnVisibility: VisibilityState;
 };
 
 const StickyEdgeGradient = () => (
@@ -32,13 +34,14 @@ const TickerTable = ({
   tickers,
   sorting,
   onSortingChange,
+  columnVisibility,
 }: TickerTableProps) => {
   const [isScrolled, setIsScrolled] = useState(false);
 
   const table = useReactTable({
     data: tickers,
     columns,
-    state: { sorting },
+    state: { sorting, columnVisibility },
     onSortingChange,
     manualSorting: true,
     getCoreRowModel: getCoreRowModel(),

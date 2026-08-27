@@ -1,9 +1,11 @@
-import { useMemo, type MouseEvent } from 'react';
+import { useMemo, useState, type MouseEvent } from 'react';
 import { useSearchParams } from 'react-router';
 import { useClientQuery } from '@trader-tavern/api-client';
-import type { SortingState } from '@tanstack/react-table';
+import type { SortingState, VisibilityState } from '@tanstack/react-table';
 import TickerTable from '@/pages/screener/components/TickerTable';
 import TickerTableSkeleton from '@/pages/screener/components/TickerTableSkeleton';
+import ColumnVisibilityPopover from '@/pages/screener/components/ColumnVisibilityPopover';
+import { DEFAULT_VISIBLE_COLUMNS, columns } from '@/pages/screener/components/columns';
 import ScreenerFilterBar, {
   getDefaultScreenerFilterValues,
 } from '@/components/screener-filters/ScreenerFilterBar';
@@ -68,6 +70,22 @@ const ScreenerPage = () => {
       },
     },
   });
+
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
+    () =>
+      Object.fromEntries(
+        columns
+          .map((column) =>
+            'accessorKey' in column ? String(column.accessorKey) : column.id,
+          )
+          .filter((id): id is string => Boolean(id))
+          .map((id) => [id, DEFAULT_VISIBLE_COLUMNS.includes(id)]),
+      ),
+  );
+
+  const handleColumnVisibilityChange = (id: string, visible: boolean) => {
+    setColumnVisibility((prev) => ({ ...prev, [id]: visible }));
+  };
 
   const sorting: SortingState = [{ id: sortBy, desc: sortOrder === 'desc' }];
 
@@ -157,6 +175,15 @@ const ScreenerPage = () => {
           onReset={handleFilterReset}
         />
       )}
+      <div className="flex shrink-0 items-center justify-between gap-2">
+        <span className="text-sm text-muted-foreground">
+          {meta ? `${meta.total.toLocaleString()} results` : '—'}
+        </span>
+        <ColumnVisibilityPopover
+          columnVisibility={columnVisibility}
+          onColumnVisibilityChange={handleColumnVisibilityChange}
+        />
+      </div>
       <div className="min-h-[600px] flex-1 overflow-hidden rounded-md border">
         {isPending || !data ? (
           <TickerTableSkeleton rows={limit} />
@@ -165,6 +192,7 @@ const ScreenerPage = () => {
             tickers={data.data}
             sorting={sorting}
             onSortingChange={handleSortingChange}
+            columnVisibility={columnVisibility}
           />
         )}
       </div>
