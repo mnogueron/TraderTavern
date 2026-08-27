@@ -134,6 +134,14 @@ const TickerHeader = ({ ticker, fundamental, isPending }: TickerHeaderProps) => 
             {formatNumber(fundamental?.peRatio ?? null)}
           </span>
         </span>
+        <span className="text-muted-foreground">
+          Piotroski:{' '}
+          <span className="tabular-nums text-foreground">
+            {fundamental?.piotroskiScore != null
+              ? `${fundamental.piotroskiScore}/9`
+              : '—'}
+          </span>
+        </span>
       </div>
 
       {ticker.description && (

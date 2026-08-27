@@ -551,5 +551,13 @@ export const buildScreenerFilterConfigs = (
     category: 'ownership-analyst',
     unit: '%',
   },
+
+  // Quality
+  {
+    type: 'minmax',
+    key: 'piotroskiScore',
+    label: 'Piotroski F-Score',
+    category: 'quality',
+  },
 ];
 
