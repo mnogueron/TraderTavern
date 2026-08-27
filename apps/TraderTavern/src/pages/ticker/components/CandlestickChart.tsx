@@ -59,12 +59,19 @@ const CandlestickChart = ({
   const [chart, setChart] = useState<IChartApi | null>(null);
   const [hovered, setHovered] = useState<HoveredCandle | null>(null);
 
-  const visibleCandles =
+  const visibleCandles = (
     showPreMarket || !marketHours
       ? candles
       : candles.filter(
           (candle) => !isOutsideRegularHours(candle.startTime, marketHours),
-        );
+        )
+  ).filter(
+    (candle) =>
+      candle.entry != null &&
+      candle.exit != null &&
+      candle.high != null &&
+      candle.low != null,
+  );
 
   const candleByTime = useMemo(() => {
     const map = new Map<UTCTimestamp, Candle>();
@@ -90,7 +97,10 @@ const CandlestickChart = ({
     () =>
       visibleCandles.map((candle) => ({
         time: toUnixTime(candle.startTime),
-        value: candle.volume,
+        // Some historical candles (notably longer windows) are missing
+        // volume; lightweight-charts throws if a histogram value isn't a
+        // number, so fall back to 0 rather than dropping the bar.
+        value: candle.volume ?? 0,
         color: candle.exit >= candle.entry ? `${BULLISH_COLOR}99` : `${BEARISH_COLOR}99`,
       })),
     [visibleCandles],
