@@ -38,6 +38,27 @@ paths:
         - cookie: []
       tags:
         - User
+  /user/me/settings:
+    patch:
+      operationId: updateSettings
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserSettingsDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDto'
+      security:
+        - cookie: []
+      tags:
+        - User
   /auth/register:
     post:
       operationId: register
@@ -465,6 +486,63 @@ paths:
         - cookie: []
       tags:
         - Finance
+  /ticker-source/{source}/sync/status:
+    get:
+      operationId: getTickerSourceSyncStatus
+      parameters:
+        - name: source
+          required: true
+          in: path
+          schema:
+            enum:
+              - yahoo
+              - xtb
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TickerSourceSyncStatusDto'
+      security:
+        - cookie: []
+      tags:
+        - TickerSource
+  /ticker-source/yahoo/sync:
+    post:
+      operationId: syncYahoo
+      parameters: []
+      responses:
+        '204':
+          description: ''
+      security:
+        - cookie: []
+      tags:
+        - TickerSource
+  /ticker-source/xtb/sync/upload:
+    post:
+      operationId: syncXtb
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+                - file
+      responses:
+        '204':
+          description: ''
+      security:
+        - cookie: []
+      tags:
+        - TickerSource
 info:
   title: TraderTavern API
   description: The TraderTavern API documentation
@@ -485,11 +563,17 @@ components:
           type: string
         role:
           type: string
+        tickerSource:
+          type: string
+          enum:
+            - yahoo
+            - xtb
       required:
         - id
         - username
         - email
         - role
+        - tickerSource
     PaginationMetaDto:
       type: object
       properties:
@@ -518,6 +602,16 @@ components:
       required:
         - data
         - meta
+    UpdateUserSettingsDto:
+      type: object
+      properties:
+        tickerSource:
+          type: string
+          enum:
+            - yahoo
+            - xtb
+      required:
+        - tickerSource
     RegisterDto:
       type: object
       properties:
@@ -1478,3 +1572,29 @@ components:
         - regularOpen
         - regularClose
         - postMarketClose
+    TickerSourceSyncStatusDto:
+      type: object
+      properties:
+        source:
+          type: string
+          enum:
+            - yahoo
+            - xtb
+        lastSyncedAt:
+          format: date-time
+          type: string
+          nullable: true
+        sourceUpdatedAt:
+          format: date-time
+          type: string
+          nullable: true
+        tickerCount:
+          type: number
+        isSyncing:
+          type: boolean
+      required:
+        - source
+        - lastSyncedAt
+        - sourceUpdatedAt
+        - tickerCount
+        - isSyncing

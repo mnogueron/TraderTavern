@@ -1,5 +1,4 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { PDFParse } from 'pdf-parse';
@@ -7,11 +6,27 @@ import YahooFinance from 'yahoo-finance2';
 import { TickerSource, TickerSourceDocument } from './schemas/ticker-source.schema';
 import { TickerSourceType } from './enums/ticker-source-type.enum';
 import { TickerSourceSyncStatusDto } from './dto/TickerSourceSyncStatus.dto';
-import { XTB_OMI_PDF_URL_ENV_VAR } from './constants/xtb-omi';
-import { parseXtbOmiTables } from './xtb-omi.parser';
+import { parseXtbOmiText } from './xtb-omi.parser';
 import { SCREENER_TICKERS } from '../finance/constants/tickers';
 
 const yahooFinance = new YahooFinance();
+
+// PDF metadata dates use the format `D:YYYYMMDDHHmmSS+HH'mm'` (ISO 32000
+// §7.9.4), which `Date` cannot parse directly.
+const PDF_DATE_PATTERN =
+  /^D:(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(?:([+-]\d{2})'?(\d{2})'?)?/;
+
+const parsePdfDate = (value: string | undefined): Date | undefined => {
+  const match = value ? PDF_DATE_PATTERN.exec(value) : null;
+  if (!match) {
+    return undefined;
+  }
+
+  const [, year, month, day, hour, minute, second, tzHour, tzMinute] = match;
+  const offset = tzHour && tzMinute ? `${tzHour}:${tzMinute}` : 'Z';
+  const date = new Date(`${year}-${month}-${day}T${hour}:${minute}:${second}${offset}`);
+  return Number.isNaN(date.getTime()) ? undefined : date;
+};
 
 // Raw (unvalidated) shape of a Yahoo search "quote" result. Yahoo sometimes
 // includes an `isin` field for non-US listings even though it isn't part of
@@ -31,7 +46,6 @@ export class TickerSourceService {
   constructor(
     @InjectModel(TickerSource.name)
     private readonly tickerSourceModel: Model<TickerSourceDocument>,
-    private readonly configService: ConfigService,
   ) {}
 
   isSyncing(source: TickerSourceType): boolean {
@@ -172,39 +186,30 @@ export class TickerSourceService {
     });
   }
 
-  private getXtbOmiPdfUrl(): string {
-    const url = this.configService.get<string>(XTB_OMI_PDF_URL_ENV_VAR);
-    if (!url) {
-      throw new BadRequestException(
-        `${XTB_OMI_PDF_URL_ENV_VAR} is not configured; set it to XTB's current quarterly OMI specification table PDF URL`,
-      );
-    }
-    return url;
-  }
-
-  async syncXtb(): Promise<void> {
+  // Processes a manually uploaded copy of XTB's quarterly "Specification
+  // Table Organised Market Instruments (OMI)" PDF. XTB doesn't publish this
+  // under a stable/predictable URL, so unlike Yahoo this source is synced
+  // from an admin-provided file rather than fetched automatically.
+  async syncXtbFromBuffer(buffer: Buffer): Promise<void> {
     await this.runGuarded(TickerSourceType.Xtb, async () => {
-      const url = this.getXtbOmiPdfUrl();
       const syncedAt = new Date();
 
-      const parser = new PDFParse({ url });
+      const parser = new PDFParse({ data: new Uint8Array(buffer) });
       let rows;
       let sourceUpdatedAt: Date | undefined;
       try {
-        const [tableResult, infoResult] = await Promise.all([
-          parser.getTable(),
-          parser.getInfo(),
-        ]);
-        const tables = tableResult.pages.flatMap((page) => page.tables);
-        rows = parseXtbOmiTables(tables);
+        // pdf-parse's worker messaging can't handle concurrent calls on the
+        // same instance, so these must run sequentially rather than via
+        // Promise.all.
+        const textResult = await parser.getText();
+        const infoResult = await parser.getInfo();
+        const text = textResult.pages.map((page) => page.text).join('\n');
+        rows = parseXtbOmiText(text);
 
         // Best-effort: use the PDF's own creation/modification date as the
         // vintage of this quarter's OMI table, falling back to the sync
         // time if the document carries no usable metadata date.
-        const rawDate = infoResult.info?.ModDate ?? infoResult.info?.CreationDate;
-        const parsedDate = rawDate ? new Date(rawDate) : undefined;
-        sourceUpdatedAt =
-          parsedDate && !Number.isNaN(parsedDate.getTime()) ? parsedDate : undefined;
+        sourceUpdatedAt = parsePdfDate(infoResult.info?.ModDate ?? infoResult.info?.CreationDate);
       } finally {
         await parser.destroy();
       }

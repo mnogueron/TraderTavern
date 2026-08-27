@@ -1,5 +1,16 @@
-import { Controller, Get, HttpCode, Param, ParseEnumPipe, Post } from '@nestjs/common';
-import { ApiOkResponse } from '@nestjs/swagger';
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  ParseEnumPipe,
+  Post,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBody, ApiConsumes, ApiOkResponse, ApiParam } from '@nestjs/swagger';
 import { TickerSourceService } from './ticker-source.service';
 import { TickerSourceSyncStatusDto } from './dto/TickerSourceSyncStatus.dto';
 import { TickerSourceType } from './enums/ticker-source-type.enum';
@@ -12,21 +23,37 @@ export class TickerSourceController {
 
   @Get(':source/sync/status')
   @Auth()
+  @ApiParam({ name: 'source', enum: TickerSourceType })
   @ApiOkResponse({ type: TickerSourceSyncStatusDto })
-  getSyncStatus(
+  getTickerSourceSyncStatus(
     @Param('source', new ParseEnumPipe(TickerSourceType)) source: TickerSourceType,
   ): Promise<TickerSourceSyncStatusDto> {
     return this.tickerSourceService.getSyncStatus(source);
   }
 
-  @Post(':source/sync')
+  @Post('yahoo/sync')
   @HttpCode(204)
   @Auth(Role.Admin)
-  sync(
-    @Param('source', new ParseEnumPipe(TickerSourceType)) source: TickerSourceType,
-  ): Promise<void> {
-    return source === TickerSourceType.Xtb
-      ? this.tickerSourceService.syncXtb()
-      : this.tickerSourceService.syncYahoo();
+  syncYahoo(): Promise<void> {
+    return this.tickerSourceService.syncYahoo();
+  }
+
+  @Post('xtb/sync/upload')
+  @HttpCode(204)
+  @Auth(Role.Admin)
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+      required: ['file'],
+    },
+  })
+  @UseInterceptors(FileInterceptor('file'))
+  syncXtb(@UploadedFile() file?: Express.Multer.File): Promise<void> {
+    if (!file) {
+      throw new BadRequestException('An OMI PDF file is required');
+    }
+    return this.tickerSourceService.syncXtbFromBuffer(file.buffer);
   }
 }

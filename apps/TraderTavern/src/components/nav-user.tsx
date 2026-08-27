@@ -10,9 +10,6 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -92,18 +89,14 @@ export function NavUser() {
                   Users
                 </DropdownMenuItem>
               )}
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>
-                  <RiSettingsLine />
-                  Settings
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent>
-                  <DropdownMenuItem onClick={toggleTheme}>
-                    {theme === 'dark' ? <RiSunLine /> : <RiMoonLine />}
-                    {theme === 'dark' ? 'Light mode' : 'Dark mode'}
-                  </DropdownMenuItem>
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
+              <DropdownMenuItem onClick={() => navigate('/settings')}>
+                <RiSettingsLine />
+                Settings
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={toggleTheme}>
+                {theme === 'dark' ? <RiSunLine /> : <RiMoonLine />}
+                {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+              </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => logoutMutation.mutate({})}>
