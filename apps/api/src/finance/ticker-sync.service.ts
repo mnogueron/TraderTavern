@@ -1,22 +1,27 @@
+import { createHash } from 'crypto';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Model } from 'mongoose';
 import YahooFinance from 'yahoo-finance2';
-import { SCREENER_TICKERS } from './constants/tickers';
 import {
   CANDLE_COUNT_ENV_VAR,
   CANDLE_LOOKBACK_MULTIPLIER,
   CANDLE_WINDOW_DURATION_MS,
   DEFAULT_CANDLE_COUNT,
+  DEFAULT_SYNC_CHUNK_SIZE,
   DEFAULT_SYNC_CONCURRENCY,
+  SYNC_CHUNK_SIZE_ENV_VAR,
   SYNC_CONCURRENCY_ENV_VAR,
   YAHOO_REQUEST_DELAY_MS,
 } from './constants/candle-windows';
 import { SyncType } from './enums/sync-type.enum';
 import { SyncStatus } from './enums/sync-status.enum';
+import { SyncKind } from './enums/sync-kind.enum';
 import { CandleWindow } from './enums/candle-window.enum';
+import { TickerSourceService } from '../ticker-source/ticker-source.service';
+import { User, UserDocument } from '../user/schemas/user.schema';
 import { TickerStaticData, TickerStaticDataDocument } from './schemas/ticker-static-data.schema';
 import {
   CompoundTechnicalTickerData,
@@ -158,6 +163,20 @@ async function runWithConcurrency<T>(
   return successCount;
 }
 
+const chunkArray = <T,>(items: T[], size: number): T[][] => {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
+};
+
+// Content hash of a chunk's ISINs, used as the idempotency key for that
+// chunk in sync_history (order-independent, so the same set of ISINs always
+// hashes the same way regardless of how the universe was assembled).
+const hashIsinChunk = (isins: string[]): string =>
+  createHash('sha256').update([...isins].sort().join(',')).digest('hex');
+
 const startOfToday = (): Date => {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -190,12 +209,25 @@ export class TickerSyncService {
     private readonly tickerFinancialHistoryModel: Model<TickerFinancialHistoryDocument>,
     @InjectModel(TickerEarningsHistory.name)
     private readonly tickerEarningsHistoryModel: Model<TickerEarningsHistoryDocument>,
+    @InjectModel(User.name)
+    private readonly userModel: Model<UserDocument>,
+    private readonly tickerSourceService: TickerSourceService,
     private readonly configService: ConfigService,
   ) {}
 
-  @Cron(CronExpression.EVERY_DAY_AT_1AM)
-  async handleDailyCron(): Promise<void> {
-    await this.ensureSyncedToday({ type: SyncType.Auto });
+  // Drives the day's full ticker sync one chunk at a time: each tick either
+  // claims and processes the next not-yet-done chunk for today, or is a
+  // cheap no-op once all of today's chunks are done. Spreads ~8000 tickers
+  // out over many hours instead of one long run that would trip Yahoo's
+  // rate limiting.
+  @Cron(CronExpression.EVERY_10_MINUTES)
+  async handleChunkedTickerSync(): Promise<void> {
+    await this.runChunkedSync(
+      { type: SyncType.Auto },
+      SyncKind.Ticker,
+      false,
+      (ticker) => this.syncTicker(ticker, startOfToday()),
+    );
   }
 
   // Refreshes tickers whose market has just closed for the day, so
@@ -255,19 +287,24 @@ export class TickerSyncService {
   }
 
 
+  // A sync is considered "started" for today once any chunk of the main
+  // ticker sync has been claimed; from then on, the periodic
+  // handleChunkedTickerSync cron carries it forward one chunk per tick. This
+  // only kicks off the very first chunk immediately (e.g. on first screener
+  // load of the day) rather than blocking on the full ~8000-ticker universe.
   async ensureSyncedToday(trigger: SyncTrigger): Promise<void> {
-    const alreadyHandled = await this.syncHistoryModel.exists({
+    const alreadyStarted = await this.syncHistoryModel.exists({
       syncDate: { $gte: startOfToday(), $lt: startOfTomorrow() },
-      status: {
-        $in: [SyncStatus.Running, SyncStatus.Success, SyncStatus.PartialSuccess],
-      },
+      kind: SyncKind.Ticker,
     });
 
-    if (alreadyHandled) {
+    if (alreadyStarted) {
       return;
     }
 
-    await this.syncAll(trigger);
+    await this.runChunkedSync(trigger, SyncKind.Ticker, false, (ticker) =>
+      this.syncTicker(ticker, startOfToday()),
+    );
   }
 
   private getSyncConcurrency(): number {
@@ -278,25 +315,48 @@ export class TickerSyncService {
       : DEFAULT_SYNC_CONCURRENCY;
   }
 
-  // Atomically claims the single "running" slot in sync_history via the
-  // partial unique index on { status: 'running' }. Returns null (and logs)
-  // if another sync is already in progress, so callers can skip cleanly
-  // instead of piling up overlapping full-collection syncs against Yahoo.
-  private async claimSyncLock(
+  private getSyncChunkSize(): number {
+    const raw = this.configService.get<string>(SYNC_CHUNK_SIZE_ENV_VAR);
+    const parsed = raw != null ? Number(raw) : undefined;
+    return parsed != null && Number.isFinite(parsed) && parsed > 0
+      ? parsed
+      : DEFAULT_SYNC_CHUNK_SIZE;
+  }
+
+  // The set of ISINs any user's configured ticker source actually needs
+  // synced: union across every source currently selected by at least one
+  // user, deduplicated.
+  private async buildIsinUniverse(): Promise<string[]> {
+    const sources = await this.userModel.distinct('tickerSource');
+    return this.tickerSourceService.getIsinsForSources(sources);
+  }
+
+  // Atomically claims a chunk's "running" slot in sync_history, both via the
+  // { syncDate, kind, chunkHash } unique index (this exact chunk hasn't been
+  // processed today) and the { kind, status: 'running' } partial unique
+  // index (no other chunk of this kind is in flight). Returns null (and
+  // logs) if either lock is already held, so callers can skip cleanly.
+  private async claimChunkLock(
     trigger: SyncTrigger,
+    kind: SyncKind,
     syncDate: Date,
+    chunkHash: string,
+    tickerCount: number,
   ): Promise<SyncHistoryDocument | null> {
     try {
       return await this.syncHistoryModel.create({
         type: trigger.type,
+        kind,
         status: SyncStatus.Running,
         syncDate,
+        chunkHash,
+        tickerCount,
         triggeredByUserId: trigger.userId,
       });
     } catch (error) {
       if (isDuplicateKeyError(error)) {
         this.logger.warn(
-          `Skipping ${trigger.type} sync: another sync is already running`,
+          `Skipping ${kind} chunk sync: already done or in progress`,
         );
         return null;
       }
@@ -323,93 +383,144 @@ export class TickerSyncService {
     );
   }
 
-  // Shared driver for every "sync all tickers" operation: claims the lock,
-  // fans the given per-ticker sync out across a limited concurrency pool
-  // (actual Yahoo request pacing is handled globally by yahooRateLimiter,
-  // not per worker), and records the final status.
-  private async runFullSync(
+  // Shared driver for every "sync all tickers" operation. Builds the ISIN
+  // universe, splits it into fixed-size chunks, and for each chunk not
+  // already done today: resolves each ISIN to its Yahoo ticker (cached in
+  // ticker_sources), fans the given per-ticker sync out across a limited
+  // concurrency pool (actual Yahoo request pacing is handled globally by
+  // yahooRateLimiter, not per worker), and records the chunk's status.
+  //
+  // `processAllChunks` controls how much of the universe one call covers:
+  // false (the automatic/cron path) processes at most one chunk per call, so
+  // a full day's sync is spread across many cron ticks; true (manual admin
+  // triggers) processes every remaining chunk before returning, matching the
+  // previous blocking-until-done behaviour.
+  private async runChunkedSync(
     trigger: SyncTrigger,
-    label: string,
+    kind: SyncKind,
+    processAllChunks: boolean,
     syncTicker: (ticker: string) => Promise<void>,
   ): Promise<void> {
-    const syncDate = startOfToday();
-    const lock = await this.claimSyncLock(trigger, syncDate);
-    if (!lock) {
+    const isinUniverse = await this.buildIsinUniverse();
+    if (isinUniverse.length === 0) {
       return;
     }
 
-    const errors: Record<string, string> = {};
-    const successCount = await runWithConcurrency(
-      SCREENER_TICKERS,
-      this.getSyncConcurrency(),
-      syncTicker,
-      (ticker, error) => {
-        this.logger.warn(`Failed to sync ${label} for ${ticker}: ${error}`);
-        errors[ticker] = error instanceof Error ? error.message : String(error);
-      },
-    );
+    const syncDate = startOfToday();
+    const chunks = chunkArray(isinUniverse, this.getSyncChunkSize());
 
-    await this.finalizeSyncLock(lock, successCount, errors);
+    for (const isinChunk of chunks) {
+      const chunkHash = hashIsinChunk(isinChunk);
+      const alreadyDone = await this.syncHistoryModel.exists({
+        syncDate,
+        kind,
+        chunkHash,
+        status: { $in: [SyncStatus.Running, SyncStatus.Success, SyncStatus.PartialSuccess] },
+      });
+      if (alreadyDone) {
+        continue;
+      }
+
+      const lock = await this.claimChunkLock(
+        trigger,
+        kind,
+        syncDate,
+        chunkHash,
+        isinChunk.length,
+      );
+      if (!lock) {
+        if (!processAllChunks) {
+          return;
+        }
+        continue;
+      }
+
+      const tickers: string[] = [];
+      for (const isin of isinChunk) {
+        const ticker = await this.tickerSourceService.resolveYahooTicker(isin);
+        if (ticker) {
+          tickers.push(ticker);
+        }
+      }
+
+      const errors: Record<string, string> = {};
+      const successCount = await runWithConcurrency(
+        tickers,
+        this.getSyncConcurrency(),
+        syncTicker,
+        (ticker, error) => {
+          this.logger.warn(`Failed to sync ${kind} for ${ticker}: ${error}`);
+          errors[ticker] = error instanceof Error ? error.message : String(error);
+        },
+      );
+
+      await this.finalizeSyncLock(lock, successCount, errors);
+
+      if (!processAllChunks) {
+        return;
+      }
+    }
   }
 
   async syncAll(trigger: SyncTrigger): Promise<void> {
-    await this.runFullSync(trigger, 'ticker', (ticker) =>
+    await this.runChunkedSync(trigger, SyncKind.Ticker, true, (ticker) =>
       this.syncTicker(ticker, startOfToday()),
     );
   }
 
   async syncAllFundamental(trigger: SyncTrigger): Promise<void> {
-    await this.runFullSync(trigger, 'fundamental data', (ticker) =>
+    await this.runChunkedSync(trigger, SyncKind.Fundamental, true, (ticker) =>
       this.syncFundamental(ticker, startOfToday()),
     );
   }
 
   async syncAllCompound(trigger: SyncTrigger): Promise<void> {
-    await this.runFullSync(trigger, 'compound data', (ticker) =>
+    await this.runChunkedSync(trigger, SyncKind.Compound, true, (ticker) =>
       this.syncCompound(ticker, startOfToday()),
     );
   }
 
   async syncAllStatic(trigger: SyncTrigger): Promise<void> {
-    await this.runFullSync(trigger, 'static data', (ticker) =>
+    await this.runChunkedSync(trigger, SyncKind.Static, true, (ticker) =>
       this.syncStatic(ticker),
     );
   }
 
   async syncAllTechnical(trigger: SyncTrigger): Promise<void> {
-    await this.runFullSync(trigger, 'technical data', (ticker) =>
+    await this.runChunkedSync(trigger, SyncKind.Technical, true, (ticker) =>
       this.syncTechnical(ticker),
     );
   }
 
-  private assertKnownTicker(ticker: string): void {
-    if (!SCREENER_TICKERS.includes(ticker)) {
+  private async assertKnownTicker(ticker: string): Promise<void> {
+    const known = await this.tickerSourceService.isKnownYahooTicker(ticker);
+    if (!known) {
       throw new NotFoundException(`Ticker ${ticker} not found`);
     }
   }
 
   async syncSingleTickerStatic(ticker: string): Promise<void> {
-    this.assertKnownTicker(ticker);
+    await this.assertKnownTicker(ticker);
     await this.syncStatic(ticker);
   }
 
   async syncSingleTickerFundamental(ticker: string): Promise<void> {
-    this.assertKnownTicker(ticker);
+    await this.assertKnownTicker(ticker);
     await this.syncFundamental(ticker, startOfToday());
   }
 
   async syncSingleTickerCompound(ticker: string): Promise<void> {
-    this.assertKnownTicker(ticker);
+    await this.assertKnownTicker(ticker);
     await this.syncCompound(ticker, startOfToday());
   }
 
   async syncSingleTickerTechnical(ticker: string): Promise<void> {
-    this.assertKnownTicker(ticker);
+    await this.assertKnownTicker(ticker);
     await this.syncTechnical(ticker);
   }
 
   async syncSingleTicker(ticker: string): Promise<void> {
-    this.assertKnownTicker(ticker);
+    await this.assertKnownTicker(ticker);
     await this.syncTicker(ticker, startOfToday());
   }
 

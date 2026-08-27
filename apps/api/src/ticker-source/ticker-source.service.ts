@@ -85,6 +85,56 @@ export class TickerSourceService {
     return this.tickerSourceModel.findOne({ isin, source }).lean();
   }
 
+  // Union of ISINs tracked under any of the given sources, e.g. every source
+  // any user currently has selected as their preferred ticker source.
+  async getIsinsForSources(sources: TickerSourceType[]): Promise<string[]> {
+    if (sources.length === 0) {
+      return [];
+    }
+    return this.tickerSourceModel.distinct('isin', { source: { $in: sources } });
+  }
+
+  async isKnownYahooTicker(ticker: string): Promise<boolean> {
+    return this.tickerSourceModel.exists({
+      ticker,
+      source: TickerSourceType.Yahoo,
+    }) != null;
+  }
+
+  // Resolves an ISIN to its Yahoo Finance ticker symbol, since tickers from
+  // other sources (e.g. XTB) aren't the same string Yahoo expects. Results
+  // are cached in ticker_sources (source=yahoo) so this only costs a Yahoo
+  // request the first time a given ISIN is needed; a miss (no Yahoo listing
+  // resolvable for this ISIN) is not cached, so it's retried on a later sync.
+  async resolveYahooTicker(isin: string): Promise<string | undefined> {
+    const existing = await this.tickerSourceModel
+      .findOne({ isin, source: TickerSourceType.Yahoo })
+      .lean();
+    if (existing) {
+      return existing.ticker;
+    }
+
+    const result = (await yahooFinance.search(
+      isin,
+      { quotesCount: 5 },
+      { validateResult: false },
+    )) as { quotes?: RawYahooSearchQuote[] };
+
+    const match = (result.quotes ?? []).find(
+      (quote) => quote.isin === isin && quote.symbol,
+    );
+    if (!match?.symbol) {
+      return undefined;
+    }
+
+    await this.upsertTicker(
+      { isin, ticker: match.symbol, currency: match.currency },
+      TickerSourceType.Yahoo,
+      new Date(),
+    );
+    return match.symbol;
+  }
+
   // Runs `sync` for `source`, guarding against overlapping runs of the same
   // source (this is an in-process lock only, which is fine here since these
   // are rare, admin-triggered operations rather than a scheduled fleet).
