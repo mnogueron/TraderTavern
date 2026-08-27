@@ -11,7 +11,10 @@ import type { ApiResponse } from '@trader-tavern/api-client';
 import { Chart, Series, useChartColors } from '@/components/charts';
 import { formatCandleTooltipTime, formatNumber } from '@/lib/format';
 
-type Candle = ApiResponse<'get', '/finance/ticker/{id}/chart'>['candles'][number];
+type Candle = ApiResponse<
+  'get',
+  '/finance/ticker/{id}/chart'
+>['candles'][number];
 type MarketHours = ApiResponse<'get', '/finance/ticker/{id}/market-hours'>;
 
 type CandlestickChartProps = {
@@ -34,8 +37,7 @@ const isOutsideRegularHours = (
   }).format(new Date(isoTime));
 
   return (
-    localTime < marketHours.regularOpen ||
-    localTime >= marketHours.regularClose
+    localTime < marketHours.regularOpen || localTime >= marketHours.regularClose
   );
 };
 
@@ -43,7 +45,7 @@ const BULLISH_COLOR = '#059669';
 const BEARISH_COLOR = '#dc2626';
 
 const toUnixTime = (isoTime: string): UTCTimestamp =>
-  (Math.floor(new Date(isoTime).getTime() / 1000) as UTCTimestamp);
+  Math.floor(new Date(isoTime).getTime() / 1000) as UTCTimestamp;
 
 type HoveredCandle = Candle & { x: number; y: number };
 
@@ -101,14 +103,19 @@ const CandlestickChart = ({
         // volume; lightweight-charts throws if a histogram value isn't a
         // number, so fall back to 0 rather than dropping the bar.
         value: candle.volume ?? 0,
-        color: candle.exit >= candle.entry ? `${BULLISH_COLOR}99` : `${BEARISH_COLOR}99`,
+        color:
+          candle.exit >= candle.entry
+            ? `${BULLISH_COLOR}99`
+            : `${BEARISH_COLOR}99`,
       })),
     [visibleCandles],
   );
 
   const handleCrosshairMove = useCallback(
     (param: MouseEventParams<Time>) => {
-      const candle = param.time ? candleByTime.get(param.time as UTCTimestamp) : undefined;
+      const candle = param.time
+        ? candleByTime.get(param.time as UTCTimestamp)
+        : undefined;
       if (!candle || !param.point) {
         setHovered(null);
         return;
@@ -209,7 +216,9 @@ const CandlestickChart = ({
               {formatNumber(hovered.exit, 2, currency)}
             </span>
             <span className="text-muted-foreground">Volume</span>
-            <span className="text-right">{hovered.volume.toLocaleString()}</span>
+            <span className="text-right">
+              {hovered.volume.toLocaleString()}
+            </span>
           </div>
         </div>
       ) : null}
