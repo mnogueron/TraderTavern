@@ -436,14 +436,21 @@ export class TickerSyncService {
       }
 
       const tickers: string[] = [];
+      const errors: Record<string, string> = {};
       for (const isin of isinChunk) {
-        const ticker = await this.tickerSourceService.resolveYahooTicker(isin);
-        if (ticker) {
-          tickers.push(ticker);
+        try {
+          const ticker = await this.tickerSourceService.resolveYahooTicker(isin);
+          if (ticker) {
+            tickers.push(ticker);
+          } else {
+            errors[isin] = 'No Yahoo ticker could be resolved for this ISIN';
+          }
+        } catch (error) {
+          this.logger.warn(`Failed to resolve Yahoo ticker for ${isin}: ${error}`);
+          errors[isin] = error instanceof Error ? error.message : String(error);
         }
       }
 
-      const errors: Record<string, string> = {};
       const successCount = await runWithConcurrency(
         tickers,
         this.getSyncConcurrency(),

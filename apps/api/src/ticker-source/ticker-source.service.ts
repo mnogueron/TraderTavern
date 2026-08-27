@@ -120,9 +120,10 @@ export class TickerSourceService {
       { validateResult: false },
     )) as { quotes?: RawYahooSearchQuote[] };
 
-    const match = (result.quotes ?? []).find(
-      (quote) => quote.isin === isin && quote.symbol,
-    );
+    // Unlike a ticker->ISIN search, Yahoo's ISIN->ticker search results don't
+    // carry an `isin` field to match against — searching by ISIN already
+    // resolves it, so the top-scored result is the match.
+    const match = (result.quotes ?? []).find((quote) => quote.symbol);
     if (!match?.symbol) {
       return undefined;
     }
