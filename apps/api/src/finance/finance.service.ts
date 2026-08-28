@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import Fuse from 'fuse.js';
 import { UserService } from '../user/user.service';
 import { TickerSource, TickerSourceDocument } from '../ticker-source/schemas/ticker-source.schema';
 import { TickerDto } from './dto/Ticker.dto';
@@ -84,10 +85,57 @@ export class FinanceService {
     private readonly syncHistoryModel: Model<SyncHistoryDocument>,
   ) {}
 
-  // Escapes regex metacharacters so user-provided search text can be used
-  // safely inside a MongoDB $regex match.
-  private escapeRegex(value: string): string {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Ranks tickers by how closely they match the search term: exact match,
+  // then prefix, then substring — this handles partial input (and typos via
+  // substring, e.g. "thyssenkrup" for "thyssenkrupp") precisely. Only falls
+  // back to fuzzy matching when nothing matches as a substring, since fuzzy
+  // scoring alone is too noisy for short queries (e.g. "TKA" fuzzy-matching
+  // hundreds of unrelated tickers).
+  private rankTickerCandidates<
+    T extends { ticker: string; companyName: string },
+  >(candidates: T[], search: string): T[] {
+    const term = search.toLowerCase();
+
+    const scored = candidates
+      .map((candidate) => {
+        const ticker = candidate.ticker.toLowerCase();
+        const companyName = candidate.companyName.toLowerCase();
+
+        let score: number | null = null;
+        if (ticker === term || companyName === term) {
+          score = 0;
+        } else if (ticker.startsWith(term) || companyName.startsWith(term)) {
+          score = 1;
+        } else if (ticker.includes(term) || companyName.includes(term)) {
+          score = 2;
+        }
+
+        return { candidate, score };
+      })
+      .filter(
+        (entry): entry is { candidate: T; score: number } => entry.score !== null,
+      );
+
+    if (scored.length > 0) {
+      return scored
+        .sort(
+          (a, b) =>
+            a.score - b.score ||
+            a.candidate.companyName.localeCompare(b.candidate.companyName),
+        )
+        .map((entry) => entry.candidate);
+    }
+
+    return new Fuse(candidates, {
+      keys: [
+        { name: 'ticker', weight: 0.6 },
+        { name: 'companyName', weight: 0.4 },
+      ],
+      threshold: 0.35,
+      ignoreLocation: true,
+    })
+      .search(search)
+      .map((result) => result.item);
   }
 
   async getScreenerTickerOptions(
@@ -101,25 +149,12 @@ export class FinanceService {
 
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
-    const skip = (page - 1) * limit;
+    const search = query.search?.trim();
 
-    const searchMatch = query.search?.trim()
-      ? {
-          $or: [
-            { ticker: { $regex: this.escapeRegex(query.search.trim()), $options: 'i' } },
-            {
-              companyName: {
-                $regex: this.escapeRegex(query.search.trim()),
-                $options: 'i',
-              },
-            },
-          ],
-        }
-      : null;
-
-    const [result] = await this.tickerSourceModel.aggregate<{
-      data: { isin: string; ticker: string; companyName: string }[];
-      totalCount: { count: number }[];
+    const candidates = await this.tickerSourceModel.aggregate<{
+      isin: string;
+      ticker: string;
+      companyName: string;
     }>([
       { $match: { source: user.tickerSource } },
       {
@@ -137,24 +172,19 @@ export class FinanceService {
           },
         },
       },
-      ...(searchMatch ? [{ $match: searchMatch }] : []),
       { $sort: { companyName: 1, ticker: 1 } },
-      {
-        $facet: {
-          data: [
-            { $skip: skip },
-            { $limit: limit },
-            { $project: { _id: 0, isin: 1, ticker: 1, companyName: 1 } },
-          ],
-          totalCount: [{ $count: 'count' }],
-        },
-      },
+      { $project: { _id: 0, isin: 1, ticker: 1, companyName: 1 } },
     ]);
 
-    const total = result?.totalCount[0]?.count ?? 0;
-    const data = (result?.data ?? []).map(
-      (row) => new TickerOptionDto(row.isin, row.ticker, row.companyName),
-    );
+    const rows = search
+      ? this.rankTickerCandidates(candidates, search)
+      : candidates;
+
+    const total = rows.length;
+    const skip = (page - 1) * limit;
+    const data = rows
+      .slice(skip, skip + limit)
+      .map((row) => new TickerOptionDto(row.isin, row.ticker, row.companyName));
 
     return new PaginatedTickerOptionDto(
       data,
@@ -185,6 +215,16 @@ export class FinanceService {
       total,
       Math.max(Math.ceil(total / limit), 1),
     );
+  }
+
+  async getTickersByList(tickers: string[]): Promise<TickerDto[]> {
+    if (tickers.length === 0) {
+      return [];
+    }
+
+    const wanted = new Set(tickers);
+    const all = await this.buildScreenerTickers();
+    return all.filter((ticker) => wanted.has(ticker.ticker));
   }
 
   async getScreenerFilterOptions(): Promise<ScreenerFilterOptionsDto> {

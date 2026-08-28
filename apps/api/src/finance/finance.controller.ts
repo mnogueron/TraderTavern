@@ -9,6 +9,7 @@ import { EarningsHistoryDto } from './dto/EarningsHistory.dto';
 import { TickerChartDto } from './dto/TickerChart.dto';
 import { GetTickerChartDto } from './dto/GetTickerChart.dto';
 import { GetScreenerDto } from './dto/GetScreener.dto';
+import { GetTickersDto } from './dto/GetTickers.dto';
 import { GetScreenerTickerOptionsDto } from './dto/GetScreenerTickerOptions.dto';
 import { PaginatedTickerDto } from './dto/PaginatedTicker.dto';
 import { PaginatedTickerOptionDto } from './dto/PaginatedTickerOption.dto';
@@ -33,6 +34,17 @@ export class FinanceController {
   @ApiOkResponse({ type: PaginatedTickerDto })
   getScreener(@Query() query: GetScreenerDto): Promise<PaginatedTickerDto> {
     return this.financeService.getScreener(query);
+  }
+
+  @Get('tickers')
+  @Auth()
+  @ApiOkResponse({ type: TickerDto, isArray: true })
+  getTickers(@Query() query: GetTickersDto): Promise<TickerDto[]> {
+    const tickers = query.tickers
+      .split(',')
+      .map((ticker) => ticker.trim().toUpperCase())
+      .filter(Boolean);
+    return this.financeService.getTickersByList(tickers);
   }
 
   @Get('screener/filters/options')

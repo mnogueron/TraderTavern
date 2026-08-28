@@ -191,6 +191,29 @@ paths:
         - cookie: []
       tags:
         - Finance
+  /finance/tickers:
+    get:
+      operationId: getTickers
+      parameters:
+        - name: tickers
+          required: true
+          in: query
+          description: Comma-separated list of ticker symbols
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TickerDto'
+      security:
+        - cookie: []
+      tags:
+        - Finance
   /finance/screener/filters/options:
     get:
       operationId: getScreenerFilterOptions
@@ -578,6 +601,195 @@ paths:
         - cookie: []
       tags:
         - TickerSource
+  /watchlists:
+    get:
+      operationId: getAll
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WatchlistDto'
+      security:
+        - cookie: []
+      tags:
+        - Watchlist
+    post:
+      operationId: create
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWatchlistDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WatchlistDto'
+      security:
+        - cookie: []
+      tags:
+        - Watchlist
+  /watchlists/membership/{ticker}:
+    get:
+      operationId: getMembership
+      parameters:
+        - name: ticker
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WatchlistMembershipDto'
+      security:
+        - cookie: []
+      tags:
+        - Watchlist
+    put:
+      operationId: setMembership
+      parameters:
+        - name: ticker
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetWatchlistMembershipDto'
+      responses:
+        '204':
+          description: ''
+      security:
+        - cookie: []
+      tags:
+        - Watchlist
+  /watchlists/{id}:
+    get:
+      operationId: getById
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WatchlistDto'
+      security:
+        - cookie: []
+      tags:
+        - Watchlist
+    patch:
+      operationId: update
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateWatchlistDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WatchlistDto'
+      security:
+        - cookie: []
+      tags:
+        - Watchlist
+    delete:
+      operationId: delete
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '204':
+          description: ''
+      security:
+        - cookie: []
+      tags:
+        - Watchlist
+  /watchlists/{id}/tickers:
+    post:
+      operationId: addTicker
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddWatchlistTickerDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WatchlistDto'
+      security:
+        - cookie: []
+      tags:
+        - Watchlist
+  /watchlists/{id}/tickers/{ticker}:
+    delete:
+      operationId: removeTicker
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: ticker
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WatchlistDto'
+      security:
+        - cookie: []
+      tags:
+        - Watchlist
 info:
   title: TraderTavern API
   description: The TraderTavern API documentation
@@ -1656,3 +1868,72 @@ components:
         - sourceUpdatedAt
         - tickerCount
         - isSyncing
+    WatchlistDto:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        tickers:
+          type: array
+          items:
+            type: string
+        createdAt:
+          format: date-time
+          type: string
+        updatedAt:
+          format: date-time
+          type: string
+      required:
+        - id
+        - name
+        - description
+        - tickers
+        - createdAt
+        - updatedAt
+    CreateWatchlistDto:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+      required:
+        - name
+    WatchlistMembershipDto:
+      type: object
+      properties:
+        watchlistIds:
+          type: array
+          items:
+            type: string
+      required:
+        - watchlistIds
+    SetWatchlistMembershipDto:
+      type: object
+      properties:
+        watchlistIds:
+          description: Ids of the watchlists the ticker should belong to
+          type: array
+          items:
+            type: string
+      required:
+        - watchlistIds
+    UpdateWatchlistDto:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+    AddWatchlistTickerDto:
+      type: object
+      properties:
+        ticker:
+          type: string
+      required:
+        - ticker

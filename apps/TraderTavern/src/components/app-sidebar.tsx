@@ -9,7 +9,12 @@ import {
   SidebarHeader,
   SidebarRail,
 } from '@/components/ui/sidebar';
-import { RiDashboardLine, RiSearchLine, RiNewspaperLine } from '@remixicon/react';
+import {
+  RiDashboardLine,
+  RiSearchLine,
+  RiNewspaperLine,
+  RiBookmarkLine,
+} from '@remixicon/react';
 
 const navMain = [
   {
@@ -21,6 +26,11 @@ const navMain = [
     title: 'Screener',
     url: '/screener',
     icon: <RiSearchLine />,
+  },
+  {
+    title: 'Watchlists',
+    url: '/watchlists',
+    icon: <RiBookmarkLine />,
   },
   {
     title: 'News',

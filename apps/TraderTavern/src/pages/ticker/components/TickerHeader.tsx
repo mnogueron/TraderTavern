@@ -5,6 +5,7 @@ import type { ApiResponse } from '@trader-tavern/api-client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import WatchlistBookmarkButton from '@/pages/ticker/components/WatchlistBookmarkButton';
 import CountryFlag from '@/components/CountryFlag';
 import {
   changePercentClassName,
@@ -108,9 +109,12 @@ const TickerHeader = ({ ticker, fundamental, isPending }: TickerHeaderProps) => 
           ) : null}
         </div>
 
-        <span className="ml-auto shrink-0 text-xs text-muted-foreground">
-          Refreshed {formatDateTime(ticker.refreshedAt)}
-        </span>
+        <div className="ml-auto flex shrink-0 items-center gap-3">
+          <span className="text-xs text-muted-foreground">
+            Refreshed {formatDateTime(ticker.refreshedAt)}
+          </span>
+          <WatchlistBookmarkButton ticker={ticker.ticker} />
+        </div>
       </div>
 
       <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
