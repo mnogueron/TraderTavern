@@ -1,5 +1,4 @@
 import { useState, type UIEvent } from 'react';
-import type { ApiResponse } from '@trader-tavern/api-client';
 import {
   flexRender,
   getCoreRowModel,
@@ -17,10 +16,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { columns } from '@/pages/screener/components/columns';
+import { columns, type Ticker } from '@/pages/screener/components/columns';
 
 type TickerTableProps = {
-  tickers: ApiResponse<'get', '/finance/screener'>['data'];
+  tickers: Ticker[];
   sorting: SortingState;
   onSortingChange: OnChangeFn<SortingState>;
   columnVisibility: VisibilityState;

@@ -7,6 +7,7 @@ import { UserModule } from '../user/user.module';
 import { AuthModule } from '../auth/auth.module';
 import { FinanceModule } from '../finance/finance.module';
 import { TickerSourceModule } from '../ticker-source/ticker-source.module';
+import { WatchlistModule } from '../watchlist/watchlist.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { TickerSourceModule } from '../ticker-source/ticker-source.module';
     AuthModule,
     FinanceModule,
     TickerSourceModule,
+    WatchlistModule,
   ],
   controllers: [AppController],
   providers: [AppService],
