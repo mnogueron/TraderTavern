@@ -383,6 +383,18 @@ export class TickerSyncService {
     return localTime >= hours.regularClose || localTime < hours.regularOpen;
   }
 
+  // Calendar date (YYYY-MM-DD) of `date` in `timezone` (UTC if omitted),
+  // used to tell whether a daily candle belongs to "today" regardless of
+  // what time the sync happens to run at.
+  private calendarDateKey(date: Date, timezone?: string): string {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone ?? 'UTC',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(date);
+  }
+
 
   // A sync is considered "started" for today once any chunk of the main
   // ticker sync has been claimed; from then on, the periodic
@@ -1010,15 +1022,33 @@ export class TickerSyncService {
       : null;
     const isClosedToday = hours != null && this.isPastRegularClose(hours);
 
+    // While a session is open, Yahoo's daily chart already includes today's
+    // candle with a non-null (live, still-moving) close, so it isn't a
+    // "completed session" yet. The `quotes.close != null` filter above
+    // doesn't exclude it, which used to shift `.at(-1)`/`.at(-2)` by one day
+    // and made the "market still open" branch below compare yesterday's
+    // close against itself (via two different data sources) instead of
+    // against the day before. Strip today's candle before any positional
+    // lookup so `.at(-1)`/`.at(-2)` always point at completed sessions.
+    const todayKey = this.calendarDateKey(new Date(), hours?.timezone);
+    const completedQuotes = quotes.filter(
+      (quote) => this.calendarDateKey(quote.date, hours?.timezone) !== todayKey,
+    );
+
     // "anchor": the most recent completed session's close — today's once
-    // the market has closed for the day, otherwise yesterday's.
+    // the market has closed for the day, otherwise yesterday's. The closed
+    // branch's fallback intentionally uses the raw `quotes` (not
+    // `completedQuotes`), since once the market closes, today's candle is
+    // exactly what we want to pick up there.
     const anchorClose = isClosedToday
       ? (price?.regularMarketPrice ?? quotes.at(-1)?.close ?? null)
-      : (price?.regularMarketPreviousClose ?? quotes.at(-1)?.close ?? null);
-    // "prior": the completed session immediately before the anchor.
+      : (price?.regularMarketPreviousClose ?? completedQuotes.at(-1)?.close ?? null);
+    // "prior": the completed session immediately before the anchor. Always
+    // uses `completedQuotes`, since "prior" is never today regardless of
+    // branch.
     const priorClose = isClosedToday
-      ? (price?.regularMarketPreviousClose ?? quotes.at(-1)?.close ?? null)
-      : (quotes.at(-2)?.close ?? null);
+      ? (price?.regularMarketPreviousClose ?? completedQuotes.at(-1)?.close ?? null)
+      : (completedQuotes.at(-2)?.close ?? null);
 
     const changePercent1d =
       anchorClose != null && priorClose != null && priorClose !== 0
