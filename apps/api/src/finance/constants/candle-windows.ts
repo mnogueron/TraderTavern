@@ -43,6 +43,13 @@ export const CANDLE_LOOKBACK_MULTIPLIER = 2;
 // effective request rate.
 export const YAHOO_REQUEST_DELAY_MS = 250;
 
+// Yahoo occasionally stalls a request indefinitely (no response, no error),
+// which without a timeout leaves the calling chunk sync's lock stuck in
+// "running" until reclaimStaleLocks reaps it 30 minutes later, then repeats
+// on retry. Failing fast here lets a single bad ticker error out instead of
+// blocking the whole chunk.
+export const YAHOO_REQUEST_TIMEOUT_MS = 15_000;
+
 // Env var holding how many tickers a sync run processes concurrently.
 export const SYNC_CONCURRENCY_ENV_VAR = 'SYNC_TICKER_CONCURRENCY';
 

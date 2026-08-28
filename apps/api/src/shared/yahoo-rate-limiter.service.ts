@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { YAHOO_REQUEST_DELAY_MS } from '../finance/constants/candle-windows';
+import {
+  YAHOO_REQUEST_DELAY_MS,
+  YAHOO_REQUEST_TIMEOUT_MS,
+} from '../finance/constants/candle-windows';
 
 const delay = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
@@ -24,6 +27,23 @@ export class YahooRateLimiterService {
       await delay(wait);
     }
 
-    return fn();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(
+        () =>
+          reject(
+            new Error(
+              `Yahoo request timed out after ${YAHOO_REQUEST_TIMEOUT_MS}ms`,
+            ),
+          ),
+        YAHOO_REQUEST_TIMEOUT_MS,
+      );
+    });
+
+    try {
+      return await Promise.race([fn(), timeout]);
+    } finally {
+      clearTimeout(timer);
+    }
   }
 }
