@@ -4,7 +4,8 @@ export type ScreenerFilterCategory =
   | 'profitability'
   | 'balance-sheet'
   | 'performance-technical'
-  | 'ownership-analyst';
+  | 'ownership-analyst'
+  | 'quality';
 
 export const SCREENER_FILTER_CATEGORY_LABELS: Record<ScreenerFilterCategory, string> = {
   descriptive: 'Descriptive',
@@ -13,6 +14,7 @@ export const SCREENER_FILTER_CATEGORY_LABELS: Record<ScreenerFilterCategory, str
   'balance-sheet': 'Balance Sheet',
   'performance-technical': 'Performance & Technical',
   'ownership-analyst': 'Ownership & Analyst',
+  quality: 'Quality',
 };
 
 export type ScreenerFilterOption = {

@@ -54,6 +54,7 @@ const CATEGORY_ORDER: ScreenerFilterCategory[] = [
   'balance-sheet',
   'performance-technical',
   'ownership-analyst',
+  'quality',
 ];
 
 type FilterTab = 'all' | 'descriptive' | 'fundamental' | 'technical';
@@ -66,6 +67,7 @@ const TAB_CATEGORIES: Record<FilterTab, ScreenerFilterCategory[]> = {
     'profitability',
     'balance-sheet',
     'ownership-analyst',
+    'quality',
   ],
   technical: ['performance-technical'],
 };

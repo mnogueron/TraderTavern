@@ -556,6 +556,14 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
 
                     <StatGroup title="Technical">
                       <StatRow
+                        label="Piotroski F-Score"
+                        value={
+                          fundamental.piotroskiScore != null
+                            ? `${fundamental.piotroskiScore}/9`
+                            : '—'
+                        }
+                      />
+                      <StatRow
                         label="SMA 50"
                         value={formatNumber(
                           fundamental.sma50,

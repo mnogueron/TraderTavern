@@ -673,6 +673,8 @@ export interface components {
             insidersPercent: number | null;
             /** @description In percent */
             institutionsPercent: number | null;
+            /** @description Piotroski F-Score (0-9) */
+            piotroskiScore: number | null;
             sma50: number | null;
             sma200: number | null;
             beta: number | null;
