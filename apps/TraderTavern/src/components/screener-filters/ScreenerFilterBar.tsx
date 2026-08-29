@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { RiCloseLine } from '@remixicon/react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import ScreenerFilterSearch from '@/components/screener-filters/ScreenerFilterSearch';
 import MultiSelectFilterControl from '@/components/screener-filters/MultiSelectFilterControl';
 import AsyncMultiSelectFilterControl from '@/components/screener-filters/AsyncMultiSelectFilterControl';
 import SelectFilterControl from '@/components/screener-filters/SelectFilterControl';
@@ -72,6 +73,8 @@ const TAB_CATEGORIES: Record<FilterTab, ScreenerFilterCategory[]> = {
   technical: ['performance-technical'],
 };
 
+const fieldId = (key: string) => `screener-filter-${key}`;
+
 const describeFilterValue = (
   config: ScreenerFilterConfig,
   value: ScreenerFilterValue,
@@ -130,11 +133,32 @@ const ScreenerFilterBar = ({
   onReset,
 }: ScreenerFilterBarProps) => {
   const [tab, setTab] = useState<FilterTab>('all');
+  const [pendingFocusKey, setPendingFocusKey] = useState<string | null>(null);
+  const [highlightedKey, setHighlightedKey] = useState<string | null>(null);
 
   const activeConfigs = configs.filter((config) =>
     isFilterValueActive(values[config.key]),
   );
   const visibleCategories = TAB_CATEGORIES[tab];
+
+  useEffect(() => {
+    if (!pendingFocusKey) return;
+    const el = document.getElementById(fieldId(pendingFocusKey));
+    if (!el) return;
+
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.querySelector<HTMLElement>('input, button, [tabindex]')?.focus();
+    setHighlightedKey(pendingFocusKey);
+    setPendingFocusKey(null);
+
+    const timeout = setTimeout(() => setHighlightedKey(null), 1600);
+    return () => clearTimeout(timeout);
+  }, [pendingFocusKey, tab]);
+
+  const handleFilterSearchSelect = (key: string) => {
+    setTab('all');
+    setPendingFocusKey(key);
+  };
 
   const renderControl = (config: ScreenerFilterConfig) => {
     const value = values[config.key] ?? DEFAULT_VALUE_BY_TYPE[config.type];
@@ -202,22 +226,25 @@ const ScreenerFilterBar = ({
   return (
     <div className="flex flex-col gap-2 rounded-md border bg-background p-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Tabs value={tab} onValueChange={(next) => setTab(next as FilterTab)}>
-          <TabsList variant="line" className="h-6">
-            <TabsTrigger value="descriptive" className="text-xs">
-              Descriptive
-            </TabsTrigger>
-            <TabsTrigger value="fundamental" className="text-xs">
-              Fundamental
-            </TabsTrigger>
-            <TabsTrigger value="technical" className="text-xs">
-              Technical
-            </TabsTrigger>
-            <TabsTrigger value="all" className="text-xs">
-              All
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="flex flex-wrap items-center gap-2">
+          <ScreenerFilterSearch configs={configs} onSelect={handleFilterSearchSelect} />
+          <Tabs value={tab} onValueChange={(next) => setTab(next as FilterTab)}>
+            <TabsList variant="line" className="h-6">
+              <TabsTrigger value="descriptive" className="text-xs">
+                Descriptive
+              </TabsTrigger>
+              <TabsTrigger value="fundamental" className="text-xs">
+                Fundamental
+              </TabsTrigger>
+              <TabsTrigger value="technical" className="text-xs">
+                Technical
+              </TabsTrigger>
+              <TabsTrigger value="all" className="text-xs">
+                All
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span>{activeConfigs.length} filters active</span>
           {activeConfigs.length > 0 && (
@@ -253,8 +280,13 @@ const ScreenerFilterBar = ({
                 {categoryConfigs.map((config) => (
                   <Field
                     key={config.key}
+                    id={fieldId(config.key)}
                     orientation="horizontal"
-                    className="gap-1.5"
+                    className={cn(
+                      'gap-1.5 rounded-sm transition-shadow',
+                      highlightedKey === config.key &&
+                        'ring-2 ring-primary ring-offset-1',
+                    )}
                   >
                     <FieldLabel
                       className={cn(
