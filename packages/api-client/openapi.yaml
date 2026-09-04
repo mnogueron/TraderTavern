@@ -544,6 +544,39 @@ paths:
         - cookie: []
       tags:
         - Finance
+  /finance/tickers/hidden:
+    get:
+      operationId: getHiddenTickers
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/HiddenTickerDto'
+      security:
+        - cookie: []
+      tags:
+        - Finance
+  /finance/ticker/{id}/unhide:
+    post:
+      operationId: unhideTicker
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '204':
+          description: ''
+      security:
+        - cookie: []
+      tags:
+        - Finance
   /ticker-source/{source}/sync/status:
     get:
       operationId: getTickerSourceSyncStatus
@@ -1856,6 +1889,37 @@ components:
         - regularOpen
         - regularClose
         - postMarketClose
+    HiddenTickerDto:
+      type: object
+      properties:
+        isin:
+          type: string
+        ticker:
+          type: string
+        companyName:
+          type: string
+          nullable: true
+        errorCount:
+          type: number
+        lastError:
+          type: string
+          nullable: true
+        lastErrorAt:
+          format: date-time
+          type: string
+          nullable: true
+        hiddenAt:
+          format: date-time
+          type: string
+          nullable: true
+      required:
+        - isin
+        - ticker
+        - companyName
+        - errorCount
+        - lastError
+        - lastErrorAt
+        - hiddenAt
     TickerSourceSyncStatusDto:
       type: object
       properties:

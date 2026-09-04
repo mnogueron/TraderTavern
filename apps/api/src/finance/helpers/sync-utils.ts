@@ -1,5 +1,13 @@
 import { createHash } from 'crypto';
 
+// A ticker paired with the stable cross-source identity (ISIN) it was
+// resolved from, threaded through the whole sync pipeline so every write
+// keys its document by ISIN rather than the source-specific ticker string.
+export type TickerRef = {
+  isin: string;
+  ticker: string;
+};
+
 // A "running" lock older than this is assumed abandoned (e.g. the process
 // crashed or was restarted mid-chunk) rather than genuinely still in
 // progress, and is reclaimed so the chunk can be retried. Comfortably above

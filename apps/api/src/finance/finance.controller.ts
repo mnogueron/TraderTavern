@@ -16,6 +16,7 @@ import { PaginatedTickerOptionDto } from './dto/PaginatedTickerOption.dto';
 import { ScreenerFilterOptionsDto } from './dto/ScreenerFilterOptions.dto';
 import { MarketHoursDto } from './dto/MarketHours.dto';
 import { SyncStatusDto } from './dto/SyncStatus.dto';
+import { HiddenTickerDto } from './dto/HiddenTicker.dto';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { JwtPayload } from '../auth/types/jwt-payload.type';
@@ -203,5 +204,19 @@ export class FinanceController {
   @ApiOkResponse({ type: MarketHoursDto })
   getTickerMarketHours(@Param('id') id: string): Promise<MarketHoursDto> {
     return this.financeService.getMarketHours(id.toUpperCase());
+  }
+
+  @Get('tickers/hidden')
+  @Auth(Role.Admin)
+  @ApiOkResponse({ type: HiddenTickerDto, isArray: true })
+  getHiddenTickers(): Promise<HiddenTickerDto[]> {
+    return this.financeService.getHiddenTickers();
+  }
+
+  @Post('ticker/:id/unhide')
+  @HttpCode(204)
+  @Auth(Role.Admin)
+  unhideTicker(@Param('id') id: string): Promise<void> {
+    return this.financeService.unhideTicker(id.toUpperCase());
   }
 }

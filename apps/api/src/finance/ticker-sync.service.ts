@@ -13,6 +13,7 @@ import {
   DEFAULT_SYNC_CONCURRENCY,
   SYNC_CHUNK_SIZE_ENV_VAR,
   SYNC_CONCURRENCY_ENV_VAR,
+  TICKER_SYNC_ERROR_THRESHOLD,
 } from './constants/candle-windows';
 import { SyncType } from './enums/sync-type.enum';
 import { SyncStatus } from './enums/sync-status.enum';
@@ -61,7 +62,9 @@ import {
   startOfToday,
   startOfTomorrow,
   STALE_LOCK_MS,
+  TickerRef,
 } from './helpers/sync-utils';
+import { TickerHealthService } from './ticker-health.service';
 
 const yahooFinance = new YahooFinance();
 
@@ -77,14 +80,6 @@ const QUARTERLY_REVENUE_HISTORY_YEARS = 2;
 type SyncTrigger = {
   type: SyncType;
   userId?: string;
-};
-
-// A ticker paired with the stable cross-source identity (ISIN) it was
-// resolved from, threaded through the whole sync pipeline so every write
-// keys its document by ISIN rather than the source-specific ticker string.
-type TickerRef = {
-  isin: string;
-  ticker: string;
 };
 
 @Injectable()
@@ -113,6 +108,7 @@ export class TickerSyncService {
     private readonly tickerSourceService: TickerSourceService,
     private readonly configService: ConfigService,
     private readonly yahooRateLimiter: YahooRateLimiterService,
+    private readonly tickerHealthService: TickerHealthService,
   ) {}
 
   // Drives the day's full ticker sync one chunk at a time: each tick either
@@ -337,7 +333,19 @@ export class TickerSyncService {
   ): Promise<void> {
     await this.reclaimStaleLocks(kind);
 
-    const isinUniverse = await this.buildIsinUniverse();
+    const fullIsinUniverse = await this.buildIsinUniverse();
+    if (fullIsinUniverse.length === 0) {
+      return;
+    }
+
+    const hiddenIsins = await this.tickerHealthService.getHiddenIsins();
+    const isinUniverse = fullIsinUniverse.filter((isin) => !hiddenIsins.has(isin));
+    if (hiddenIsins.size > 0) {
+      this.logger.log(
+        `${kind} sync: skipping ${fullIsinUniverse.length - isinUniverse.length} hidden ISIN(s) ` +
+          `(${TICKER_SYNC_ERROR_THRESHOLD}+ consecutive failures)`,
+      );
+    }
     if (isinUniverse.length === 0) {
       return;
     }
@@ -413,6 +421,7 @@ export class TickerSyncService {
         this.getSyncConcurrency(),
         async (ref) => {
           await syncTicker(ref);
+          await this.tickerHealthService.recordSuccess(ref);
           synced += 1;
           if (synced % 25 === 0 || synced === refs.length) {
             this.logger.log(
@@ -424,6 +433,20 @@ export class TickerSyncService {
         (ref, error) => {
           this.logger.warn(`Failed to sync ${kind} for ${ref.ticker}: ${error}`);
           errors[ref.ticker] = error instanceof Error ? error.message : String(error);
+          void this.tickerHealthService
+            .recordFailure(ref, error)
+            .then((justHidden) => {
+              if (justHidden) {
+                this.logger.warn(
+                  `Hiding ${ref.ticker} (${ref.isin}) after ${TICKER_SYNC_ERROR_THRESHOLD} consecutive sync failures`,
+                );
+              }
+            })
+            .catch((recordError) => {
+              this.logger.warn(
+                `Failed to record sync health for ${ref.ticker}: ${recordError}`,
+              );
+            });
         },
       );
 

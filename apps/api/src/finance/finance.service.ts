@@ -11,6 +11,8 @@ import { TickerChartDto } from './dto/TickerChart.dto';
 import { SyncType } from './enums/sync-type.enum';
 import { CandleWindow } from './enums/candle-window.enum';
 import { TickerSyncService } from './ticker-sync.service';
+import { TickerHealthService } from './ticker-health.service';
+import { HiddenTickerDto } from './dto/HiddenTicker.dto';
 import { TickerStaticData, TickerStaticDataDocument } from './schemas/ticker-static-data.schema';
 import {
   CompoundTechnicalTickerData,
@@ -64,6 +66,7 @@ type WithUpdatedAt = { updatedAt: Date };
 export class FinanceService {
   constructor(
     private readonly tickerSyncService: TickerSyncService,
+    private readonly tickerHealthService: TickerHealthService,
     private readonly userService: UserService,
     @InjectModel(TickerSource.name)
     private readonly tickerSourceModel: Model<TickerSourceDocument>,
@@ -243,7 +246,7 @@ export class FinanceService {
   private async buildScreenerTickers(): Promise<TickerDto[]> {
     await this.tickerSyncService.ensureSyncedToday({ type: SyncType.Auto });
 
-    const [staticData, technicalData, fundamentalData, marketHours] =
+    const [staticData, technicalData, fundamentalData, marketHours, hiddenIsins] =
       await Promise.all([
         this.tickerStaticDataModel.find().lean(),
         this.latestPerTicker<CompoundTechnicalTickerData & WithUpdatedAt>(
@@ -253,6 +256,7 @@ export class FinanceService {
           this.fundamentalTickerDataModel,
         ),
         this.marketHoursModel.find().lean(),
+        this.tickerHealthService.getHiddenIsins(),
       ]);
 
     const technicalByIsin = new Map(
@@ -265,14 +269,49 @@ export class FinanceService {
       marketHours.map((doc) => [doc.market, doc.label]),
     );
 
-    return staticData.map((ticker) =>
-      this.toTickerDto(
-        ticker,
-        technicalByIsin.get(ticker.isin),
-        fundamentalByIsin.get(ticker.isin),
-        (ticker.market && marketLabelByCode.get(ticker.market)) ?? null,
-      ),
+    return staticData
+      .filter((ticker) => !hiddenIsins.has(ticker.isin))
+      .map((ticker) =>
+        this.toTickerDto(
+          ticker,
+          technicalByIsin.get(ticker.isin),
+          fundamentalByIsin.get(ticker.isin),
+          (ticker.market && marketLabelByCode.get(ticker.market)) ?? null,
+        ),
+      );
+  }
+
+  async getHiddenTickers(): Promise<HiddenTickerDto[]> {
+    const hidden = await this.tickerHealthService.listHidden();
+    if (hidden.length === 0) {
+      return [];
+    }
+
+    const isins = hidden.map((doc) => doc.isin);
+    const staticData = await this.tickerStaticDataModel
+      .find({ isin: { $in: isins } })
+      .select('isin companyName')
+      .lean();
+    const companyNameByIsin = new Map(
+      staticData.map((doc) => [doc.isin, doc.companyName]),
     );
+
+    return hidden.map(
+      (doc) =>
+        new HiddenTickerDto(
+          doc.isin,
+          doc.ticker,
+          companyNameByIsin.get(doc.isin) ?? null,
+          doc.errorCount,
+          doc.lastError ?? null,
+          doc.lastErrorAt ?? null,
+          doc.hiddenAt ?? null,
+        ),
+    );
+  }
+
+  async unhideTicker(ticker: string): Promise<void> {
+    await this.tickerHealthService.unhideByTicker(ticker);
   }
 
   private uniqueSorted(values: (string | null | undefined)[]): string[] {
