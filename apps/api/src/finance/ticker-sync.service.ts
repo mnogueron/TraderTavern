@@ -116,10 +116,11 @@ export class TickerSyncService {
         continue;
       }
 
-      const alreadySynced = await this.compoundTechnicalDataRepository.existsForDate(
-        isin,
-        syncDate,
-      );
+      const alreadySynced =
+        await this.compoundTechnicalDataRepository.existsForDate(
+          isin,
+          syncDate,
+        );
       if (!alreadySynced) {
         dueTickers.push({ isin, ticker });
       }
@@ -163,7 +164,6 @@ export class TickerSyncService {
       day: '2-digit',
     }).format(date);
   }
-
 
   // A sync is considered "started" for today once any chunk of the main
   // ticker sync has been claimed; from then on, the periodic
@@ -282,7 +282,9 @@ export class TickerSyncService {
     }
 
     const hiddenIsins = await this.tickerHealthService.getHiddenIsins();
-    const isinUniverse = fullIsinUniverse.filter((isin) => !hiddenIsins.has(isin));
+    const isinUniverse = fullIsinUniverse.filter(
+      (isin) => !hiddenIsins.has(isin),
+    );
     if (hiddenIsins.size > 0) {
       this.logger.log(
         `${kind} sync: skipping ${fullIsinUniverse.length - isinUniverse.length} hidden ISIN(s) ` +
@@ -331,14 +333,17 @@ export class TickerSyncService {
       let resolved = 0;
       for (const isin of isinChunk) {
         try {
-          const ticker = await this.tickerSourceService.resolveYahooTicker(isin);
+          const ticker =
+            await this.tickerSourceService.resolveYahooTicker(isin);
           if (ticker) {
             refs.push({ isin, ticker });
           } else {
             errors[isin] = 'No Yahoo ticker could be resolved for this ISIN';
           }
         } catch (error) {
-          this.logger.warn(`Failed to resolve Yahoo ticker for ${isin}: ${error}`);
+          this.logger.warn(
+            `Failed to resolve Yahoo ticker for ${isin}: ${error}`,
+          );
           errors[isin] = error instanceof Error ? error.message : String(error);
         }
 
@@ -373,8 +378,11 @@ export class TickerSyncService {
           }
         },
         (ref, error) => {
-          this.logger.warn(`Failed to sync ${kind} for ${ref.ticker}: ${error}`);
-          errors[ref.ticker] = error instanceof Error ? error.message : String(error);
+          this.logger.warn(
+            `Failed to sync ${kind} for ${ref.ticker}: ${error}`,
+          );
+          errors[ref.ticker] =
+            error instanceof Error ? error.message : String(error);
           void this.tickerHealthService
             .recordFailure(ref, error)
             .then((justHidden) => {
@@ -616,9 +624,9 @@ export class TickerSyncService {
         ? computePiotroskiScore(latestPiotroskiPeriod, priorPiotroskiPeriod)
         : undefined;
 
-    const latestAltmanPeriod = Array.from(altmanByPeriodEnd.values()).sort(
-      (a, b) => a.periodEnd.getTime() - b.periodEnd.getTime(),
-    ).at(-1);
+    const latestAltmanPeriod = Array.from(altmanByPeriodEnd.values())
+      .sort((a, b) => a.periodEnd.getTime() - b.periodEnd.getTime())
+      .at(-1);
     const altmanZScore = latestAltmanPeriod
       ? computeAltmanZScore(latestAltmanPeriod, marketCap)
       : undefined;
@@ -636,7 +644,9 @@ export class TickerSyncService {
     ticker: string,
   ): Promise<{ quarter: Date; actual?: number }[]> {
     const period1 = new Date();
-    period1.setFullYear(period1.getFullYear() - QUARTERLY_REVENUE_HISTORY_YEARS);
+    period1.setFullYear(
+      period1.getFullYear() - QUARTERLY_REVENUE_HISTORY_YEARS,
+    );
 
     const rows = (await this.yahooRateLimiter.schedule(
       () =>
@@ -779,8 +789,7 @@ export class TickerSyncService {
     const { price } = quoteSummary;
 
     const quotes = (chart.quotes ?? []).filter(
-      (quote): quote is typeof quote & { close: number } =>
-        quote.close != null,
+      (quote): quote is typeof quote & { close: number } => quote.close != null,
     );
     const technicalIndicators = computeTechnicalIndicators(
       (chart.quotes ?? []).filter(
@@ -840,12 +849,16 @@ export class TickerSyncService {
     // exactly what we want to pick up there.
     const anchorClose = isClosedToday
       ? (price?.regularMarketPrice ?? quotes.at(-1)?.close ?? null)
-      : (price?.regularMarketPreviousClose ?? completedQuotes.at(-1)?.close ?? null);
+      : (price?.regularMarketPreviousClose ??
+        completedQuotes.at(-1)?.close ??
+        null);
     // "prior": the completed session immediately before the anchor. Always
     // uses `completedQuotes`, since "prior" is never today regardless of
     // branch.
     const priorClose = isClosedToday
-      ? (price?.regularMarketPreviousClose ?? completedQuotes.at(-1)?.close ?? null)
+      ? (price?.regularMarketPreviousClose ??
+        completedQuotes.at(-1)?.close ??
+        null)
       : (completedQuotes.at(-2)?.close ?? null);
 
     const changePercent1d =
@@ -932,94 +945,94 @@ export class TickerSyncService {
     await this.fundamentalDataRepository.upsert(ref, syncDate, {
       marketCap,
       peRatio: summaryDetail?.trailingPE,
-          psRatio: summaryDetail?.priceToSalesTrailing12Months,
-          ebitda,
-          totalDebt,
-          totalCash,
-          debtToEquity: financialData?.debtToEquity,
+      psRatio: summaryDetail?.priceToSalesTrailing12Months,
+      ebitda,
+      totalDebt,
+      totalCash,
+      debtToEquity: financialData?.debtToEquity,
 
-          // Company
-          enterpriseValue: defaultKeyStatistics?.enterpriseValue,
-          revenue: totalRevenue,
-          grossProfit: financialData?.grossProfits,
-          netIncome: defaultKeyStatistics?.netIncomeToCommon,
-          revenuePerShare: financialData?.revenuePerShare,
+      // Company
+      enterpriseValue: defaultKeyStatistics?.enterpriseValue,
+      revenue: totalRevenue,
+      grossProfit: financialData?.grossProfits,
+      netIncome: defaultKeyStatistics?.netIncomeToCommon,
+      revenuePerShare: financialData?.revenuePerShare,
 
-          // Valuation
-          forwardPE: summaryDetail?.forwardPE ?? defaultKeyStatistics?.forwardPE,
-          pegRatio: defaultKeyStatistics?.pegRatio,
-          evToEbitda: defaultKeyStatistics?.enterpriseToEbitda,
-          evToRevenue: defaultKeyStatistics?.enterpriseToRevenue,
-          priceToBook: defaultKeyStatistics?.priceToBook,
-          epsTrailing: defaultKeyStatistics?.trailingEps,
-          epsForward: defaultKeyStatistics?.forwardEps,
+      // Valuation
+      forwardPE: summaryDetail?.forwardPE ?? defaultKeyStatistics?.forwardPE,
+      pegRatio: defaultKeyStatistics?.pegRatio,
+      evToEbitda: defaultKeyStatistics?.enterpriseToEbitda,
+      evToRevenue: defaultKeyStatistics?.enterpriseToRevenue,
+      priceToBook: defaultKeyStatistics?.priceToBook,
+      epsTrailing: defaultKeyStatistics?.trailingEps,
+      epsForward: defaultKeyStatistics?.forwardEps,
 
-          // 52W range
-          fiftyTwoWeekHigh: summaryDetail?.fiftyTwoWeekHigh,
-          fiftyTwoWeekLow: summaryDetail?.fiftyTwoWeekLow,
+      // 52W range
+      fiftyTwoWeekHigh: summaryDetail?.fiftyTwoWeekHigh,
+      fiftyTwoWeekLow: summaryDetail?.fiftyTwoWeekLow,
 
-          // Profitability
-          grossMargin: toPercent(financialData?.grossMargins),
-          operatingMargin: toPercent(financialData?.operatingMargins),
-          ebitdaMargin: toPercent(financialData?.ebitdaMargins),
-          profitMargin: toPercent(
-            financialData?.profitMargins ?? defaultKeyStatistics?.profitMargins,
-          ),
-          returnOnEquity: toPercent(financialData?.returnOnEquity),
-          returnOnAssets: toPercent(financialData?.returnOnAssets),
+      // Profitability
+      grossMargin: toPercent(financialData?.grossMargins),
+      operatingMargin: toPercent(financialData?.operatingMargins),
+      ebitdaMargin: toPercent(financialData?.ebitdaMargins),
+      profitMargin: toPercent(
+        financialData?.profitMargins ?? defaultKeyStatistics?.profitMargins,
+      ),
+      returnOnEquity: toPercent(financialData?.returnOnEquity),
+      returnOnAssets: toPercent(financialData?.returnOnAssets),
 
-          // Growth
-          revenueGrowth: toPercent(financialData?.revenueGrowth),
-          earningsGrowth: toPercent(financialData?.earningsGrowth),
+      // Growth
+      revenueGrowth: toPercent(financialData?.revenueGrowth),
+      earningsGrowth: toPercent(financialData?.earningsGrowth),
 
-          // Cash flow & leverage
-          operatingCashflow,
-          freeCashflow,
-          capex,
-          fcfMargin,
-          fcfYield,
-          netDebt,
-          netDebtToEbitda,
+      // Cash flow & leverage
+      operatingCashflow,
+      freeCashflow,
+      capex,
+      fcfMargin,
+      fcfYield,
+      netDebt,
+      netDebtToEbitda,
 
-          // Balance sheet
-          currentRatio: financialData?.currentRatio,
-          quickRatio: financialData?.quickRatio,
-          bookValuePerShare: defaultKeyStatistics?.bookValue,
-          cashPerShare: financialData?.totalCashPerShare,
+      // Balance sheet
+      currentRatio: financialData?.currentRatio,
+      quickRatio: financialData?.quickRatio,
+      bookValuePerShare: defaultKeyStatistics?.bookValue,
+      cashPerShare: financialData?.totalCashPerShare,
 
-          // Dividends
-          forwardDividendRate: summaryDetail?.dividendRate,
-          trailingDividendRate: summaryDetail?.trailingAnnualDividendRate,
-          dividendYield: toPercent(summaryDetail?.dividendYield),
-          fiveYearAvgDividendYield: summaryDetail?.fiveYearAvgDividendYield,
-          payoutRatio: toPercent(summaryDetail?.payoutRatio),
-          exDividendDate: summaryDetail?.exDividendDate,
+      // Dividends
+      forwardDividendRate: summaryDetail?.dividendRate,
+      trailingDividendRate: summaryDetail?.trailingAnnualDividendRate,
+      dividendYield: toPercent(summaryDetail?.dividendYield),
+      fiveYearAvgDividendYield: summaryDetail?.fiveYearAvgDividendYield,
+      payoutRatio: toPercent(summaryDetail?.payoutRatio),
+      exDividendDate: summaryDetail?.exDividendDate,
 
-          // Analyst consensus
-          analystRating: financialData?.recommendationKey,
-          analystTargetMean: financialData?.targetMeanPrice,
-          analystTargetLow: financialData?.targetLowPrice,
-          analystTargetHigh: financialData?.targetHighPrice,
-          analystCount: financialData?.numberOfAnalystOpinions,
+      // Analyst consensus
+      analystRating: financialData?.recommendationKey,
+      analystTargetMean: financialData?.targetMeanPrice,
+      analystTargetLow: financialData?.targetLowPrice,
+      analystTargetHigh: financialData?.targetHighPrice,
+      analystCount: financialData?.numberOfAnalystOpinions,
 
-          // Ownership
-          sharesOutstanding: defaultKeyStatistics?.sharesOutstanding,
-          floatShares: defaultKeyStatistics?.floatShares,
-          insidersPercent: toPercent(defaultKeyStatistics?.heldPercentInsiders),
-          institutionsPercent: toPercent(
-            defaultKeyStatistics?.heldPercentInstitutions,
-          ),
+      // Ownership
+      sharesOutstanding: defaultKeyStatistics?.sharesOutstanding,
+      floatShares: defaultKeyStatistics?.floatShares,
+      insidersPercent: toPercent(defaultKeyStatistics?.heldPercentInsiders),
+      institutionsPercent: toPercent(
+        defaultKeyStatistics?.heldPercentInstitutions,
+      ),
 
-          // Quality
-          piotroskiScore: resolvedPiotroskiScore,
-          altmanZScore: resolvedAltmanZScore,
+      // Quality
+      piotroskiScore: resolvedPiotroskiScore,
+      altmanZScore: resolvedAltmanZScore,
 
-          // Technical (directly from Yahoo, no computation)
-          sma50: summaryDetail?.fiftyDayAverage,
-          sma200: summaryDetail?.twoHundredDayAverage,
-          beta: summaryDetail?.beta ?? defaultKeyStatistics?.beta,
-          sp500Change52w: toPercent(defaultKeyStatistics?.SandP52WeekChange),
-          avgVolume30d: summaryDetail?.averageVolume,
+      // Technical (directly from Yahoo, no computation)
+      sma50: summaryDetail?.fiftyDayAverage,
+      sma200: summaryDetail?.twoHundredDayAverage,
+      beta: summaryDetail?.beta ?? defaultKeyStatistics?.beta,
+      sp500Change52w: toPercent(defaultKeyStatistics?.SandP52WeekChange),
+      avgVolume30d: summaryDetail?.averageVolume,
       avgVolume10d:
         summaryDetail?.averageVolume10days ??
         summaryDetail?.averageDailyVolume10Day,
@@ -1051,7 +1064,9 @@ export class TickerSyncService {
 
     const candles = (chart.quotes ?? [])
       .filter(
-        (quote): quote is typeof quote & {
+        (
+          quote,
+        ): quote is typeof quote & {
           open: number;
           close: number;
           low: number;
