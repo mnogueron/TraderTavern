@@ -196,6 +196,11 @@ export class FundamentalTickerData {
   @Prop()
   piotroskiScore?: number;
 
+  // Not exposed by any Yahoo Finance module; computed from annual financial
+  // history and market cap (see ticker-sync.service.ts#computeAltmanZScore).
+  @Prop()
+  altmanZScore?: number;
+
   // Technical (Yahoo-provided, no computation)
   @Prop()
   sma50?: number;

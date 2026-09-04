@@ -158,6 +158,7 @@ const NUMERIC_FIELDS: NumericFieldConfig[] = [
   { id: 'insidersPercent', label: 'Insiders %', kind: 'percent' },
   { id: 'institutionsPercent', label: 'Institutions %', kind: 'percent' },
   { id: 'piotroskiScore', label: 'Piotroski F-Score', kind: 'number', decimals: 0 },
+  { id: 'altmanZScore', label: 'Altman Z-Score', kind: 'number', decimals: 2 },
   { id: 'sma50', label: 'SMA (50)', kind: 'currency' },
   { id: 'sma200', label: 'SMA (200)', kind: 'currency' },
   { id: 'beta', label: 'Beta', kind: 'number' },

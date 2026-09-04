@@ -146,6 +146,12 @@ const TickerHeader = ({ ticker, fundamental, isPending }: TickerHeaderProps) => 
               : '—'}
           </span>
         </span>
+        <span className="text-muted-foreground">
+          Altman Z:{' '}
+          <span className="tabular-nums text-foreground">
+            {formatNumber(fundamental?.altmanZScore ?? null, 2)}
+          </span>
+        </span>
       </div>
 
       {ticker.description && (

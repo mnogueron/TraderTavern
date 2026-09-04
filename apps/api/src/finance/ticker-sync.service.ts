@@ -64,6 +64,7 @@ const QUARTERLY_REVENUE_HISTORY_YEARS = 2;
 type FundamentalsTimeSeriesRow = {
   date: Date;
   totalRevenue?: number;
+  EBIT?: number;
   EBITDA?: number;
   netIncome?: number;
   grossProfit?: number;
@@ -77,6 +78,8 @@ type FundamentalsTimeSeriesRow = {
   currentAssets?: number;
   currentLiabilities?: number;
   longTermDebt?: number;
+  retainedEarnings?: number;
+  totalLiabilitiesNetMinorityInterest?: number;
   ordinarySharesNumber?: number;
   shareIssued?: number;
 };
@@ -194,6 +197,67 @@ const computePiotroskiScore = (
   if (assetTurnoverCur > assetTurnoverPrior) score += 1; // improving efficiency
 
   return score;
+};
+
+// Inputs for the Altman Z-Score, gathered from the same annual
+// financials/balance-sheet rows as AnnualFinancialPeriodDraft but kept
+// separate since these fields aren't part of the public financial history
+// feature (see ticker-financial-history.schema.ts).
+type AltmanPeriodDraft = {
+  periodEnd: Date;
+  totalAssets?: number;
+  currentAssets?: number;
+  currentLiabilities?: number;
+  retainedEarnings?: number;
+  ebit?: number;
+  revenue?: number;
+  totalLiabilities?: number;
+};
+
+// Yahoo Finance doesn't expose an Altman Z-Score in any quoteSummary or
+// fundamentalsTimeSeries module, so it's always computed here from the most
+// recent annual period plus the current market cap. Returns undefined if any
+// required figure is missing. Uses the original 1968 model (public
+// manufacturing companies); scores for financials/non-manufacturers are
+// directional rather than exact given how differently their balance sheets
+// are structured.
+const computeAltmanZScore = (
+  period: AltmanPeriodDraft,
+  marketCap: number | undefined,
+): number | undefined => {
+  const {
+    totalAssets,
+    currentAssets,
+    currentLiabilities,
+    retainedEarnings,
+    ebit,
+    revenue,
+    totalLiabilities,
+  } = period;
+
+  if (
+    totalAssets == null ||
+    currentAssets == null ||
+    currentLiabilities == null ||
+    retainedEarnings == null ||
+    ebit == null ||
+    revenue == null ||
+    totalLiabilities == null ||
+    marketCap == null ||
+    totalAssets === 0 ||
+    totalLiabilities === 0
+  ) {
+    return undefined;
+  }
+
+  const workingCapital = currentAssets - currentLiabilities;
+  const x1 = workingCapital / totalAssets;
+  const x2 = retainedEarnings / totalAssets;
+  const x3 = ebit / totalAssets;
+  const x4 = marketCap / totalLiabilities;
+  const x5 = revenue / totalAssets;
+
+  return 1.2 * x1 + 1.4 * x2 + 3.3 * x3 + 0.6 * x4 + 1.0 * x5;
 };
 
 type SyncTrigger = {
@@ -729,7 +793,7 @@ export class TickerSyncService {
     );
   }
 
-  private async fetchFinancialHistory(ticker: string) {
+  private async fetchFinancialHistory(ticker: string, marketCap?: number) {
     const period1 = new Date();
     period1.setFullYear(period1.getFullYear() - FINANCIAL_HISTORY_YEARS);
 
@@ -782,6 +846,17 @@ export class TickerSyncService {
       return entry;
     };
 
+    const altmanByPeriodEnd = new Map<string, AltmanPeriodDraft>();
+    const getOrCreateAltman = (date: Date): AltmanPeriodDraft => {
+      const key = date.toISOString();
+      let entry = altmanByPeriodEnd.get(key);
+      if (!entry) {
+        entry = { periodEnd: date };
+        altmanByPeriodEnd.set(key, entry);
+      }
+      return entry;
+    };
+
     for (const row of financials) {
       const entry = getOrCreate(row.date);
       entry.revenue = row.totalRevenue;
@@ -792,6 +867,10 @@ export class TickerSyncService {
       piotroski.revenue = row.totalRevenue;
       piotroski.netIncome = row.netIncome;
       piotroski.grossProfit = row.grossProfit;
+
+      const altman = getOrCreateAltman(row.date);
+      altman.revenue = row.totalRevenue;
+      altman.ebit = row.EBIT;
     }
     for (const row of cashFlow) {
       const entry = getOrCreate(row.date);
@@ -814,6 +893,13 @@ export class TickerSyncService {
       piotroski.currentLiabilities = row.currentLiabilities;
       piotroski.longTermDebt = row.longTermDebt;
       piotroski.sharesOutstanding = row.ordinarySharesNumber ?? row.shareIssued;
+
+      const altman = getOrCreateAltman(row.date);
+      altman.totalAssets = row.totalAssets;
+      altman.currentAssets = row.currentAssets;
+      altman.currentLiabilities = row.currentLiabilities;
+      altman.retainedEarnings = row.retainedEarnings;
+      altman.totalLiabilities = row.totalLiabilitiesNetMinorityInterest;
     }
 
     const piotroskiPeriods = Array.from(piotroskiByPeriodEnd.values()).sort(
@@ -826,11 +912,19 @@ export class TickerSyncService {
         ? computePiotroskiScore(latestPiotroskiPeriod, priorPiotroskiPeriod)
         : undefined;
 
+    const latestAltmanPeriod = Array.from(altmanByPeriodEnd.values()).sort(
+      (a, b) => a.periodEnd.getTime() - b.periodEnd.getTime(),
+    ).at(-1);
+    const altmanZScore = latestAltmanPeriod
+      ? computeAltmanZScore(latestAltmanPeriod, marketCap)
+      : undefined;
+
     return {
       periods: Array.from(byPeriodEnd.values()).sort(
         (a, b) => a.periodEnd.getTime() - b.periodEnd.getTime(),
       ),
       piotroskiScore,
+      altmanZScore,
     };
   }
 
@@ -863,18 +957,29 @@ export class TickerSyncService {
 
     await this.updateStaticData(ref, quoteSummary);
     await this.updateCompound(ref, syncDate, quoteSummary, chart);
-    const piotroskiScore = await this.updateFinancialHistory(ref);
-    await this.updateFundamental(ref, syncDate, quoteSummary, piotroskiScore);
+    const marketCap =
+      quoteSummary.summaryDetail?.marketCap ?? quoteSummary.price?.marketCap;
+    const { piotroskiScore, altmanZScore } = await this.updateFinancialHistory(
+      ref,
+      marketCap,
+    );
+    await this.updateFundamental(
+      ref,
+      syncDate,
+      quoteSummary,
+      piotroskiScore,
+      altmanZScore,
+    );
     await this.updateEarningsHistory(ref, quoteSummary);
     await this.syncTechnical(ref);
   }
 
   private async updateFinancialHistory(
     ref: TickerRef,
-  ): Promise<number | undefined> {
-    const { periods, piotroskiScore } = await this.fetchFinancialHistory(
-      ref.ticker,
-    );
+    marketCap?: number,
+  ): Promise<{ piotroskiScore?: number; altmanZScore?: number }> {
+    const { periods, piotroskiScore, altmanZScore } =
+      await this.fetchFinancialHistory(ref.ticker, marketCap);
 
     await this.tickerFinancialHistoryModel.updateOne(
       { isin: ref.isin },
@@ -882,7 +987,7 @@ export class TickerSyncService {
       { upsert: true },
     );
 
-    return piotroskiScore;
+    return { piotroskiScore, altmanZScore };
   }
 
   private async updateEarningsHistory(
@@ -1291,23 +1396,28 @@ export class TickerSyncService {
     syncDate: Date,
     quoteSummary: Awaited<ReturnType<typeof this.fetchQuoteSummary>>,
     piotroskiScore?: number,
+    altmanZScore?: number,
   ): Promise<void> {
     const { price, summaryDetail, financialData, defaultKeyStatistics } =
       quoteSummary;
 
-    // The score only changes with annual filings and is freshly computed by
-    // updateFinancialHistory as part of the full ticker sync; on syncs that
-    // don't recompute it (e.g. the fundamental-only cadence), carry the last
-    // known value forward instead of dropping it from that day's snapshot.
+    // These scores only change with annual filings and are freshly computed
+    // by updateFinancialHistory as part of the full ticker sync; on syncs
+    // that don't recompute them (e.g. the fundamental-only cadence), carry
+    // the last known values forward instead of dropping them from that
+    // day's snapshot.
+    const previousFundamental =
+      piotroskiScore == null || altmanZScore == null
+        ? await this.fundamentalTickerDataModel
+            .findOne({ isin: ref.isin })
+            .sort({ syncDate: -1 })
+            .select('piotroskiScore altmanZScore')
+            .lean()
+        : null;
     const resolvedPiotroskiScore =
-      piotroskiScore ??
-      (
-        await this.fundamentalTickerDataModel
-          .findOne({ isin: ref.isin })
-          .sort({ syncDate: -1 })
-          .select('piotroskiScore')
-          .lean()
-      )?.piotroskiScore;
+      piotroskiScore ?? previousFundamental?.piotroskiScore;
+    const resolvedAltmanZScore =
+      altmanZScore ?? previousFundamental?.altmanZScore;
 
     const totalRevenue = financialData?.totalRevenue;
     const freeCashflow = financialData?.freeCashflow;
@@ -1430,6 +1540,7 @@ export class TickerSyncService {
 
           // Quality
           piotroskiScore: resolvedPiotroskiScore,
+          altmanZScore: resolvedAltmanZScore,
 
           // Technical (directly from Yahoo, no computation)
           sma50: summaryDetail?.fiftyDayAverage,

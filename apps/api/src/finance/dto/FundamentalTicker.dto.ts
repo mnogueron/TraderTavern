@@ -187,6 +187,14 @@ export class FundamentalTickerDto {
   })
   piotroskiScore: number | null;
 
+  @ApiProperty({
+    nullable: true,
+    type: Number,
+    description:
+      'Altman Z-Score. > 2.99 safe zone, 1.81-2.99 grey zone, < 1.81 distress zone',
+  })
+  altmanZScore: number | null;
+
   // Technical
   @ApiProperty({ nullable: true, type: Number })
   sma50: number | null;
@@ -271,6 +279,7 @@ export class FundamentalTickerDto {
     insidersPercent: number | null,
     institutionsPercent: number | null,
     piotroskiScore: number | null,
+    altmanZScore: number | null,
     sma50: number | null,
     sma200: number | null,
     beta: number | null,
@@ -336,6 +345,7 @@ export class FundamentalTickerDto {
     this.insidersPercent = insidersPercent;
     this.institutionsPercent = institutionsPercent;
     this.piotroskiScore = piotroskiScore;
+    this.altmanZScore = altmanZScore;
     this.sma50 = sma50;
     this.sma200 = sma200;
     this.beta = beta;

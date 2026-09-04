@@ -559,5 +559,11 @@ export const buildScreenerFilterConfigs = (
     label: 'Piotroski F-Score',
     category: 'quality',
   },
+  {
+    type: 'minmax',
+    key: 'altmanZScore',
+    label: 'Altman Z-Score',
+    category: 'quality',
+  },
 ];
 
