@@ -771,6 +771,8 @@ export interface components {
             institutionsPercent: number | null;
             /** @description Piotroski F-Score (0-9) */
             piotroskiScore: number | null;
+            /** @description Altman Z-Score. > 2.99 safe zone, 1.81-2.99 grey zone, < 1.81 distress zone */
+            altmanZScore: number | null;
             sma50: number | null;
             sma200: number | null;
             beta: number | null;
@@ -882,6 +884,8 @@ export interface components {
             institutionsPercent: number | null;
             /** @description Piotroski F-Score (0-9) */
             piotroskiScore: number | null;
+            /** @description Altman Z-Score. > 2.99 safe zone, 1.81-2.99 grey zone, < 1.81 distress zone */
+            altmanZScore: number | null;
             sma50: number | null;
             sma200: number | null;
             beta: number | null;

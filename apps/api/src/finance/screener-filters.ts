@@ -111,6 +111,7 @@ export const SCREENER_FILTER_TYPES: Record<string, ScreenerFilterValue['type']> 
 
   // Quality
   piotroskiScore: 'minmax',
+  altmanZScore: 'minmax',
 };
 
 export const SCREENER_FILTER_ACCESSORS: Record<string, ScreenerFilterAccessor> = {
@@ -218,6 +219,7 @@ export const SCREENER_FILTER_ACCESSORS: Record<string, ScreenerFilterAccessor> =
 
   // Quality
   piotroskiScore: (ticker) => ticker.piotroskiScore,
+  altmanZScore: (ticker) => ticker.altmanZScore,
 };
 
 export const SORTABLE_SCREENER_FIELDS = [
@@ -232,6 +234,7 @@ export const SORTABLE_SCREENER_FIELDS = [
   'changePercentYtd',
   'changePercent1y',
   'piotroskiScore',
+  'altmanZScore',
 ] as const;
 
 export type SortableScreenerField = (typeof SORTABLE_SCREENER_FIELDS)[number];

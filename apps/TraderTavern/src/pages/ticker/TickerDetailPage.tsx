@@ -62,6 +62,32 @@ const StatRow = ({
   </>
 );
 
+// Standard Altman Z-Score zone thresholds (original 1968 model).
+const altmanZoneInfo = (
+  score: number,
+): { label: string; description: string; className: string } => {
+  if (score > 2.99) {
+    return {
+      label: 'Safe Zone',
+      description: 'Low probability of bankruptcy within the next two years.',
+      className: 'text-emerald-600',
+    };
+  }
+  if (score >= 1.81) {
+    return {
+      label: 'Grey Zone',
+      description:
+        'Some risk of financial distress; not clearly safe or at risk.',
+      className: 'text-amber-600',
+    };
+  }
+  return {
+    label: 'Distress Zone',
+    description: 'High probability of bankruptcy within the next two years.',
+    className: 'text-red-600',
+  };
+};
+
 type TickerDetailPageProps = {
   ticker: string;
 };
@@ -564,6 +590,19 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
                         }
                       />
                       <StatRow
+                        label="Altman Z-Score"
+                        value={
+                          fundamental.altmanZScore != null
+                            ? `${formatNumber(fundamental.altmanZScore, 2)} · ${altmanZoneInfo(fundamental.altmanZScore).label}`
+                            : '—'
+                        }
+                        valueClassName={
+                          fundamental.altmanZScore != null
+                            ? altmanZoneInfo(fundamental.altmanZScore).className
+                            : undefined
+                        }
+                      />
+                      <StatRow
                         label="SMA 50"
                         value={formatNumber(
                           fundamental.sma50,
@@ -665,6 +704,20 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
                         }
                       />
                     </StatGroup>
+
+                    {fundamental.altmanZScore != null && (
+                      <span className="text-xs text-muted-foreground sm:col-span-2 lg:col-span-3">
+                        <span
+                          className={
+                            altmanZoneInfo(fundamental.altmanZScore).className
+                          }
+                        >
+                          Altman Z-Score {formatNumber(fundamental.altmanZScore, 2)} (
+                          {altmanZoneInfo(fundamental.altmanZScore).label}):
+                        </span>{' '}
+                        {altmanZoneInfo(fundamental.altmanZScore).description}
+                      </span>
+                    )}
 
                     <span className="text-xs text-muted-foreground sm:col-span-2 lg:col-span-3">
                       Refreshed {formatDateTime(fundamental.refreshedAt)}
