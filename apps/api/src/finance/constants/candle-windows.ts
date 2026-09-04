@@ -41,6 +41,12 @@ export const CANDLE_LOOKBACK_MULTIPLIER = 2;
 // globally across all in-flight tickers (see YahooRateLimiter), not
 // per-ticker, so raising SYNC_TICKER_CONCURRENCY doesn't multiply the
 // effective request rate.
+//
+// Stress-tested manually (sequential quoteSummary calls at 100/50/25/10ms,
+// plus a 20-request fully concurrent burst): no 429s observed down to 10ms.
+// Raised back up from 40ms after the sustained ~8000-ticker sync volume
+// started triggering 429s in practice — that short manual sample didn't
+// reflect real production load.
 export const YAHOO_REQUEST_DELAY_MS = 100;
 
 // Yahoo occasionally stalls a request indefinitely (no response, no error),
