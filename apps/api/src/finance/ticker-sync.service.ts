@@ -1,4 +1,3 @@
-import { createHash } from 'crypto';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
@@ -45,6 +44,24 @@ import {
   TickerEarningsHistory,
   TickerEarningsHistoryDocument,
 } from './schemas/ticker-earnings-history.schema';
+import {
+  AltmanPeriodDraft,
+  AnnualFinancialPeriodDraft,
+  FundamentalsTimeSeriesRow,
+  PiotroskiPeriodDraft,
+  computeAltmanZScore,
+  computePiotroskiScore,
+} from './helpers/financial-helpers';
+import { computeTechnicalIndicators } from './helpers/technical-indicators';
+import {
+  chunkArray,
+  hashIsinChunk,
+  isDuplicateKeyError,
+  runWithConcurrency,
+  startOfToday,
+  startOfTomorrow,
+  STALE_LOCK_MS,
+} from './helpers/sync-utils';
 
 const yahooFinance = new YahooFinance();
 
@@ -57,209 +74,6 @@ const HISTORY_LOOKBACK_DAYS = 400;
 const FINANCIAL_HISTORY_YEARS = 6;
 const QUARTERLY_REVENUE_HISTORY_YEARS = 2;
 
-// fundamentalsTimeSeries rows carry an internal TYPE/date envelope plus
-// dozens of module-specific fields; we only care about a handful, and only
-// the fields we read are typed here (the rest are untyped in yahoo-finance2
-// for these modules, see plan research notes).
-type FundamentalsTimeSeriesRow = {
-  date: Date;
-  totalRevenue?: number;
-  EBIT?: number;
-  EBITDA?: number;
-  netIncome?: number;
-  grossProfit?: number;
-  operatingCashFlow?: number;
-  freeCashFlow?: number;
-  capitalExpenditure?: number;
-  cashAndCashEquivalents?: number;
-  totalDebt?: number;
-  netDebt?: number;
-  totalAssets?: number;
-  currentAssets?: number;
-  currentLiabilities?: number;
-  longTermDebt?: number;
-  retainedEarnings?: number;
-  totalLiabilitiesNetMinorityInterest?: number;
-  ordinarySharesNumber?: number;
-  shareIssued?: number;
-};
-
-type AnnualFinancialPeriodDraft = {
-  periodEnd: Date;
-  revenue?: number;
-  ebitda?: number;
-  netIncome?: number;
-  operatingCashflow?: number;
-  capex?: number;
-  freeCashflow?: number;
-  cash?: number;
-  totalDebt?: number;
-  netDebt?: number;
-};
-
-// Inputs for the Piotroski F-Score, gathered from the same annual
-// financials/cash-flow/balance-sheet rows as AnnualFinancialPeriodDraft but
-// kept separate since these fields aren't part of the public financial
-// history feature (see ticker-financial-history.schema.ts).
-type PiotroskiPeriodDraft = {
-  periodEnd: Date;
-  netIncome?: number;
-  totalAssets?: number;
-  operatingCashflow?: number;
-  longTermDebt?: number;
-  currentAssets?: number;
-  currentLiabilities?: number;
-  grossProfit?: number;
-  revenue?: number;
-  sharesOutstanding?: number;
-};
-
-// Yahoo Finance doesn't expose a Piotroski F-Score in any quoteSummary or
-// fundamentalsTimeSeries module, so it's always computed here from the two
-// most recent annual periods rather than read directly from the API.
-// Returns undefined if either period is missing a required figure.
-const computePiotroskiScore = (
-  current: PiotroskiPeriodDraft,
-  prior: PiotroskiPeriodDraft,
-): number | undefined => {
-  const {
-    netIncome: netIncomeCur,
-    totalAssets: totalAssetsCur,
-    operatingCashflow: operatingCashflowCur,
-    longTermDebt: longTermDebtCur,
-    currentAssets: currentAssetsCur,
-    currentLiabilities: currentLiabilitiesCur,
-    grossProfit: grossProfitCur,
-    revenue: revenueCur,
-    sharesOutstanding: sharesOutstandingCur,
-  } = current;
-  const {
-    netIncome: netIncomePrior,
-    totalAssets: totalAssetsPrior,
-    operatingCashflow: operatingCashflowPrior,
-    longTermDebt: longTermDebtPrior,
-    currentAssets: currentAssetsPrior,
-    currentLiabilities: currentLiabilitiesPrior,
-    grossProfit: grossProfitPrior,
-    revenue: revenuePrior,
-    sharesOutstanding: sharesOutstandingPrior,
-  } = prior;
-
-  if (
-    netIncomeCur == null ||
-    totalAssetsCur == null ||
-    operatingCashflowCur == null ||
-    longTermDebtCur == null ||
-    currentAssetsCur == null ||
-    currentLiabilitiesCur == null ||
-    grossProfitCur == null ||
-    revenueCur == null ||
-    sharesOutstandingCur == null ||
-    netIncomePrior == null ||
-    totalAssetsPrior == null ||
-    operatingCashflowPrior == null ||
-    longTermDebtPrior == null ||
-    currentAssetsPrior == null ||
-    currentLiabilitiesPrior == null ||
-    grossProfitPrior == null ||
-    revenuePrior == null ||
-    sharesOutstandingPrior == null ||
-    totalAssetsCur === 0 ||
-    totalAssetsPrior === 0 ||
-    currentLiabilitiesCur === 0 ||
-    currentLiabilitiesPrior === 0 ||
-    revenueCur === 0 ||
-    revenuePrior === 0
-  ) {
-    return undefined;
-  }
-
-  const roaCur = netIncomeCur / totalAssetsCur;
-  const roaPrior = netIncomePrior / totalAssetsPrior;
-  const leverageCur = longTermDebtCur / totalAssetsCur;
-  const leveragePrior = longTermDebtPrior / totalAssetsPrior;
-  const currentRatioCur = currentAssetsCur / currentLiabilitiesCur;
-  const currentRatioPrior = currentAssetsPrior / currentLiabilitiesPrior;
-  const grossMarginCur = grossProfitCur / revenueCur;
-  const grossMarginPrior = grossProfitPrior / revenuePrior;
-  const assetTurnoverCur = revenueCur / totalAssetsCur;
-  const assetTurnoverPrior = revenuePrior / totalAssetsPrior;
-
-  let score = 0;
-  if (roaCur > 0) score += 1; // profitable
-  if (operatingCashflowCur > 0) score += 1; // positive operating cash flow
-  if (roaCur > roaPrior) score += 1; // improving profitability
-  if (operatingCashflowCur > netIncomeCur) score += 1; // earnings quality
-  if (leverageCur < leveragePrior) score += 1; // decreasing leverage
-  if (currentRatioCur > currentRatioPrior) score += 1; // improving liquidity
-  if (sharesOutstandingCur <= sharesOutstandingPrior) score += 1; // no dilution
-  if (grossMarginCur > grossMarginPrior) score += 1; // improving margin
-  if (assetTurnoverCur > assetTurnoverPrior) score += 1; // improving efficiency
-
-  return score;
-};
-
-// Inputs for the Altman Z-Score, gathered from the same annual
-// financials/balance-sheet rows as AnnualFinancialPeriodDraft but kept
-// separate since these fields aren't part of the public financial history
-// feature (see ticker-financial-history.schema.ts).
-type AltmanPeriodDraft = {
-  periodEnd: Date;
-  totalAssets?: number;
-  currentAssets?: number;
-  currentLiabilities?: number;
-  retainedEarnings?: number;
-  ebit?: number;
-  revenue?: number;
-  totalLiabilities?: number;
-};
-
-// Yahoo Finance doesn't expose an Altman Z-Score in any quoteSummary or
-// fundamentalsTimeSeries module, so it's always computed here from the most
-// recent annual period plus the current market cap. Returns undefined if any
-// required figure is missing. Uses the original 1968 model (public
-// manufacturing companies); scores for financials/non-manufacturers are
-// directional rather than exact given how differently their balance sheets
-// are structured.
-const computeAltmanZScore = (
-  period: AltmanPeriodDraft,
-  marketCap: number | undefined,
-): number | undefined => {
-  const {
-    totalAssets,
-    currentAssets,
-    currentLiabilities,
-    retainedEarnings,
-    ebit,
-    revenue,
-    totalLiabilities,
-  } = period;
-
-  if (
-    totalAssets == null ||
-    currentAssets == null ||
-    currentLiabilities == null ||
-    retainedEarnings == null ||
-    ebit == null ||
-    revenue == null ||
-    totalLiabilities == null ||
-    marketCap == null ||
-    totalAssets === 0 ||
-    totalLiabilities === 0
-  ) {
-    return undefined;
-  }
-
-  const workingCapital = currentAssets - currentLiabilities;
-  const x1 = workingCapital / totalAssets;
-  const x2 = retainedEarnings / totalAssets;
-  const x3 = ebit / totalAssets;
-  const x4 = marketCap / totalLiabilities;
-  const x5 = revenue / totalAssets;
-
-  return 1.2 * x1 + 1.4 * x2 + 3.3 * x3 + 0.6 * x4 + 1.0 * x5;
-};
-
 type SyncTrigger = {
   type: SyncType;
   userId?: string;
@@ -271,81 +85,6 @@ type SyncTrigger = {
 type TickerRef = {
   isin: string;
   ticker: string;
-};
-
-// A "running" lock older than this is assumed abandoned (e.g. the process
-// crashed or was restarted mid-chunk) rather than genuinely still in
-// progress, and is reclaimed so the chunk can be retried. Comfortably above
-// the worst-case chunk duration (a few hundred Yahoo requests, throttled to
-// one per YAHOO_REQUEST_DELAY_MS).
-const STALE_LOCK_MS = 30 * 60 * 1000;
-
-// Mongo's duplicate-key error code, thrown when the sync_history "running"
-// partial unique index rejects a second concurrent lock claim.
-const MONGO_DUPLICATE_KEY_ERROR_CODE = 11000;
-
-const isDuplicateKeyError = (error: unknown): boolean =>
-  typeof error === 'object' &&
-  error !== null &&
-  'code' in error &&
-  (error as { code?: number }).code === MONGO_DUPLICATE_KEY_ERROR_CODE;
-
-// Runs `worker` over `items` with at most `concurrency` in flight at once,
-// collecting per-item failures instead of aborting the whole batch.
-async function runWithConcurrency<T>(
-  items: T[],
-  concurrency: number,
-  worker: (item: T) => Promise<void>,
-  onError: (item: T, error: unknown) => void,
-): Promise<number> {
-  let successCount = 0;
-  let cursor = 0;
-
-  const runNext = async (): Promise<void> => {
-    for (;;) {
-      const index = cursor++;
-      if (index >= items.length) {
-        return;
-      }
-
-      try {
-        await worker(items[index]);
-        successCount += 1;
-      } catch (error) {
-        onError(items[index], error);
-      }
-    }
-  };
-
-  await Promise.all(
-    Array.from({ length: Math.min(concurrency, items.length) }, runNext),
-  );
-
-  return successCount;
-}
-
-const chunkArray = <T,>(items: T[], size: number): T[][] => {
-  const chunks: T[][] = [];
-  for (let i = 0; i < items.length; i += size) {
-    chunks.push(items.slice(i, i + size));
-  }
-  return chunks;
-};
-
-// Content hash of a chunk's ISINs, used as the idempotency key for that
-// chunk in sync_history (order-independent, so the same set of ISINs always
-// hashes the same way regardless of how the universe was assembled).
-const hashIsinChunk = (isins: string[]): string =>
-  createHash('sha256').update([...isins].sort().join(',')).digest('hex');
-
-const startOfToday = (): Date => {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-};
-
-const startOfTomorrow = (): Date => {
-  const today = startOfToday();
-  return new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
 };
 
 @Injectable()
@@ -1089,7 +828,7 @@ export class TickerSyncService {
       (quote): quote is typeof quote & { close: number } =>
         quote.close != null,
     );
-    const technicalIndicators = this.computeTechnicalIndicators(
+    const technicalIndicators = computeTechnicalIndicators(
       (chart.quotes ?? []).filter(
         (
           quote,
@@ -1207,188 +946,6 @@ export class TickerSyncService {
       },
       { upsert: true },
     );
-  }
-
-  // Computed from the daily quote series already fetched for the change%
-  // calculations above, so no extra Yahoo requests are needed. Won't
-  // necessarily match other providers exactly (lookback window, EMA
-  // seeding, and adjusted-vs-unadjusted close conventions all vary), same
-  // caveat as the change% figures.
-  private computeTechnicalIndicators(
-    quotes: { close: number; high: number; low: number; volume: number }[],
-  ): {
-    rsi14?: number;
-    macd?: number;
-    macdSignal?: number;
-    macdHistogram?: number;
-    bbUpper?: number;
-    bbMiddle?: number;
-    bbLower?: number;
-    bbWidth?: number;
-    atr14?: number;
-    volumeRatio20d?: number;
-  } {
-    const closes = quotes.map((q) => q.close);
-
-    const result: ReturnType<typeof this.computeTechnicalIndicators> = {};
-
-    const rsi14 = this.computeRsi(closes, 14);
-    if (rsi14 != null) {
-      result.rsi14 = rsi14;
-    }
-
-    const macdResult = this.computeMacd(closes, 12, 26, 9);
-    if (macdResult) {
-      result.macd = macdResult.macd;
-      result.macdSignal = macdResult.signal;
-      result.macdHistogram = macdResult.histogram;
-    }
-
-    const bands = this.computeBollingerBands(closes, 20, 2);
-    if (bands) {
-      result.bbUpper = bands.upper;
-      result.bbMiddle = bands.middle;
-      result.bbLower = bands.lower;
-      result.bbWidth =
-        bands.middle !== 0
-          ? ((bands.upper - bands.lower) / bands.middle) * 100
-          : undefined;
-    }
-
-    const atr14 = this.computeAtr(quotes, 14);
-    if (atr14 != null) {
-      result.atr14 = atr14;
-    }
-
-    if (quotes.length >= 20) {
-      const volumes = quotes.map((q) => q.volume);
-      const avgVolume20d =
-        volumes.slice(-20).reduce((sum, v) => sum + v, 0) / 20;
-      const latestVolume = volumes.at(-1);
-      if (avgVolume20d !== 0 && latestVolume != null) {
-        result.volumeRatio20d = latestVolume / avgVolume20d;
-      }
-    }
-
-    return result;
-  }
-
-  private computeEma(values: number[], period: number): number[] | null {
-    if (values.length < period) {
-      return null;
-    }
-    const k = 2 / (period + 1);
-    const seed =
-      values.slice(0, period).reduce((sum, v) => sum + v, 0) / period;
-    const ema = [seed];
-    for (let i = period; i < values.length; i++) {
-      ema.push(values[i] * k + ema[ema.length - 1] * (1 - k));
-    }
-    return ema;
-  }
-
-  private computeRsi(closes: number[], period: number): number | undefined {
-    if (closes.length < period + 1) {
-      return undefined;
-    }
-
-    const gains: number[] = [];
-    const losses: number[] = [];
-    for (let i = 1; i < closes.length; i++) {
-      const delta = closes[i] - closes[i - 1];
-      gains.push(Math.max(delta, 0));
-      losses.push(Math.max(-delta, 0));
-    }
-
-    let avgGain = gains.slice(0, period).reduce((sum, v) => sum + v, 0) / period;
-    let avgLoss = losses.slice(0, period).reduce((sum, v) => sum + v, 0) / period;
-
-    for (let i = period; i < gains.length; i++) {
-      avgGain = (avgGain * (period - 1) + gains[i]) / period;
-      avgLoss = (avgLoss * (period - 1) + losses[i]) / period;
-    }
-
-    if (avgLoss === 0) {
-      return 100;
-    }
-    const rs = avgGain / avgLoss;
-    return 100 - 100 / (1 + rs);
-  }
-
-  private computeMacd(
-    closes: number[],
-    fastPeriod: number,
-    slowPeriod: number,
-    signalPeriod: number,
-  ): { macd: number; signal: number; histogram: number } | null {
-    const fastEma = this.computeEma(closes, fastPeriod);
-    const slowEma = this.computeEma(closes, slowPeriod);
-    if (!fastEma || !slowEma) {
-      return null;
-    }
-
-    // Align both EMA series to the same trailing window (slowEma is
-    // shorter since it warms up later) before computing the MACD line.
-    const offset = fastEma.length - slowEma.length;
-    const macdLine = slowEma.map((slow, i) => fastEma[i + offset] - slow);
-
-    const signalEma = this.computeEma(macdLine, signalPeriod);
-    if (!signalEma) {
-      return null;
-    }
-
-    const macd = macdLine[macdLine.length - 1];
-    const signal = signalEma[signalEma.length - 1];
-    return { macd, signal, histogram: macd - signal };
-  }
-
-  private computeBollingerBands(
-    closes: number[],
-    period: number,
-    stdDevMultiplier: number,
-  ): { upper: number; middle: number; lower: number } | null {
-    if (closes.length < period) {
-      return null;
-    }
-    const window = closes.slice(-period);
-    const middle = window.reduce((sum, v) => sum + v, 0) / period;
-    const variance =
-      window.reduce((sum, v) => sum + (v - middle) ** 2, 0) / period;
-    const stdDev = Math.sqrt(variance);
-    return {
-      upper: middle + stdDevMultiplier * stdDev,
-      middle,
-      lower: middle - stdDevMultiplier * stdDev,
-    };
-  }
-
-  private computeAtr(
-    quotes: { close: number; high: number; low: number }[],
-    period: number,
-  ): number | undefined {
-    if (quotes.length < period + 1) {
-      return undefined;
-    }
-
-    const trueRanges: number[] = [];
-    for (let i = 1; i < quotes.length; i++) {
-      const { high, low } = quotes[i];
-      const prevClose = quotes[i - 1].close;
-      trueRanges.push(
-        Math.max(
-          high - low,
-          Math.abs(high - prevClose),
-          Math.abs(low - prevClose),
-        ),
-      );
-    }
-
-    let atr =
-      trueRanges.slice(0, period).reduce((sum, v) => sum + v, 0) / period;
-    for (let i = period; i < trueRanges.length; i++) {
-      atr = (atr * (period - 1) + trueRanges[i]) / period;
-    }
-    return atr;
   }
 
   private async updateFundamental(
