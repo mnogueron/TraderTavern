@@ -4,6 +4,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { FinanceController } from './finance.controller';
 import { FinanceService } from './finance.service';
 import { TickerSyncService } from './ticker-sync.service';
+import { TickerHealthService } from './ticker-health.service';
 import { AuthModule } from '../auth/auth.module';
 import { UserModule } from '../user/user.module';
 import { SharedModule } from '../shared/shared.module';
@@ -32,6 +33,10 @@ import {
   TickerEarningsHistory,
   TickerEarningsHistorySchema,
 } from './schemas/ticker-earnings-history.schema';
+import {
+  TickerSyncHealth,
+  TickerSyncHealthSchema,
+} from './schemas/ticker-sync-health.schema';
 
 @Module({
   imports: [
@@ -59,9 +64,10 @@ import {
         schema: TickerEarningsHistorySchema,
       },
       { name: TickerSource.name, schema: TickerSourceSchema },
+      { name: TickerSyncHealth.name, schema: TickerSyncHealthSchema },
     ]),
   ],
   controllers: [FinanceController],
-  providers: [FinanceService, TickerSyncService],
+  providers: [FinanceService, TickerSyncService, TickerHealthService],
 })
 export class FinanceModule {}

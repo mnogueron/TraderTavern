@@ -65,6 +65,13 @@ export const SYNC_CONCURRENCY_ENV_VAR = 'SYNC_TICKER_CONCURRENCY';
 // increasing Yahoo request pressure.
 export const DEFAULT_SYNC_CONCURRENCY = 5;
 
+// Number of consecutive sync failures for a given ISIN before it's marked
+// hidden and excluded from future automated sync attempts (see
+// TickerHealthService). Chosen to tolerate a handful of transient Yahoo
+// hiccups (timeouts, schema validation errors) without masking a genuinely
+// broken/delisted ticker for too long.
+export const TICKER_SYNC_ERROR_THRESHOLD = 5;
+
 // Env var holding how many tickers make up one sync_history chunk.
 export const SYNC_CHUNK_SIZE_ENV_VAR = 'SYNC_CHUNK_SIZE';
 

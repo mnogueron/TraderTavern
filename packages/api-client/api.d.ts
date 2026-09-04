@@ -468,6 +468,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/finance/tickers/hidden": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getHiddenTickers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/ticker/{id}/unhide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["unhideTicker"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/ticker-source/{source}/sync/status": {
         parameters: {
             query?: never;
@@ -964,6 +996,17 @@ export interface components {
             regularClose: string;
             /** @description HH:mm, local to timezone */
             postMarketClose: string | null;
+        };
+        HiddenTickerDto: {
+            isin: string;
+            ticker: string;
+            companyName: string | null;
+            errorCount: number;
+            lastError: string | null;
+            /** Format: date-time */
+            lastErrorAt: string | null;
+            /** Format: date-time */
+            hiddenAt: string | null;
         };
         TickerSourceSyncStatusDto: {
             /** @enum {string} */
@@ -1595,6 +1638,44 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["MarketHoursDto"];
                 };
+            };
+        };
+    };
+    getHiddenTickers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HiddenTickerDto"][];
+                };
+            };
+        };
+    };
+    unhideTicker: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
