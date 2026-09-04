@@ -1,4 +1,5 @@
 import { createHash } from 'crypto';
+import { SyncType } from '../enums/sync-type.enum';
 
 // A ticker paired with the stable cross-source identity (ISIN) it was
 // resolved from, threaded through the whole sync pipeline so every write
@@ -6,6 +7,11 @@ import { createHash } from 'crypto';
 export type TickerRef = {
   isin: string;
   ticker: string;
+};
+
+export type SyncTrigger = {
+  type: SyncType;
+  userId?: string;
 };
 
 // A "running" lock older than this is assumed abandoned (e.g. the process

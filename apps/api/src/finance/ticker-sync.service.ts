@@ -1,8 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectModel } from '@nestjs/mongoose';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { Model } from 'mongoose';
 import YahooFinance from 'yahoo-finance2';
 import {
   CANDLE_COUNT_ENV_VAR,
@@ -16,35 +14,12 @@ import {
   TICKER_SYNC_ERROR_THRESHOLD,
 } from './constants/candle-windows';
 import { SyncType } from './enums/sync-type.enum';
-import { SyncStatus } from './enums/sync-status.enum';
 import { SyncKind } from './enums/sync-kind.enum';
 import { CandleWindow } from './enums/candle-window.enum';
 import { YahooRateLimiterService } from '../shared/yahoo-rate-limiter.service';
 import { TickerSourceService } from '../ticker-source/ticker-source.service';
-import { User, UserDocument } from '../user/schemas/user.schema';
-import { TickerStaticData, TickerStaticDataDocument } from './schemas/ticker-static-data.schema';
-import {
-  CompoundTechnicalTickerData,
-  CompoundTechnicalTickerDataDocument,
-} from './schemas/compound-technical-ticker-data.schema';
-import {
-  FundamentalTickerData,
-  FundamentalTickerDataDocument,
-} from './schemas/fundamental-ticker-data.schema';
-import { SyncHistory, SyncHistoryDocument } from './schemas/sync-history.schema';
-import {
-  TechnicalTickerData,
-  TechnicalTickerDataDocument,
-} from './schemas/technical-ticker-data.schema';
-import { MarketHours, MarketHoursDocument } from './schemas/market-hours.schema';
-import {
-  TickerFinancialHistory,
-  TickerFinancialHistoryDocument,
-} from './schemas/ticker-financial-history.schema';
-import {
-  TickerEarningsHistory,
-  TickerEarningsHistoryDocument,
-} from './schemas/ticker-earnings-history.schema';
+import { UserService } from '../user/user.service';
+import { MarketHours } from './schemas/market-hours.schema';
 import {
   AltmanPeriodDraft,
   AnnualFinancialPeriodDraft,
@@ -57,14 +32,22 @@ import { computeTechnicalIndicators } from './helpers/technical-indicators';
 import {
   chunkArray,
   hashIsinChunk,
-  isDuplicateKeyError,
   runWithConcurrency,
   startOfToday,
   startOfTomorrow,
-  STALE_LOCK_MS,
+  SyncTrigger,
   TickerRef,
 } from './helpers/sync-utils';
 import { TickerHealthService } from './ticker-health.service';
+import { TickerStaticDataRepository } from './repositories/ticker-static-data.repository';
+import { CompoundTechnicalDataRepository } from './repositories/compound-technical-data.repository';
+import { FundamentalDataRepository } from './repositories/fundamental-data.repository';
+import { TechnicalDataRepository } from './repositories/technical-data.repository';
+import { FinancialHistoryRepository } from './repositories/financial-history.repository';
+import { EarningsHistoryRepository } from './repositories/earnings-history.repository';
+import { MarketHoursRepository } from './repositories/market-hours.repository';
+import { SyncHistoryRepository } from './repositories/sync-history.repository';
+import { SyncHistoryDocument } from './schemas/sync-history.schema';
 
 const yahooFinance = new YahooFinance();
 
@@ -77,34 +60,20 @@ const HISTORY_LOOKBACK_DAYS = 400;
 const FINANCIAL_HISTORY_YEARS = 6;
 const QUARTERLY_REVENUE_HISTORY_YEARS = 2;
 
-type SyncTrigger = {
-  type: SyncType;
-  userId?: string;
-};
-
 @Injectable()
 export class TickerSyncService {
   private readonly logger = new Logger(TickerSyncService.name);
 
   constructor(
-    @InjectModel(TickerStaticData.name)
-    private readonly tickerStaticDataModel: Model<TickerStaticDataDocument>,
-    @InjectModel(CompoundTechnicalTickerData.name)
-    private readonly compoundTechnicalTickerDataModel: Model<CompoundTechnicalTickerDataDocument>,
-    @InjectModel(FundamentalTickerData.name)
-    private readonly fundamentalTickerDataModel: Model<FundamentalTickerDataDocument>,
-    @InjectModel(SyncHistory.name)
-    private readonly syncHistoryModel: Model<SyncHistoryDocument>,
-    @InjectModel(TechnicalTickerData.name)
-    private readonly technicalTickerDataModel: Model<TechnicalTickerDataDocument>,
-    @InjectModel(MarketHours.name)
-    private readonly marketHoursModel: Model<MarketHoursDocument>,
-    @InjectModel(TickerFinancialHistory.name)
-    private readonly tickerFinancialHistoryModel: Model<TickerFinancialHistoryDocument>,
-    @InjectModel(TickerEarningsHistory.name)
-    private readonly tickerEarningsHistoryModel: Model<TickerEarningsHistoryDocument>,
-    @InjectModel(User.name)
-    private readonly userModel: Model<UserDocument>,
+    private readonly tickerStaticDataRepository: TickerStaticDataRepository,
+    private readonly compoundTechnicalDataRepository: CompoundTechnicalDataRepository,
+    private readonly fundamentalDataRepository: FundamentalDataRepository,
+    private readonly technicalDataRepository: TechnicalDataRepository,
+    private readonly financialHistoryRepository: FinancialHistoryRepository,
+    private readonly earningsHistoryRepository: EarningsHistoryRepository,
+    private readonly marketHoursRepository: MarketHoursRepository,
+    private readonly syncHistoryRepository: SyncHistoryRepository,
+    private readonly userService: UserService,
     private readonly tickerSourceService: TickerSourceService,
     private readonly configService: ConfigService,
     private readonly yahooRateLimiter: YahooRateLimiterService,
@@ -133,8 +102,8 @@ export class TickerSyncService {
   async handleEndOfDayRefresh(): Promise<void> {
     const syncDate = startOfToday();
     const [staticData, marketHours] = await Promise.all([
-      this.tickerStaticDataModel.find().select('isin ticker market').lean(),
-      this.marketHoursModel.find().lean(),
+      this.tickerStaticDataRepository.findAllRefsWithMarket(),
+      this.marketHoursRepository.findAll(),
     ]);
     const marketHoursByCode = new Map(
       marketHours.map((hours) => [hours.market, hours]),
@@ -147,9 +116,11 @@ export class TickerSyncService {
         continue;
       }
 
-      const alreadySynced = await this.compoundTechnicalTickerDataModel.exists(
-        { isin, syncDate },
-      );
+      const alreadySynced =
+        await this.compoundTechnicalDataRepository.existsForDate(
+          isin,
+          syncDate,
+        );
       if (!alreadySynced) {
         dueTickers.push({ isin, ticker });
       }
@@ -194,17 +165,17 @@ export class TickerSyncService {
     }).format(date);
   }
 
-
   // A sync is considered "started" for today once any chunk of the main
   // ticker sync has been claimed; from then on, the periodic
   // handleChunkedTickerSync cron carries it forward one chunk per tick. This
   // only kicks off the very first chunk immediately (e.g. on first screener
   // load of the day) rather than blocking on the full ~8000-ticker universe.
   async ensureSyncedToday(trigger: SyncTrigger): Promise<void> {
-    const alreadyStarted = await this.syncHistoryModel.exists({
-      syncDate: { $gte: startOfToday(), $lt: startOfTomorrow() },
-      kind: SyncKind.Ticker,
-    });
+    const alreadyStarted = await this.syncHistoryRepository.hasAnyChunkStarted(
+      SyncKind.Ticker,
+      startOfToday(),
+      startOfTomorrow(),
+    );
 
     if (alreadyStarted) {
       return;
@@ -235,7 +206,7 @@ export class TickerSyncService {
   // synced: union across every source currently selected by at least one
   // user, deduplicated.
   private async buildIsinUniverse(): Promise<string[]> {
-    const sources = await this.userModel.distinct('tickerSource');
+    const sources = await this.userService.getDistinctTickerSources();
     return this.tickerSourceService.getIsinsForSources(sources);
   }
 
@@ -251,25 +222,19 @@ export class TickerSyncService {
     chunkHash: string,
     tickerCount: number,
   ): Promise<SyncHistoryDocument | null> {
-    try {
-      return await this.syncHistoryModel.create({
-        type: trigger.type,
-        kind,
-        status: SyncStatus.Running,
-        syncDate,
-        chunkHash,
-        tickerCount,
-        triggeredByUserId: trigger.userId,
-      });
-    } catch (error) {
-      if (isDuplicateKeyError(error)) {
-        this.logger.warn(
-          `Skipping ${kind} chunk sync: already done or in progress`,
-        );
-        return null;
-      }
-      throw error;
+    const lock = await this.syncHistoryRepository.claimLock(
+      trigger,
+      kind,
+      syncDate,
+      chunkHash,
+      tickerCount,
+    );
+    if (!lock) {
+      this.logger.warn(
+        `Skipping ${kind} chunk sync: already done or in progress`,
+      );
     }
+    return lock;
   }
 
   // Marks any "running" lock of this kind older than STALE_LOCK_MS as failed,
@@ -277,20 +242,9 @@ export class TickerSyncService {
   // genuinely abandoned sync (e.g. after a process restart) doesn't block
   // all future retries for the rest of the day.
   private async reclaimStaleLocks(kind: SyncKind): Promise<void> {
-    const staleCutoff = new Date(Date.now() - STALE_LOCK_MS);
-    const result = await this.syncHistoryModel.updateMany(
-      { kind, status: SyncStatus.Running, updatedAt: { $lt: staleCutoff } },
-      {
-        $set: {
-          status: SyncStatus.Failed,
-          errors: JSON.stringify({ _lock: 'Reclaimed: stale running lock, likely an abandoned process' }),
-        },
-      },
-    );
-    if (result.modifiedCount > 0) {
-      this.logger.warn(
-        `Reclaimed ${result.modifiedCount} stale ${kind} sync lock(s)`,
-      );
+    const reclaimed = await this.syncHistoryRepository.reclaimStale(kind);
+    if (reclaimed > 0) {
+      this.logger.warn(`Reclaimed ${reclaimed} stale ${kind} sync lock(s)`);
     }
   }
 
@@ -299,18 +253,7 @@ export class TickerSyncService {
     successCount: number,
     errors: Record<string, string>,
   ): Promise<void> {
-    const hasErrors = Object.keys(errors).length > 0;
-    const status =
-      successCount === 0
-        ? SyncStatus.Failed
-        : hasErrors
-          ? SyncStatus.PartialSuccess
-          : SyncStatus.Success;
-
-    await this.syncHistoryModel.updateOne(
-      { _id: lock._id },
-      { $set: { status, errors: hasErrors ? JSON.stringify(errors) : undefined } },
-    );
+    await this.syncHistoryRepository.finalize(lock._id, successCount, errors);
   }
 
   // Shared driver for every "sync all tickers" operation. Builds the ISIN
@@ -339,7 +282,9 @@ export class TickerSyncService {
     }
 
     const hiddenIsins = await this.tickerHealthService.getHiddenIsins();
-    const isinUniverse = fullIsinUniverse.filter((isin) => !hiddenIsins.has(isin));
+    const isinUniverse = fullIsinUniverse.filter(
+      (isin) => !hiddenIsins.has(isin),
+    );
     if (hiddenIsins.size > 0) {
       this.logger.log(
         `${kind} sync: skipping ${fullIsinUniverse.length - isinUniverse.length} hidden ISIN(s) ` +
@@ -355,12 +300,11 @@ export class TickerSyncService {
 
     for (const isinChunk of chunks) {
       const chunkHash = hashIsinChunk(isinChunk);
-      const alreadyDone = await this.syncHistoryModel.exists({
+      const alreadyDone = await this.syncHistoryRepository.isChunkDone(
         syncDate,
         kind,
         chunkHash,
-        status: { $in: [SyncStatus.Running, SyncStatus.Success, SyncStatus.PartialSuccess] },
-      });
+      );
       if (alreadyDone) {
         continue;
       }
@@ -389,14 +333,17 @@ export class TickerSyncService {
       let resolved = 0;
       for (const isin of isinChunk) {
         try {
-          const ticker = await this.tickerSourceService.resolveYahooTicker(isin);
+          const ticker =
+            await this.tickerSourceService.resolveYahooTicker(isin);
           if (ticker) {
             refs.push({ isin, ticker });
           } else {
             errors[isin] = 'No Yahoo ticker could be resolved for this ISIN';
           }
         } catch (error) {
-          this.logger.warn(`Failed to resolve Yahoo ticker for ${isin}: ${error}`);
+          this.logger.warn(
+            `Failed to resolve Yahoo ticker for ${isin}: ${error}`,
+          );
           errors[isin] = error instanceof Error ? error.message : String(error);
         }
 
@@ -431,8 +378,11 @@ export class TickerSyncService {
           }
         },
         (ref, error) => {
-          this.logger.warn(`Failed to sync ${kind} for ${ref.ticker}: ${error}`);
-          errors[ref.ticker] = error instanceof Error ? error.message : String(error);
+          this.logger.warn(
+            `Failed to sync ${kind} for ${ref.ticker}: ${error}`,
+          );
+          errors[ref.ticker] =
+            error instanceof Error ? error.message : String(error);
           void this.tickerHealthService
             .recordFailure(ref, error)
             .then((justHidden) => {
@@ -674,9 +624,9 @@ export class TickerSyncService {
         ? computePiotroskiScore(latestPiotroskiPeriod, priorPiotroskiPeriod)
         : undefined;
 
-    const latestAltmanPeriod = Array.from(altmanByPeriodEnd.values()).sort(
-      (a, b) => a.periodEnd.getTime() - b.periodEnd.getTime(),
-    ).at(-1);
+    const latestAltmanPeriod = Array.from(altmanByPeriodEnd.values())
+      .sort((a, b) => a.periodEnd.getTime() - b.periodEnd.getTime())
+      .at(-1);
     const altmanZScore = latestAltmanPeriod
       ? computeAltmanZScore(latestAltmanPeriod, marketCap)
       : undefined;
@@ -694,7 +644,9 @@ export class TickerSyncService {
     ticker: string,
   ): Promise<{ quarter: Date; actual?: number }[]> {
     const period1 = new Date();
-    period1.setFullYear(period1.getFullYear() - QUARTERLY_REVENUE_HISTORY_YEARS);
+    period1.setFullYear(
+      period1.getFullYear() - QUARTERLY_REVENUE_HISTORY_YEARS,
+    );
 
     const rows = (await this.yahooRateLimiter.schedule(
       () =>
@@ -743,11 +695,7 @@ export class TickerSyncService {
     const { periods, piotroskiScore, altmanZScore } =
       await this.fetchFinancialHistory(ref.ticker, marketCap);
 
-    await this.tickerFinancialHistoryModel.updateOne(
-      { isin: ref.isin },
-      { $set: { isin: ref.isin, ticker: ref.ticker, annual: periods } },
-      { upsert: true },
-    );
+    await this.financialHistoryRepository.upsertAnnual(ref, periods);
 
     return { piotroskiScore, altmanZScore };
   }
@@ -756,18 +704,19 @@ export class TickerSyncService {
     ref: TickerRef,
     quoteSummary: Awaited<ReturnType<typeof this.fetchQuoteSummary>>,
   ): Promise<void> {
-    const eps = (quoteSummary.earningsHistory?.history ?? []).map((entry) => ({
-      quarter: entry.quarter,
-      actual: entry.epsActual ?? undefined,
-      estimate: entry.epsEstimate ?? undefined,
-    }));
+    const eps = (quoteSummary.earningsHistory?.history ?? [])
+      .filter(
+        (entry): entry is typeof entry & { quarter: Date } =>
+          entry.quarter != null,
+      )
+      .map((entry) => ({
+        quarter: entry.quarter,
+        actual: entry.epsActual ?? undefined,
+        estimate: entry.epsEstimate ?? undefined,
+      }));
     const revenue = await this.fetchQuarterlyRevenueHistory(ref.ticker);
 
-    await this.tickerEarningsHistoryModel.updateOne(
-      { isin: ref.isin },
-      { $set: { isin: ref.isin, ticker: ref.ticker, eps, revenue } },
-      { upsert: true },
-    );
+    await this.earningsHistoryRepository.upsert(ref, eps, revenue);
   }
 
   private async syncStatic(ref: TickerRef): Promise<void> {
@@ -785,28 +734,20 @@ export class TickerSyncService {
     const website = assetProfile?.website;
     const logoUrl = website ? this.logoUrlFromWebsite(website) : undefined;
 
-    await this.tickerStaticDataModel.updateOne(
-      { isin: ref.isin },
-      {
-        $set: {
-          isin: ref.isin,
-          ticker: ref.ticker,
-          companyName,
-          sector: assetProfile?.sector,
-          industry: assetProfile?.industry,
-          country: assetProfile?.country,
-          description: assetProfile?.longBusinessSummary,
-          market: price?.exchange,
-          currency: price?.currency,
-          website,
-          logoUrl,
-          employees: assetProfile?.fullTimeEmployees,
-          fiscalYearEnd: defaultKeyStatistics?.lastFiscalYearEnd,
-          mostRecentQuarter: defaultKeyStatistics?.mostRecentQuarter,
-        },
-      },
-      { upsert: true },
-    );
+    await this.tickerStaticDataRepository.upsert(ref, {
+      companyName,
+      sector: assetProfile?.sector,
+      industry: assetProfile?.industry,
+      country: assetProfile?.country,
+      description: assetProfile?.longBusinessSummary,
+      market: price?.exchange,
+      currency: price?.currency,
+      website,
+      logoUrl,
+      employees: assetProfile?.fullTimeEmployees,
+      fiscalYearEnd: defaultKeyStatistics?.lastFiscalYearEnd,
+      mostRecentQuarter: defaultKeyStatistics?.mostRecentQuarter,
+    });
   }
 
   private logoUrlFromWebsite(website: string): string | undefined {
@@ -848,8 +789,7 @@ export class TickerSyncService {
     const { price } = quoteSummary;
 
     const quotes = (chart.quotes ?? []).filter(
-      (quote): quote is typeof quote & { close: number } =>
-        quote.close != null,
+      (quote): quote is typeof quote & { close: number } => quote.close != null,
     );
     const technicalIndicators = computeTechnicalIndicators(
       (chart.quotes ?? []).filter(
@@ -885,7 +825,7 @@ export class TickerSyncService {
     // the "market still open" case, where we need the close from *two*
     // sessions ago) or when live quote fields are unavailable.
     const hours = price?.exchange
-      ? await this.marketHoursModel.findOne({ market: price.exchange }).lean()
+      ? await this.marketHoursRepository.findByMarket(price.exchange)
       : null;
     const isClosedToday = hours != null && this.isPastRegularClose(hours);
 
@@ -909,12 +849,16 @@ export class TickerSyncService {
     // exactly what we want to pick up there.
     const anchorClose = isClosedToday
       ? (price?.regularMarketPrice ?? quotes.at(-1)?.close ?? null)
-      : (price?.regularMarketPreviousClose ?? completedQuotes.at(-1)?.close ?? null);
+      : (price?.regularMarketPreviousClose ??
+        completedQuotes.at(-1)?.close ??
+        null);
     // "prior": the completed session immediately before the anchor. Always
     // uses `completedQuotes`, since "prior" is never today regardless of
     // branch.
     const priorClose = isClosedToday
-      ? (price?.regularMarketPreviousClose ?? completedQuotes.at(-1)?.close ?? null)
+      ? (price?.regularMarketPreviousClose ??
+        completedQuotes.at(-1)?.close ??
+        null)
       : (completedQuotes.at(-2)?.close ?? null);
 
     const changePercent1d =
@@ -923,52 +867,23 @@ export class TickerSyncService {
         : undefined;
     const startOfYear = new Date(new Date().getFullYear(), 0, 1);
 
-    await this.compoundTechnicalTickerDataModel.updateOne(
-      { isin: ref.isin, syncDate },
-      {
-        $set: {
-          isin: ref.isin,
-          ticker: ref.ticker,
-          syncDate,
-          price: latestClose,
-          changePercent1d,
-          changePercent2d: this.changePercentFromDaysAgo(anchorClose, quotes, 2),
-          changePercent5d: this.changePercentFromDaysAgo(anchorClose, quotes, 5),
-          changePercent1w: this.changePercentFromDaysAgo(
-            anchorClose,
-            quotes,
-            7,
-          ),
-          changePercent1m: this.changePercentFromDaysAgo(
-            anchorClose,
-            quotes,
-            30,
-          ),
-          changePercent3m: this.changePercentFromDaysAgo(
-            anchorClose,
-            quotes,
-            91,
-          ),
-          changePercent6m: this.changePercentFromDaysAgo(
-            anchorClose,
-            quotes,
-            182,
-          ),
-          changePercentYtd: this.changePercentFromDate(
-            anchorClose,
-            quotes,
-            startOfYear,
-          ),
-          changePercent1y: this.changePercentFromDaysAgo(
-            anchorClose,
-            quotes,
-            365,
-          ),
-          ...technicalIndicators,
-        },
-      },
-      { upsert: true },
-    );
+    await this.compoundTechnicalDataRepository.upsert(ref, syncDate, {
+      price: latestClose ?? undefined,
+      changePercent1d,
+      changePercent2d: this.changePercentFromDaysAgo(anchorClose, quotes, 2),
+      changePercent5d: this.changePercentFromDaysAgo(anchorClose, quotes, 5),
+      changePercent1w: this.changePercentFromDaysAgo(anchorClose, quotes, 7),
+      changePercent1m: this.changePercentFromDaysAgo(anchorClose, quotes, 30),
+      changePercent3m: this.changePercentFromDaysAgo(anchorClose, quotes, 91),
+      changePercent6m: this.changePercentFromDaysAgo(anchorClose, quotes, 182),
+      changePercentYtd: this.changePercentFromDate(
+        anchorClose,
+        quotes,
+        startOfYear,
+      ),
+      changePercent1y: this.changePercentFromDaysAgo(anchorClose, quotes, 365),
+      ...technicalIndicators,
+    });
   }
 
   private async updateFundamental(
@@ -988,11 +903,7 @@ export class TickerSyncService {
     // day's snapshot.
     const previousFundamental =
       piotroskiScore == null || altmanZScore == null
-        ? await this.fundamentalTickerDataModel
-            .findOne({ isin: ref.isin })
-            .sort({ syncDate: -1 })
-            .select('piotroskiScore altmanZScore')
-            .lean()
+        ? await this.fundamentalDataRepository.findLatestScores(ref.isin)
         : null;
     const resolvedPiotroskiScore =
       piotroskiScore ?? previousFundamental?.piotroskiScore;
@@ -1031,110 +942,101 @@ export class TickerSyncService {
     const toPercent = (value: number | undefined): number | undefined =>
       value != null ? value * 100 : undefined;
 
-    await this.fundamentalTickerDataModel.updateOne(
-      { isin: ref.isin, syncDate },
-      {
-        $set: {
-          isin: ref.isin,
-          ticker: ref.ticker,
-          syncDate,
-          marketCap,
-          peRatio: summaryDetail?.trailingPE,
-          psRatio: summaryDetail?.priceToSalesTrailing12Months,
-          ebitda,
-          totalDebt,
-          totalCash,
-          debtToEquity: financialData?.debtToEquity,
+    await this.fundamentalDataRepository.upsert(ref, syncDate, {
+      marketCap,
+      peRatio: summaryDetail?.trailingPE,
+      psRatio: summaryDetail?.priceToSalesTrailing12Months,
+      ebitda,
+      totalDebt,
+      totalCash,
+      debtToEquity: financialData?.debtToEquity,
 
-          // Company
-          enterpriseValue: defaultKeyStatistics?.enterpriseValue,
-          revenue: totalRevenue,
-          grossProfit: financialData?.grossProfits,
-          netIncome: defaultKeyStatistics?.netIncomeToCommon,
-          revenuePerShare: financialData?.revenuePerShare,
+      // Company
+      enterpriseValue: defaultKeyStatistics?.enterpriseValue,
+      revenue: totalRevenue,
+      grossProfit: financialData?.grossProfits,
+      netIncome: defaultKeyStatistics?.netIncomeToCommon,
+      revenuePerShare: financialData?.revenuePerShare,
 
-          // Valuation
-          forwardPE: summaryDetail?.forwardPE ?? defaultKeyStatistics?.forwardPE,
-          pegRatio: defaultKeyStatistics?.pegRatio,
-          evToEbitda: defaultKeyStatistics?.enterpriseToEbitda,
-          evToRevenue: defaultKeyStatistics?.enterpriseToRevenue,
-          priceToBook: defaultKeyStatistics?.priceToBook,
-          epsTrailing: defaultKeyStatistics?.trailingEps,
-          epsForward: defaultKeyStatistics?.forwardEps,
+      // Valuation
+      forwardPE: summaryDetail?.forwardPE ?? defaultKeyStatistics?.forwardPE,
+      pegRatio: defaultKeyStatistics?.pegRatio,
+      evToEbitda: defaultKeyStatistics?.enterpriseToEbitda,
+      evToRevenue: defaultKeyStatistics?.enterpriseToRevenue,
+      priceToBook: defaultKeyStatistics?.priceToBook,
+      epsTrailing: defaultKeyStatistics?.trailingEps,
+      epsForward: defaultKeyStatistics?.forwardEps,
 
-          // 52W range
-          fiftyTwoWeekHigh: summaryDetail?.fiftyTwoWeekHigh,
-          fiftyTwoWeekLow: summaryDetail?.fiftyTwoWeekLow,
+      // 52W range
+      fiftyTwoWeekHigh: summaryDetail?.fiftyTwoWeekHigh,
+      fiftyTwoWeekLow: summaryDetail?.fiftyTwoWeekLow,
 
-          // Profitability
-          grossMargin: toPercent(financialData?.grossMargins),
-          operatingMargin: toPercent(financialData?.operatingMargins),
-          ebitdaMargin: toPercent(financialData?.ebitdaMargins),
-          profitMargin: toPercent(
-            financialData?.profitMargins ?? defaultKeyStatistics?.profitMargins,
-          ),
-          returnOnEquity: toPercent(financialData?.returnOnEquity),
-          returnOnAssets: toPercent(financialData?.returnOnAssets),
+      // Profitability
+      grossMargin: toPercent(financialData?.grossMargins),
+      operatingMargin: toPercent(financialData?.operatingMargins),
+      ebitdaMargin: toPercent(financialData?.ebitdaMargins),
+      profitMargin: toPercent(
+        financialData?.profitMargins ?? defaultKeyStatistics?.profitMargins,
+      ),
+      returnOnEquity: toPercent(financialData?.returnOnEquity),
+      returnOnAssets: toPercent(financialData?.returnOnAssets),
 
-          // Growth
-          revenueGrowth: toPercent(financialData?.revenueGrowth),
-          earningsGrowth: toPercent(financialData?.earningsGrowth),
+      // Growth
+      revenueGrowth: toPercent(financialData?.revenueGrowth),
+      earningsGrowth: toPercent(financialData?.earningsGrowth),
 
-          // Cash flow & leverage
-          operatingCashflow,
-          freeCashflow,
-          capex,
-          fcfMargin,
-          fcfYield,
-          netDebt,
-          netDebtToEbitda,
+      // Cash flow & leverage
+      operatingCashflow,
+      freeCashflow,
+      capex,
+      fcfMargin,
+      fcfYield,
+      netDebt,
+      netDebtToEbitda,
 
-          // Balance sheet
-          currentRatio: financialData?.currentRatio,
-          quickRatio: financialData?.quickRatio,
-          bookValuePerShare: defaultKeyStatistics?.bookValue,
-          cashPerShare: financialData?.totalCashPerShare,
+      // Balance sheet
+      currentRatio: financialData?.currentRatio,
+      quickRatio: financialData?.quickRatio,
+      bookValuePerShare: defaultKeyStatistics?.bookValue,
+      cashPerShare: financialData?.totalCashPerShare,
 
-          // Dividends
-          forwardDividendRate: summaryDetail?.dividendRate,
-          trailingDividendRate: summaryDetail?.trailingAnnualDividendRate,
-          dividendYield: toPercent(summaryDetail?.dividendYield),
-          fiveYearAvgDividendYield: summaryDetail?.fiveYearAvgDividendYield,
-          payoutRatio: toPercent(summaryDetail?.payoutRatio),
-          exDividendDate: summaryDetail?.exDividendDate,
+      // Dividends
+      forwardDividendRate: summaryDetail?.dividendRate,
+      trailingDividendRate: summaryDetail?.trailingAnnualDividendRate,
+      dividendYield: toPercent(summaryDetail?.dividendYield),
+      fiveYearAvgDividendYield: summaryDetail?.fiveYearAvgDividendYield,
+      payoutRatio: toPercent(summaryDetail?.payoutRatio),
+      exDividendDate: summaryDetail?.exDividendDate,
 
-          // Analyst consensus
-          analystRating: financialData?.recommendationKey,
-          analystTargetMean: financialData?.targetMeanPrice,
-          analystTargetLow: financialData?.targetLowPrice,
-          analystTargetHigh: financialData?.targetHighPrice,
-          analystCount: financialData?.numberOfAnalystOpinions,
+      // Analyst consensus
+      analystRating: financialData?.recommendationKey,
+      analystTargetMean: financialData?.targetMeanPrice,
+      analystTargetLow: financialData?.targetLowPrice,
+      analystTargetHigh: financialData?.targetHighPrice,
+      analystCount: financialData?.numberOfAnalystOpinions,
 
-          // Ownership
-          sharesOutstanding: defaultKeyStatistics?.sharesOutstanding,
-          floatShares: defaultKeyStatistics?.floatShares,
-          insidersPercent: toPercent(defaultKeyStatistics?.heldPercentInsiders),
-          institutionsPercent: toPercent(
-            defaultKeyStatistics?.heldPercentInstitutions,
-          ),
+      // Ownership
+      sharesOutstanding: defaultKeyStatistics?.sharesOutstanding,
+      floatShares: defaultKeyStatistics?.floatShares,
+      insidersPercent: toPercent(defaultKeyStatistics?.heldPercentInsiders),
+      institutionsPercent: toPercent(
+        defaultKeyStatistics?.heldPercentInstitutions,
+      ),
 
-          // Quality
-          piotroskiScore: resolvedPiotroskiScore,
-          altmanZScore: resolvedAltmanZScore,
+      // Quality
+      piotroskiScore: resolvedPiotroskiScore,
+      altmanZScore: resolvedAltmanZScore,
 
-          // Technical (directly from Yahoo, no computation)
-          sma50: summaryDetail?.fiftyDayAverage,
-          sma200: summaryDetail?.twoHundredDayAverage,
-          beta: summaryDetail?.beta ?? defaultKeyStatistics?.beta,
-          sp500Change52w: toPercent(defaultKeyStatistics?.SandP52WeekChange),
-          avgVolume30d: summaryDetail?.averageVolume,
-          avgVolume10d:
-            summaryDetail?.averageVolume10days ??
-            summaryDetail?.averageDailyVolume10Day,
-        },
-      },
-      { upsert: true },
-    );
+      // Technical (directly from Yahoo, no computation)
+      sma50: summaryDetail?.fiftyDayAverage,
+      sma200: summaryDetail?.twoHundredDayAverage,
+      beta: summaryDetail?.beta ?? defaultKeyStatistics?.beta,
+      sp500Change52w: toPercent(defaultKeyStatistics?.SandP52WeekChange),
+      avgVolume30d: summaryDetail?.averageVolume,
+      avgVolume10d:
+        summaryDetail?.averageVolume10days ??
+        summaryDetail?.averageDailyVolume10Day,
+    });
   }
 
   private getCandleCount(window: CandleWindow): number {
@@ -1162,7 +1064,9 @@ export class TickerSyncService {
 
     const candles = (chart.quotes ?? [])
       .filter(
-        (quote): quote is typeof quote & {
+        (
+          quote,
+        ): quote is typeof quote & {
           open: number;
           close: number;
           low: number;
@@ -1183,25 +1087,18 @@ export class TickerSyncService {
 
     const durationMs = CANDLE_WINDOW_DURATION_MS[window];
 
-    await this.technicalTickerDataModel.updateOne(
-      { isin: ref.isin, window },
-      {
-        $set: {
-          isin: ref.isin,
-          ticker: ref.ticker,
-          window,
-          candles: candles.map((candle) => ({
-            startTime: candle.date,
-            endTime: new Date(candle.date.getTime() + durationMs),
-            entry: candle.open,
-            exit: candle.close,
-            low: candle.low,
-            high: candle.high,
-            volume: candle.volume,
-          })),
-        },
-      },
-      { upsert: true },
+    await this.technicalDataRepository.upsertCandles(
+      ref,
+      window,
+      candles.map((candle) => ({
+        startTime: candle.date,
+        endTime: new Date(candle.date.getTime() + durationMs),
+        entry: candle.open,
+        exit: candle.close,
+        low: candle.low,
+        high: candle.high,
+        volume: candle.volume,
+      })),
     );
   }
 
