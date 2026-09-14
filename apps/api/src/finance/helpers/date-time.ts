@@ -19,6 +19,7 @@ export function isPastRegularClose(hours: MarketHours): boolean {
   return localTime >= hours.regularClose || localTime < hours.regularOpen;
 }
 
+// TODO migrate these functions to a proper library instead like date-fns
 // Calendar date (YYYY-MM-DD) of `date` in `timezone` (UTC if omitted), used
 // to tell whether a daily candle belongs to "today" regardless of what time
 // the sync happens to run at.

@@ -20,13 +20,7 @@ import { TickerSourceService } from '../ticker-source/ticker-source.service';
 import { UserService } from '../user/user.service';
 import { MarketHours } from './schemas/market-hours.schema';
 import { startOfToday, startOfTomorrow } from './helpers/date-time';
-import {
-  QuoteSummaryResult,
-  fetchDailyChart,
-  fetchFinancialHistory,
-  fetchQuarterlyRevenueHistory,
-  fetchQuoteSummary,
-} from './helpers/sync-fetchers';
+import { fetchDailyChart, fetchQuoteSummary } from './helpers/sync-fetchers';
 import {
   chunkArray,
   hashIsinChunk,
@@ -40,8 +34,8 @@ import { CompoundSyncService } from './compound-sync.service';
 import { FundamentalSyncService } from './fundamental-sync.service';
 import { StaticSyncService } from './static-sync.service';
 import { TechnicalSyncService } from './technical-sync.service';
-import { FinancialHistoryRepository } from './repositories/financial-history.repository';
-import { EarningsHistoryRepository } from './repositories/earnings-history.repository';
+import { FinancialHistorySyncService } from './financial-history-sync.service';
+import { EarningsHistorySyncService } from './earnings-history-sync.service';
 import { SyncHistoryRepository } from './repositories/sync-history.repository';
 import { SyncHistoryDocument } from './schemas/sync-history.schema';
 
@@ -51,8 +45,8 @@ export class TickerSyncService {
 
   constructor(
     private readonly technicalSyncService: TechnicalSyncService,
-    private readonly financialHistoryRepository: FinancialHistoryRepository,
-    private readonly earningsHistoryRepository: EarningsHistoryRepository,
+    private readonly financialHistorySyncService: FinancialHistorySyncService,
+    private readonly earningsHistorySyncService: EarningsHistorySyncService,
     private readonly syncHistoryRepository: SyncHistoryRepository,
     private readonly userService: UserService,
     private readonly tickerSourceService: TickerSourceService,
@@ -101,20 +95,6 @@ export class TickerSyncService {
     );
   }
 
-  private getSyncConcurrency(): number {
-    return this.configService.getNumber(
-      SYNC_CONCURRENCY_ENV_VAR,
-      DEFAULT_SYNC_CONCURRENCY,
-    );
-  }
-
-  private getSyncChunkSize(): number {
-    return this.configService.getNumber(
-      SYNC_CHUNK_SIZE_ENV_VAR,
-      DEFAULT_SYNC_CHUNK_SIZE,
-    );
-  }
-
   // The set of ISINs any user's configured ticker source actually needs
   // synced: union across every source currently selected by at least one
   // user, deduplicated.
@@ -153,7 +133,10 @@ export class TickerSyncService {
       }
     }
 
-    const chunkSize = this.getSyncChunkSize();
+    const chunkSize = this.configService.getNumber(
+      SYNC_CHUNK_SIZE_ENV_VAR,
+      DEFAULT_SYNC_CHUNK_SIZE,
+    );
     const chunks: { market: string | null; isins: string[] }[] = [];
     for (const [market, isinsForMarket] of [...isinsByMarket.entries()].sort(
       ([a], [b]) => a.localeCompare(b),
@@ -416,7 +399,10 @@ export class TickerSyncService {
       let abortStatus: SyncStatus | null = null;
       const successCount = await runWithConcurrency(
         refs,
-        this.getSyncConcurrency(),
+        this.configService.getNumber(
+          SYNC_CONCURRENCY_ENV_VAR,
+          DEFAULT_SYNC_CONCURRENCY,
+        ),
         async (ref) => {
           await syncTicker(ref);
           await this.tickerHealthService.recordSuccess(ref);
@@ -539,10 +525,8 @@ export class TickerSyncService {
     await this.compoundSyncService.update(ref, syncDate, quoteSummary, chart);
     const marketCap =
       quoteSummary.summaryDetail?.marketCap ?? quoteSummary.price?.marketCap;
-    const { piotroskiScore, altmanZScore } = await this.updateFinancialHistory(
-      ref,
-      marketCap,
-    );
+    const { piotroskiScore, altmanZScore } =
+      await this.financialHistorySyncService.update(ref, marketCap);
     await this.fundamentalSyncService.update(
       ref,
       syncDate,
@@ -550,42 +534,8 @@ export class TickerSyncService {
       piotroskiScore,
       altmanZScore,
     );
-    await this.updateEarningsHistory(ref, quoteSummary);
+    await this.earningsHistorySyncService.update(ref, quoteSummary);
     await this.technicalSyncService.syncTechnical(ref);
-  }
-
-  private async updateFinancialHistory(
-    ref: TickerRef,
-    marketCap?: number,
-  ): Promise<{ piotroskiScore?: number; altmanZScore?: number }> {
-    const { periods, piotroskiScore, altmanZScore } =
-      await fetchFinancialHistory(this.yahooRateLimiter, ref.ticker, marketCap);
-
-    await this.financialHistoryRepository.upsertAnnual(ref, periods);
-
-    return { piotroskiScore, altmanZScore };
-  }
-
-  private async updateEarningsHistory(
-    ref: TickerRef,
-    quoteSummary: QuoteSummaryResult,
-  ): Promise<void> {
-    const eps = (quoteSummary.earningsHistory?.history ?? [])
-      .filter(
-        (entry): entry is typeof entry & { quarter: Date } =>
-          entry.quarter != null,
-      )
-      .map((entry) => ({
-        quarter: entry.quarter,
-        actual: entry.epsActual ?? undefined,
-        estimate: entry.epsEstimate ?? undefined,
-      }));
-    const revenue = await fetchQuarterlyRevenueHistory(
-      this.yahooRateLimiter,
-      ref.ticker,
-    );
-
-    await this.earningsHistoryRepository.upsert(ref, eps, revenue);
   }
 
   private async syncStatic(ref: TickerRef): Promise<void> {

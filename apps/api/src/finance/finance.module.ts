@@ -10,6 +10,8 @@ import { CompoundSyncService } from './compound-sync.service';
 import { FundamentalSyncService } from './fundamental-sync.service';
 import { StaticSyncService } from './static-sync.service';
 import { TechnicalSyncService } from './technical-sync.service';
+import { FinancialHistorySyncService } from './financial-history-sync.service';
+import { EarningsHistorySyncService } from './earnings-history-sync.service';
 import { AuthModule } from '../auth/auth.module';
 import { UserModule } from '../user/user.module';
 import { SharedModule } from '../shared/shared.module';
@@ -96,6 +98,8 @@ import { SyncHistoryRepository } from './repositories/sync-history.repository';
     FundamentalSyncService,
     StaticSyncService,
     TechnicalSyncService,
+    FinancialHistorySyncService,
+    EarningsHistorySyncService,
     TickerStaticDataRepository,
     CompoundTechnicalDataRepository,
     FundamentalDataRepository,
