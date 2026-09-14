@@ -5,12 +5,25 @@ import { FinanceController } from './finance.controller';
 import { FinanceService } from './finance.service';
 import { TickerSyncService } from './ticker-sync.service';
 import { TickerHealthService } from './ticker-health.service';
+import { MarketService } from './market.service';
+import { CompoundSyncService } from './compound-sync.service';
+import { FundamentalSyncService } from './fundamental-sync.service';
+import { StaticSyncService } from './static-sync.service';
+import { TechnicalSyncService } from './technical-sync.service';
+import { FinancialHistorySyncService } from './financial-history-sync.service';
+import { EarningsHistorySyncService } from './earnings-history-sync.service';
 import { AuthModule } from '../auth/auth.module';
 import { UserModule } from '../user/user.module';
 import { SharedModule } from '../shared/shared.module';
 import { TickerSourceModule } from '../ticker-source/ticker-source.module';
-import { TickerSource, TickerSourceSchema } from '../ticker-source/schemas/ticker-source.schema';
-import { TickerStaticData, TickerStaticDataSchema } from './schemas/ticker-static-data.schema';
+import {
+  TickerSource,
+  TickerSourceSchema,
+} from '../ticker-source/schemas/ticker-source.schema';
+import {
+  TickerStaticData,
+  TickerStaticDataSchema,
+} from './schemas/ticker-static-data.schema';
 import {
   CompoundTechnicalTickerData,
   CompoundTechnicalTickerDataSchema,
@@ -80,6 +93,13 @@ import { SyncHistoryRepository } from './repositories/sync-history.repository';
     FinanceService,
     TickerSyncService,
     TickerHealthService,
+    MarketService,
+    CompoundSyncService,
+    FundamentalSyncService,
+    StaticSyncService,
+    TechnicalSyncService,
+    FinancialHistorySyncService,
+    EarningsHistorySyncService,
     TickerStaticDataRepository,
     CompoundTechnicalDataRepository,
     FundamentalDataRepository,

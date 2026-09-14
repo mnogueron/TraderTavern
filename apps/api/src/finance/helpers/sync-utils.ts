@@ -72,7 +72,7 @@ export async function runWithConcurrency<T>(
   return successCount;
 }
 
-export const chunkArray = <T,>(items: T[], size: number): T[][] => {
+export const chunkArray = <T>(items: T[], size: number): T[][] => {
   const chunks: T[][] = [];
   for (let i = 0; i < items.length; i += size) {
     chunks.push(items.slice(i, i + size));
@@ -84,14 +84,6 @@ export const chunkArray = <T,>(items: T[], size: number): T[][] => {
 // chunk in sync_history (order-independent, so the same set of ISINs always
 // hashes the same way regardless of how the universe was assembled).
 export const hashIsinChunk = (isins: string[]): string =>
-  createHash('sha256').update([...isins].sort().join(',')).digest('hex');
-
-export const startOfToday = (): Date => {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-};
-
-export const startOfTomorrow = (): Date => {
-  const today = startOfToday();
-  return new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
-};
+  createHash('sha256')
+    .update([...isins].sort().join(','))
+    .digest('hex');

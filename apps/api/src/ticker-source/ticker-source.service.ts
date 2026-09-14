@@ -1,13 +1,22 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { PDFParse } from 'pdf-parse';
 import YahooFinance from 'yahoo-finance2';
-import { TickerSource, TickerSourceDocument } from './schemas/ticker-source.schema';
+import {
+  TickerSource,
+  TickerSourceDocument,
+} from './schemas/ticker-source.schema';
 import { TickerSourceType } from './enums/ticker-source-type.enum';
 import { TickerSourceSyncStatusDto } from './dto/TickerSourceSyncStatus.dto';
 import { parseXtbOmiText } from './xtb-omi.parser';
 import { SCREENER_TICKERS } from '../finance/constants/tickers';
+import { TickerRef } from '../finance/helpers/sync-utils';
 import { YahooRateLimiterService } from '../shared/yahoo-rate-limiter.service';
 
 const yahooFinance = new YahooFinance();
@@ -25,7 +34,9 @@ const parsePdfDate = (value: string | undefined): Date | undefined => {
 
   const [, year, month, day, hour, minute, second, tzHour, tzMinute] = match;
   const offset = tzHour && tzMinute ? `${tzHour}:${tzMinute}` : 'Z';
-  const date = new Date(`${year}-${month}-${day}T${hour}:${minute}:${second}${offset}`);
+  const date = new Date(
+    `${year}-${month}-${day}T${hour}:${minute}:${second}${offset}`,
+  );
   return Number.isNaN(date.getTime()) ? undefined : date;
 };
 
@@ -54,7 +65,9 @@ export class TickerSourceService {
     return this.syncsInProgress.has(source);
   }
 
-  async getSyncStatus(source: TickerSourceType): Promise<TickerSourceSyncStatusDto> {
+  async getSyncStatus(
+    source: TickerSourceType,
+  ): Promise<TickerSourceSyncStatusDto> {
     const [aggregate] = await this.tickerSourceModel.aggregate<{
       lastSyncedAt: Date;
       sourceUpdatedAt: Date | null;
@@ -93,14 +106,18 @@ export class TickerSourceService {
     if (sources.length === 0) {
       return [];
     }
-    return this.tickerSourceModel.distinct('isin', { source: { $in: sources } });
+    return this.tickerSourceModel.distinct('isin', {
+      source: { $in: sources },
+    });
   }
 
   async isKnownYahooTicker(ticker: string): Promise<boolean> {
-    return this.tickerSourceModel.exists({
-      ticker,
-      source: TickerSourceType.Yahoo,
-    }) != null;
+    return (
+      this.tickerSourceModel.exists({
+        ticker,
+        source: TickerSourceType.Yahoo,
+      }) != null
+    );
   }
 
   // Reverse lookup for admin single-ticker sync endpoints, which are
@@ -110,6 +127,17 @@ export class TickerSourceService {
       .findOne({ ticker, source: TickerSourceType.Yahoo })
       .lean();
     return found?.isin ?? null;
+  }
+
+  // Admin single-ticker sync endpoints are addressed by Yahoo ticker symbol
+  // rather than ISIN; resolve the ISIN once so the rest of the sync
+  // pipeline can key its writes by it like every other sync path.
+  async resolveRefForTicker(ticker: string): Promise<TickerRef> {
+    const isin = await this.findIsinByYahooTicker(ticker);
+    if (!isin) {
+      throw new NotFoundException(`Ticker ${ticker} not found`);
+    }
+    return { isin, ticker };
   }
 
   // Resolves an ISIN to its Yahoo Finance ticker symbol, since tickers from
@@ -158,7 +186,9 @@ export class TickerSourceService {
     sync: () => Promise<number>,
   ): Promise<void> {
     if (this.syncsInProgress.has(source)) {
-      throw new BadRequestException(`A ${source} ticker sync is already running`);
+      throw new BadRequestException(
+        `A ${source} ticker sync is already running`,
+      );
     }
 
     this.syncsInProgress.add(source);
@@ -207,10 +237,16 @@ export class TickerSourceService {
     currency?: string;
   }> {
     const result = (await this.yahooRateLimiter.schedule(() =>
-      yahooFinance.search(ticker, { quotesCount: 5 }, { validateResult: false }),
+      yahooFinance.search(
+        ticker,
+        { quotesCount: 5 },
+        { validateResult: false },
+      ),
     )) as { quotes?: RawYahooSearchQuote[] };
 
-    const match = (result.quotes ?? []).find((quote) => quote.symbol === ticker);
+    const match = (result.quotes ?? []).find(
+      (quote) => quote.symbol === ticker,
+    );
     return { isin: match?.isin, currency: match?.currency };
   }
 
@@ -235,7 +271,9 @@ export class TickerSourceService {
           );
           successCount += 1;
         } catch (error) {
-          this.logger.warn(`Failed to resolve ISIN for ${ticker} via Yahoo: ${error}`);
+          this.logger.warn(
+            `Failed to resolve ISIN for ${ticker} via Yahoo: ${error}`,
+          );
         }
       }
 
@@ -272,7 +310,9 @@ export class TickerSourceService {
         // Best-effort: use the PDF's own creation/modification date as the
         // vintage of this quarter's OMI table, falling back to the sync
         // time if the document carries no usable metadata date.
-        sourceUpdatedAt = parsePdfDate(infoResult.info?.ModDate ?? infoResult.info?.CreationDate);
+        sourceUpdatedAt = parsePdfDate(
+          infoResult.info?.ModDate ?? infoResult.info?.CreationDate,
+        );
       } finally {
         await parser.destroy();
       }
@@ -284,7 +324,12 @@ export class TickerSourceService {
       }
 
       for (const row of rows) {
-        await this.upsertTicker(row, TickerSourceType.Xtb, syncedAt, sourceUpdatedAt);
+        await this.upsertTicker(
+          row,
+          TickerSourceType.Xtb,
+          syncedAt,
+          sourceUpdatedAt,
+        );
       }
 
       return rows.length;
