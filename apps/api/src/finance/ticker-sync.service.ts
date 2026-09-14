@@ -10,6 +10,7 @@ import {
 import { SyncType } from './enums/sync-type.enum';
 import { SyncKind } from './enums/sync-kind.enum';
 import { SyncStatus } from './enums/sync-status.enum';
+import { CandleWindow } from './enums/candle-window.enum';
 import {
   RateLimitCooldownError,
   YahooRateLimiterService,
@@ -20,7 +21,14 @@ import { TickerSourceService } from '../ticker-source/ticker-source.service';
 import { UserService } from '../user/user.service';
 import { MarketHours } from './schemas/market-hours.schema';
 import { startOfToday, startOfTomorrow } from './helpers/date-time';
-import { fetchDailyChart, fetchQuoteSummary } from './helpers/sync-fetchers';
+import {
+  DailyChartResult,
+  fetchCandleChart,
+  fetchDailyChart,
+  fetchFinancialHistory,
+  fetchQuarterlyRevenueHistory,
+  fetchQuoteSummary,
+} from './helpers/sync-fetchers';
 import {
   chunkArray,
   hashIsinChunk,
@@ -486,7 +494,7 @@ export class TickerSyncService {
 
   async syncAllTechnical(trigger: SyncTrigger): Promise<void> {
     await this.runChunkedSync(trigger, SyncKind.Technical, true, (ref) =>
-      this.technicalSyncService.syncTechnical(ref),
+      this.syncTechnical(ref),
     );
   }
 
@@ -507,7 +515,7 @@ export class TickerSyncService {
 
   async syncSingleTickerTechnical(ticker: string): Promise<void> {
     const ref = await this.tickerSourceService.resolveRefForTicker(ticker);
-    await this.technicalSyncService.syncTechnical(ref);
+    await this.syncTechnical(ref);
   }
 
   async syncSingleTicker(ticker: string): Promise<void> {
@@ -521,12 +529,18 @@ export class TickerSyncService {
       fetchDailyChart(this.yahooRateLimiter, ref.ticker),
     ]);
 
-    await this.staticSyncService.update(ref, quoteSummary);
-    await this.compoundSyncService.update(ref, syncDate, quoteSummary, chart);
     const marketCap =
       quoteSummary.summaryDetail?.marketCap ?? quoteSummary.price?.marketCap;
-    const { piotroskiScore, altmanZScore } =
-      await this.financialHistorySyncService.update(ref, marketCap);
+    const { periods, piotroskiScore, altmanZScore } =
+      await fetchFinancialHistory(this.yahooRateLimiter, ref.ticker, marketCap);
+    const revenue = await fetchQuarterlyRevenueHistory(
+      this.yahooRateLimiter,
+      ref.ticker,
+    );
+
+    await this.staticSyncService.update(ref, quoteSummary);
+    await this.compoundSyncService.update(ref, syncDate, quoteSummary, chart);
+    await this.financialHistorySyncService.update(ref, periods);
     await this.fundamentalSyncService.update(
       ref,
       syncDate,
@@ -534,8 +548,23 @@ export class TickerSyncService {
       piotroskiScore,
       altmanZScore,
     );
-    await this.earningsHistorySyncService.update(ref, quoteSummary);
-    await this.technicalSyncService.syncTechnical(ref);
+    await this.earningsHistorySyncService.update(ref, quoteSummary, revenue);
+    await this.syncTechnical(ref);
+  }
+
+  private async syncTechnical(ref: TickerRef): Promise<void> {
+    const chartsByWindow = new Map<CandleWindow, DailyChartResult>();
+    for (const window of Object.values(CandleWindow)) {
+      const chart = await fetchCandleChart(
+        this.yahooRateLimiter,
+        ref.ticker,
+        this.technicalSyncService.getLookbackDate(window),
+        window,
+      );
+      chartsByWindow.set(window, chart);
+    }
+
+    await this.technicalSyncService.syncTechnical(ref, chartsByWindow);
   }
 
   private async syncStatic(ref: TickerRef): Promise<void> {
