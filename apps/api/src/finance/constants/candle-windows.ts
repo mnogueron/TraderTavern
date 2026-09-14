@@ -56,6 +56,18 @@ export const YAHOO_REQUEST_DELAY_MS = 100;
 // blocking the whole chunk.
 export const YAHOO_REQUEST_TIMEOUT_MS = 15_000;
 
+// On a Yahoo "Too Many Requests" (429) response, the rate limiter retries
+// the same request in place rather than surfacing an error and moving on to
+// the next ticker, waiting RATE_LIMIT_BACKOFF_INITIAL_MS and doubling after
+// each further 429 until the wait would exceed
+// RATE_LIMIT_BACKOFF_MAX_MS. At that point Yahoo is treated as genuinely
+// rate-limiting us (not a one-off blip), and the entire chunk sync is
+// abandoned so it can cool down until the next sync attempt instead of
+// hammering Yahoo further.
+export const RATE_LIMIT_BACKOFF_INITIAL_MS = 5_000;
+export const RATE_LIMIT_BACKOFF_MAX_MS = 5 * 60 * 1000;
+export const RATE_LIMIT_BACKOFF_MULTIPLIER = 2;
+
 // Env var holding how many tickers a sync run processes concurrently.
 export const SYNC_CONCURRENCY_ENV_VAR = 'SYNC_TICKER_CONCURRENCY';
 

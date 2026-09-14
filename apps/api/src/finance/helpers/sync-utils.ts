@@ -32,18 +32,25 @@ export const isDuplicateKeyError = (error: unknown): boolean =>
   (error as { code?: number }).code === MONGO_DUPLICATE_KEY_ERROR_CODE;
 
 // Runs `worker` over `items` with at most `concurrency` in flight at once,
-// collecting per-item failures instead of aborting the whole batch.
+// collecting per-item failures instead of aborting the whole batch. If
+// `shouldAbort` is given and starts returning true (e.g. once `onError` has
+// flagged a fatal failure), no further items are started, though any
+// already in flight are left to finish.
 export async function runWithConcurrency<T>(
   items: T[],
   concurrency: number,
   worker: (item: T) => Promise<void>,
   onError: (item: T, error: unknown) => void,
+  shouldAbort?: () => boolean,
 ): Promise<number> {
   let successCount = 0;
   let cursor = 0;
 
   const runNext = async (): Promise<void> => {
     for (;;) {
+      if (shouldAbort?.()) {
+        return;
+      }
       const index = cursor++;
       if (index >= items.length) {
         return;

@@ -99,14 +99,16 @@ export class SyncHistoryRepository {
     lockId: SyncHistoryDocument['_id'],
     successCount: number,
     errors: Record<string, string>,
+    forcedStatus?: SyncStatus,
   ): Promise<void> {
     const hasErrors = Object.keys(errors).length > 0;
     const status =
-      successCount === 0
+      forcedStatus ??
+      (successCount === 0
         ? SyncStatus.Failed
         : hasErrors
           ? SyncStatus.PartialSuccess
-          : SyncStatus.Success;
+          : SyncStatus.Success);
 
     await this.syncHistoryModel.updateOne(
       { _id: lockId },

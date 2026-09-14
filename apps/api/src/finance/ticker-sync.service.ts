@@ -15,8 +15,13 @@ import {
 } from './constants/candle-windows';
 import { SyncType } from './enums/sync-type.enum';
 import { SyncKind } from './enums/sync-kind.enum';
+import { SyncStatus } from './enums/sync-status.enum';
 import { CandleWindow } from './enums/candle-window.enum';
-import { YahooRateLimiterService } from '../shared/yahoo-rate-limiter.service';
+import {
+  RateLimitCooldownError,
+  YahooRateLimiterService,
+  YahooTimeoutError,
+} from '../shared/yahoo-rate-limiter.service';
 import { TickerSourceService } from '../ticker-source/ticker-source.service';
 import { UserService } from '../user/user.service';
 import { MarketHours } from './schemas/market-hours.schema';
@@ -252,8 +257,14 @@ export class TickerSyncService {
     lock: SyncHistoryDocument,
     successCount: number,
     errors: Record<string, string>,
+    forcedStatus?: SyncStatus,
   ): Promise<void> {
-    await this.syncHistoryRepository.finalize(lock._id, successCount, errors);
+    await this.syncHistoryRepository.finalize(
+      lock._id,
+      successCount,
+      errors,
+      forcedStatus,
+    );
   }
 
   // Shared driver for every "sync all tickers" operation. Builds the ISIN
@@ -330,6 +341,7 @@ export class TickerSyncService {
 
       const refs: TickerRef[] = [];
       const errors: Record<string, string> = {};
+      let resolutionAbortStatus: SyncStatus | null = null;
       let resolved = 0;
       for (const isin of isinChunk) {
         try {
@@ -341,10 +353,26 @@ export class TickerSyncService {
             errors[isin] = 'No Yahoo ticker could be resolved for this ISIN';
           }
         } catch (error) {
+          errors[isin] = error instanceof Error ? error.message : String(error);
+
+          if (error instanceof RateLimitCooldownError) {
+            this.logger.warn(
+              `Aborting ${kind} chunk sync during ISIN resolution after sustained Yahoo rate limiting on ${isin}: ${error.message}`,
+            );
+            resolutionAbortStatus = SyncStatus.Failed;
+            break;
+          }
+          if (error instanceof YahooTimeoutError) {
+            this.logger.warn(
+              `Aborting ${kind} chunk sync during ISIN resolution after a request timeout on ${isin}: ${error.message}`,
+            );
+            resolutionAbortStatus = SyncStatus.Timeout;
+            break;
+          }
+
           this.logger.warn(
             `Failed to resolve Yahoo ticker for ${isin}: ${error}`,
           );
-          errors[isin] = error instanceof Error ? error.message : String(error);
         }
 
         resolved += 1;
@@ -356,6 +384,18 @@ export class TickerSyncService {
         }
       }
 
+      if (resolutionAbortStatus) {
+        await this.finalizeSyncLock(lock, 0, errors, resolutionAbortStatus);
+        this.logger.log(
+          `Finished ${kind} chunk sync in ${Date.now() - chunkStartedAt}ms: ` +
+            `aborted during ISIN resolution (status=${resolutionAbortStatus})`,
+        );
+        if (!processAllChunks) {
+          return;
+        }
+        continue;
+      }
+
       this.logger.log(
         `${kind} chunk sync: ISIN resolution done in ${Date.now() - chunkStartedAt}ms, ` +
           `syncing ${refs.length} ticker(s)`,
@@ -363,6 +403,15 @@ export class TickerSyncService {
 
       let synced = 0;
       const syncStartedAt = Date.now();
+      // A rate-limit cooldown or request timeout is treated as fatal for
+      // the whole chunk rather than just the current ticker: burning
+      // through the rest of the chunk at the same failure mode either
+      // keeps hammering an already-rate-limited Yahoo, or (per the timeout
+      // investigation) individually times out on every remaining request
+      // because the client-side request queue is still jammed behind a
+      // hung call. Either way, stopping immediately and letting the chunk
+      // cool down until the next sync attempt is cheaper and safer.
+      let abortStatus: SyncStatus | null = null;
       const successCount = await runWithConcurrency(
         refs,
         this.getSyncConcurrency(),
@@ -378,11 +427,27 @@ export class TickerSyncService {
           }
         },
         (ref, error) => {
+          errors[ref.ticker] =
+            error instanceof Error ? error.message : String(error);
+
+          if (error instanceof RateLimitCooldownError) {
+            this.logger.warn(
+              `Aborting ${kind} chunk sync after sustained Yahoo rate limiting on ${ref.ticker}: ${error.message}`,
+            );
+            abortStatus = SyncStatus.Failed;
+            return;
+          }
+          if (error instanceof YahooTimeoutError) {
+            this.logger.warn(
+              `Aborting ${kind} chunk sync after a request timeout on ${ref.ticker}: ${error.message}`,
+            );
+            abortStatus = SyncStatus.Timeout;
+            return;
+          }
+
           this.logger.warn(
             `Failed to sync ${kind} for ${ref.ticker}: ${error}`,
           );
-          errors[ref.ticker] =
-            error instanceof Error ? error.message : String(error);
           void this.tickerHealthService
             .recordFailure(ref, error)
             .then((justHidden) => {
@@ -398,13 +463,20 @@ export class TickerSyncService {
               );
             });
         },
+        () => abortStatus !== null,
       );
 
-      await this.finalizeSyncLock(lock, successCount, errors);
+      await this.finalizeSyncLock(
+        lock,
+        successCount,
+        errors,
+        abortStatus ?? undefined,
+      );
 
       this.logger.log(
         `Finished ${kind} chunk sync in ${Date.now() - chunkStartedAt}ms: ` +
-          `${successCount}/${refs.length} succeeded, ${Object.keys(errors).length} error(s)`,
+          `${successCount}/${refs.length} succeeded, ${Object.keys(errors).length} error(s)` +
+          (abortStatus ? `, aborted early (status=${abortStatus})` : ''),
       );
 
       if (!processAllChunks) {
