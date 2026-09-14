@@ -26,9 +26,11 @@ export class TickerStaticDataRepository {
     );
   }
 
-  // Used to find every ticker whose market has just closed for the day (see
-  // TickerSyncService#handleEndOfDayRefresh).
+  // Used by MarketService to group ISINs by market for chunked syncing.
   async findAllRefsWithMarket(): Promise<TickerRefWithMarket[]> {
-    return this.tickerStaticDataModel.find().select('isin ticker market').lean();
+    return this.tickerStaticDataModel
+      .find()
+      .select('isin ticker market')
+      .lean();
   }
 }

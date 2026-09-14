@@ -1,7 +1,5 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import YahooFinance from 'yahoo-finance2';
 import {
   CANDLE_COUNT_ENV_VAR,
   CANDLE_LOOKBACK_MULTIPLIER,
@@ -22,17 +20,20 @@ import {
   YahooRateLimiterService,
   YahooTimeoutError,
 } from '../shared/yahoo-rate-limiter.service';
+import { AppConfigService } from '../shared/app-config.service';
 import { TickerSourceService } from '../ticker-source/ticker-source.service';
 import { UserService } from '../user/user.service';
 import { MarketHours } from './schemas/market-hours.schema';
+import { calendarDateKey, isPastRegularClose } from './helpers/date-time';
 import {
-  AltmanPeriodDraft,
-  AnnualFinancialPeriodDraft,
-  FundamentalsTimeSeriesRow,
-  PiotroskiPeriodDraft,
-  computeAltmanZScore,
-  computePiotroskiScore,
-} from './helpers/financial-helpers';
+  DailyChartResult,
+  QuoteSummaryResult,
+  fetchCandleChart,
+  fetchDailyChart,
+  fetchFinancialHistory,
+  fetchQuarterlyRevenueHistory,
+  fetchQuoteSummary,
+} from './helpers/sync-fetchers';
 import { computeTechnicalIndicators } from './helpers/technical-indicators';
 import {
   chunkArray,
@@ -44,26 +45,15 @@ import {
   TickerRef,
 } from './helpers/sync-utils';
 import { TickerHealthService } from './ticker-health.service';
+import { MarketService } from './market.service';
 import { TickerStaticDataRepository } from './repositories/ticker-static-data.repository';
 import { CompoundTechnicalDataRepository } from './repositories/compound-technical-data.repository';
 import { FundamentalDataRepository } from './repositories/fundamental-data.repository';
 import { TechnicalDataRepository } from './repositories/technical-data.repository';
 import { FinancialHistoryRepository } from './repositories/financial-history.repository';
 import { EarningsHistoryRepository } from './repositories/earnings-history.repository';
-import { MarketHoursRepository } from './repositories/market-hours.repository';
 import { SyncHistoryRepository } from './repositories/sync-history.repository';
 import { SyncHistoryDocument } from './schemas/sync-history.schema';
-
-const yahooFinance = new YahooFinance();
-
-// Covers just over a year of calendar days lookback, so the 1y/YTD change
-// calculations always have a reference close to compare against.
-const HISTORY_LOOKBACK_DAYS = 400;
-
-// How far back to pull the Financial History (annual) and Earnings History
-// (quarterly revenue) charts.
-const FINANCIAL_HISTORY_YEARS = 6;
-const QUARTERLY_REVENUE_HISTORY_YEARS = 2;
 
 @Injectable()
 export class TickerSyncService {
@@ -76,13 +66,13 @@ export class TickerSyncService {
     private readonly technicalDataRepository: TechnicalDataRepository,
     private readonly financialHistoryRepository: FinancialHistoryRepository,
     private readonly earningsHistoryRepository: EarningsHistoryRepository,
-    private readonly marketHoursRepository: MarketHoursRepository,
     private readonly syncHistoryRepository: SyncHistoryRepository,
     private readonly userService: UserService,
     private readonly tickerSourceService: TickerSourceService,
-    private readonly configService: ConfigService,
+    private readonly configService: AppConfigService,
     private readonly yahooRateLimiter: YahooRateLimiterService,
     private readonly tickerHealthService: TickerHealthService,
+    private readonly marketService: MarketService,
   ) {}
 
   // Drives the day's full ticker sync one chunk at a time: each tick either
@@ -98,35 +88,6 @@ export class TickerSyncService {
       false,
       (ref) => this.syncTicker(ref, startOfToday()),
     );
-  }
-
-  private isPastRegularClose(hours: MarketHours): boolean {
-    const localTime = new Intl.DateTimeFormat('en-GB', {
-      timeZone: hours.timezone,
-      hour: '2-digit',
-      minute: '2-digit',
-      hourCycle: 'h23',
-    }).format(new Date());
-
-    // Once local time has wrapped past midnight into the next calendar
-    // day, today's regular session (which always closes before midnight)
-    // is necessarily long over. Comparing "HH:mm" strings naively would
-    // read e.g. "00:39" as earlier than a "17:30" close and wrongly treat
-    // the market as still open, so also treat any time before the next
-    // open as past-close.
-    return localTime >= hours.regularClose || localTime < hours.regularOpen;
-  }
-
-  // Calendar date (YYYY-MM-DD) of `date` in `timezone` (UTC if omitted),
-  // used to tell whether a daily candle belongs to "today" regardless of
-  // what time the sync happens to run at.
-  private calendarDateKey(date: Date, timezone?: string): string {
-    return new Intl.DateTimeFormat('en-CA', {
-      timeZone: timezone ?? 'UTC',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).format(date);
   }
 
   // A sync is considered "started" for today once any chunk of the main
@@ -151,19 +112,17 @@ export class TickerSyncService {
   }
 
   private getSyncConcurrency(): number {
-    const raw = this.configService.get<string>(SYNC_CONCURRENCY_ENV_VAR);
-    const parsed = raw != null ? Number(raw) : undefined;
-    return parsed != null && Number.isFinite(parsed) && parsed > 0
-      ? parsed
-      : DEFAULT_SYNC_CONCURRENCY;
+    return this.configService.getNumber(
+      SYNC_CONCURRENCY_ENV_VAR,
+      DEFAULT_SYNC_CONCURRENCY,
+    );
   }
 
   private getSyncChunkSize(): number {
-    const raw = this.configService.get<string>(SYNC_CHUNK_SIZE_ENV_VAR);
-    const parsed = raw != null ? Number(raw) : undefined;
-    return parsed != null && Number.isFinite(parsed) && parsed > 0
-      ? parsed
-      : DEFAULT_SYNC_CHUNK_SIZE;
+    return this.configService.getNumber(
+      SYNC_CHUNK_SIZE_ENV_VAR,
+      DEFAULT_SYNC_CHUNK_SIZE,
+    );
   }
 
   // The set of ISINs any user's configured ticker source actually needs
@@ -186,11 +145,7 @@ export class TickerSyncService {
   private async buildMarketChunks(
     isinUniverse: string[],
   ): Promise<{ market: string | null; isins: string[] }[]> {
-    const staticRefs =
-      await this.tickerStaticDataRepository.findAllRefsWithMarket();
-    const marketByIsin = new Map(
-      staticRefs.map((ref) => [ref.isin, ref.market]),
-    );
+    const marketByIsin = await this.marketService.getMarketByIsin();
 
     const isinsByMarket = new Map<string, string[]>();
     const unresolvedIsins: string[] = [];
@@ -222,33 +177,6 @@ export class TickerSyncService {
     }
 
     return chunks;
-  }
-
-  // Only the full ticker sync and the standalone compound sync depend on a
-  // market's session having closed (so changePercent1d etc. reflect the
-  // official close rather than a mid-session price); static/fundamental/
-  // technical data isn't tied to a specific session, so those kinds sync on
-  // demand regardless of market hours. Gated on regular close only, not
-  // post-market close: waiting for post-market would delay e.g. NASDAQ
-  // until the small hours of the European morning, which is worse for
-  // same-day analysis than syncing the regular-session close a few hours
-  // earlier.
-  private isMarketCloseGated(kind: SyncKind): boolean {
-    return kind === SyncKind.Ticker || kind === SyncKind.Compound;
-  }
-
-  private isMarketDueForSync(
-    market: string | null,
-    marketHoursByCode: Map<string, MarketHours>,
-  ): boolean {
-    if (market == null) {
-      return true;
-    }
-    const hours = marketHoursByCode.get(market);
-    if (!hours) {
-      return true;
-    }
-    return this.isPastRegularClose(hours);
   }
 
   // Atomically claims a chunk's "running" slot in sync_history, both via the
@@ -370,18 +298,16 @@ export class TickerSyncService {
     const syncDate = startOfToday();
     const marketChunks = await this.buildMarketChunks(isinUniverse);
 
-    const closeGated = this.isMarketCloseGated(kind);
+    const closeGated = this.marketService.isMarketCloseGated(kind);
     const marketHoursByCode = closeGated
-      ? new Map(
-          (await this.marketHoursRepository.findAll()).map((hours) => [
-            hours.market,
-            hours,
-          ]),
-        )
+      ? await this.marketService.getMarketHoursByCode()
       : new Map<string, MarketHours>();
 
     for (const { market, isins: isinChunk } of marketChunks) {
-      if (closeGated && !this.isMarketDueForSync(market, marketHoursByCode)) {
+      if (
+        closeGated &&
+        !this.marketService.isMarketDueForSync(market, marketHoursByCode)
+      ) {
         continue;
       }
 
@@ -624,194 +550,10 @@ export class TickerSyncService {
     await this.syncTicker(ref, startOfToday());
   }
 
-  private async fetchQuoteSummary(ticker: string) {
-    return this.yahooRateLimiter.schedule(() =>
-      yahooFinance.quoteSummary(ticker, {
-        modules: [
-          'price',
-          'summaryDetail',
-          'assetProfile',
-          'financialData',
-          'defaultKeyStatistics',
-          'earningsHistory',
-        ],
-      }),
-    );
-  }
-
-  private async fetchDailyChart(ticker: string) {
-    return this.yahooRateLimiter.schedule(() =>
-      yahooFinance.chart(ticker, {
-        period1: new Date(
-          Date.now() - HISTORY_LOOKBACK_DAYS * 24 * 60 * 60 * 1000,
-        ),
-        interval: '1d',
-      }),
-    );
-  }
-
-  private async fetchFinancialHistory(ticker: string, marketCap?: number) {
-    const period1 = new Date();
-    period1.setFullYear(period1.getFullYear() - FINANCIAL_HISTORY_YEARS);
-
-    const [financials, cashFlow, balanceSheet] = await Promise.all([
-      this.yahooRateLimiter.schedule(
-        () =>
-          yahooFinance.fundamentalsTimeSeries(ticker, {
-            period1,
-            type: 'annual',
-            module: 'financials',
-          }) as unknown as Promise<FundamentalsTimeSeriesRow[]>,
-      ),
-      this.yahooRateLimiter.schedule(
-        () =>
-          yahooFinance.fundamentalsTimeSeries(ticker, {
-            period1,
-            type: 'annual',
-            module: 'cash-flow',
-          }) as unknown as Promise<FundamentalsTimeSeriesRow[]>,
-      ),
-      this.yahooRateLimiter.schedule(
-        () =>
-          yahooFinance.fundamentalsTimeSeries(ticker, {
-            period1,
-            type: 'annual',
-            module: 'balance-sheet',
-          }) as unknown as Promise<FundamentalsTimeSeriesRow[]>,
-      ),
-    ]);
-
-    const byPeriodEnd = new Map<string, AnnualFinancialPeriodDraft>();
-    const getOrCreate = (date: Date): AnnualFinancialPeriodDraft => {
-      const key = date.toISOString();
-      let entry = byPeriodEnd.get(key);
-      if (!entry) {
-        entry = { periodEnd: date };
-        byPeriodEnd.set(key, entry);
-      }
-      return entry;
-    };
-
-    const piotroskiByPeriodEnd = new Map<string, PiotroskiPeriodDraft>();
-    const getOrCreatePiotroski = (date: Date): PiotroskiPeriodDraft => {
-      const key = date.toISOString();
-      let entry = piotroskiByPeriodEnd.get(key);
-      if (!entry) {
-        entry = { periodEnd: date };
-        piotroskiByPeriodEnd.set(key, entry);
-      }
-      return entry;
-    };
-
-    const altmanByPeriodEnd = new Map<string, AltmanPeriodDraft>();
-    const getOrCreateAltman = (date: Date): AltmanPeriodDraft => {
-      const key = date.toISOString();
-      let entry = altmanByPeriodEnd.get(key);
-      if (!entry) {
-        entry = { periodEnd: date };
-        altmanByPeriodEnd.set(key, entry);
-      }
-      return entry;
-    };
-
-    for (const row of financials) {
-      const entry = getOrCreate(row.date);
-      entry.revenue = row.totalRevenue;
-      entry.ebitda = row.EBITDA;
-      entry.netIncome = row.netIncome;
-
-      const piotroski = getOrCreatePiotroski(row.date);
-      piotroski.revenue = row.totalRevenue;
-      piotroski.netIncome = row.netIncome;
-      piotroski.grossProfit = row.grossProfit;
-
-      const altman = getOrCreateAltman(row.date);
-      altman.revenue = row.totalRevenue;
-      altman.ebit = row.EBIT;
-    }
-    for (const row of cashFlow) {
-      const entry = getOrCreate(row.date);
-      entry.operatingCashflow = row.operatingCashFlow;
-      entry.freeCashflow = row.freeCashFlow;
-      entry.capex = row.capitalExpenditure;
-
-      const piotroski = getOrCreatePiotroski(row.date);
-      piotroski.operatingCashflow = row.operatingCashFlow;
-    }
-    for (const row of balanceSheet) {
-      const entry = getOrCreate(row.date);
-      entry.cash = row.cashAndCashEquivalents;
-      entry.totalDebt = row.totalDebt;
-      entry.netDebt = row.netDebt;
-
-      const piotroski = getOrCreatePiotroski(row.date);
-      piotroski.totalAssets = row.totalAssets;
-      piotroski.currentAssets = row.currentAssets;
-      piotroski.currentLiabilities = row.currentLiabilities;
-      piotroski.longTermDebt = row.longTermDebt;
-      piotroski.sharesOutstanding = row.ordinarySharesNumber ?? row.shareIssued;
-
-      const altman = getOrCreateAltman(row.date);
-      altman.totalAssets = row.totalAssets;
-      altman.currentAssets = row.currentAssets;
-      altman.currentLiabilities = row.currentLiabilities;
-      altman.retainedEarnings = row.retainedEarnings;
-      altman.totalLiabilities = row.totalLiabilitiesNetMinorityInterest;
-    }
-
-    const piotroskiPeriods = Array.from(piotroskiByPeriodEnd.values()).sort(
-      (a, b) => a.periodEnd.getTime() - b.periodEnd.getTime(),
-    );
-    const [priorPiotroskiPeriod, latestPiotroskiPeriod] =
-      piotroskiPeriods.slice(-2);
-    const piotroskiScore =
-      latestPiotroskiPeriod && priorPiotroskiPeriod
-        ? computePiotroskiScore(latestPiotroskiPeriod, priorPiotroskiPeriod)
-        : undefined;
-
-    const latestAltmanPeriod = Array.from(altmanByPeriodEnd.values())
-      .sort((a, b) => a.periodEnd.getTime() - b.periodEnd.getTime())
-      .at(-1);
-    const altmanZScore = latestAltmanPeriod
-      ? computeAltmanZScore(latestAltmanPeriod, marketCap)
-      : undefined;
-
-    return {
-      periods: Array.from(byPeriodEnd.values()).sort(
-        (a, b) => a.periodEnd.getTime() - b.periodEnd.getTime(),
-      ),
-      piotroskiScore,
-      altmanZScore,
-    };
-  }
-
-  private async fetchQuarterlyRevenueHistory(
-    ticker: string,
-  ): Promise<{ quarter: Date; actual?: number }[]> {
-    const period1 = new Date();
-    period1.setFullYear(
-      period1.getFullYear() - QUARTERLY_REVENUE_HISTORY_YEARS,
-    );
-
-    const rows = (await this.yahooRateLimiter.schedule(
-      () =>
-        yahooFinance.fundamentalsTimeSeries(ticker, {
-          period1,
-          type: 'quarterly',
-          module: 'financials',
-        }) as unknown as Promise<FundamentalsTimeSeriesRow[]>,
-    )) as FundamentalsTimeSeriesRow[];
-
-    return rows.map((row) => ({
-      quarter: row.date,
-      actual: row.totalRevenue,
-    }));
-  }
-
   private async syncTicker(ref: TickerRef, syncDate: Date): Promise<void> {
     const [quoteSummary, chart] = await Promise.all([
-      this.fetchQuoteSummary(ref.ticker),
-      this.fetchDailyChart(ref.ticker),
+      fetchQuoteSummary(this.yahooRateLimiter, ref.ticker),
+      fetchDailyChart(this.yahooRateLimiter, ref.ticker),
     ]);
 
     await this.updateStaticData(ref, quoteSummary);
@@ -838,7 +580,7 @@ export class TickerSyncService {
     marketCap?: number,
   ): Promise<{ piotroskiScore?: number; altmanZScore?: number }> {
     const { periods, piotroskiScore, altmanZScore } =
-      await this.fetchFinancialHistory(ref.ticker, marketCap);
+      await fetchFinancialHistory(this.yahooRateLimiter, ref.ticker, marketCap);
 
     await this.financialHistoryRepository.upsertAnnual(ref, periods);
 
@@ -847,7 +589,7 @@ export class TickerSyncService {
 
   private async updateEarningsHistory(
     ref: TickerRef,
-    quoteSummary: Awaited<ReturnType<typeof this.fetchQuoteSummary>>,
+    quoteSummary: QuoteSummaryResult,
   ): Promise<void> {
     const eps = (quoteSummary.earningsHistory?.history ?? [])
       .filter(
@@ -859,20 +601,26 @@ export class TickerSyncService {
         actual: entry.epsActual ?? undefined,
         estimate: entry.epsEstimate ?? undefined,
       }));
-    const revenue = await this.fetchQuarterlyRevenueHistory(ref.ticker);
+    const revenue = await fetchQuarterlyRevenueHistory(
+      this.yahooRateLimiter,
+      ref.ticker,
+    );
 
     await this.earningsHistoryRepository.upsert(ref, eps, revenue);
   }
 
   private async syncStatic(ref: TickerRef): Promise<void> {
-    const quoteSummary = await this.fetchQuoteSummary(ref.ticker);
+    const quoteSummary = await fetchQuoteSummary(
+      this.yahooRateLimiter,
+      ref.ticker,
+    );
 
     await this.updateStaticData(ref, quoteSummary);
   }
 
   private async updateStaticData(
     ref: TickerRef,
-    quoteSummary: Awaited<ReturnType<typeof this.fetchQuoteSummary>>,
+    quoteSummary: QuoteSummaryResult,
   ): Promise<void> {
     const { price, assetProfile, defaultKeyStatistics } = quoteSummary;
     const companyName = price?.longName ?? price?.shortName ?? ref.ticker;
@@ -912,15 +660,18 @@ export class TickerSyncService {
 
   private async syncCompound(ref: TickerRef, syncDate: Date): Promise<void> {
     const [quoteSummary, chart] = await Promise.all([
-      this.fetchQuoteSummary(ref.ticker),
-      this.fetchDailyChart(ref.ticker),
+      fetchQuoteSummary(this.yahooRateLimiter, ref.ticker),
+      fetchDailyChart(this.yahooRateLimiter, ref.ticker),
     ]);
 
     await this.updateCompound(ref, syncDate, quoteSummary, chart);
   }
 
   private async syncFundamental(ref: TickerRef, syncDate: Date): Promise<void> {
-    const quoteSummary = await this.fetchQuoteSummary(ref.ticker);
+    const quoteSummary = await fetchQuoteSummary(
+      this.yahooRateLimiter,
+      ref.ticker,
+    );
 
     await this.updateFundamental(ref, syncDate, quoteSummary);
   }
@@ -928,8 +679,8 @@ export class TickerSyncService {
   private async updateCompound(
     ref: TickerRef,
     syncDate: Date,
-    quoteSummary: Awaited<ReturnType<typeof this.fetchQuoteSummary>>,
-    chart: Awaited<ReturnType<typeof this.fetchDailyChart>>,
+    quoteSummary: QuoteSummaryResult,
+    chart: DailyChartResult,
   ): Promise<void> {
     const { price } = quoteSummary;
 
@@ -970,9 +721,9 @@ export class TickerSyncService {
     // the "market still open" case, where we need the close from *two*
     // sessions ago) or when live quote fields are unavailable.
     const hours = price?.exchange
-      ? await this.marketHoursRepository.findByMarket(price.exchange)
+      ? await this.marketService.findHoursForMarket(price.exchange)
       : null;
-    const isClosedToday = hours != null && this.isPastRegularClose(hours);
+    const isClosedToday = hours != null && isPastRegularClose(hours);
 
     // While a session is open, Yahoo's daily chart already includes today's
     // candle with a non-null (live, still-moving) close, so it isn't a
@@ -982,9 +733,9 @@ export class TickerSyncService {
     // close against itself (via two different data sources) instead of
     // against the day before. Strip today's candle before any positional
     // lookup so `.at(-1)`/`.at(-2)` always point at completed sessions.
-    const todayKey = this.calendarDateKey(new Date(), hours?.timezone);
+    const todayKey = calendarDateKey(new Date(), hours?.timezone);
     const completedQuotes = quotes.filter(
-      (quote) => this.calendarDateKey(quote.date, hours?.timezone) !== todayKey,
+      (quote) => calendarDateKey(quote.date, hours?.timezone) !== todayKey,
     );
 
     // "anchor": the most recent completed session's close — today's once
@@ -1034,7 +785,7 @@ export class TickerSyncService {
   private async updateFundamental(
     ref: TickerRef,
     syncDate: Date,
-    quoteSummary: Awaited<ReturnType<typeof this.fetchQuoteSummary>>,
+    quoteSummary: QuoteSummaryResult,
     piotroskiScore?: number,
     altmanZScore?: number,
   ): Promise<void> {
@@ -1185,11 +936,10 @@ export class TickerSyncService {
   }
 
   private getCandleCount(window: CandleWindow): number {
-    const raw = this.configService.get<string>(CANDLE_COUNT_ENV_VAR[window]);
-    const parsed = raw != null ? Number(raw) : undefined;
-    return parsed != null && Number.isFinite(parsed) && parsed > 0
-      ? parsed
-      : DEFAULT_CANDLE_COUNT[window];
+    return this.configService.getNumber(
+      CANDLE_COUNT_ENV_VAR[window],
+      DEFAULT_CANDLE_COUNT[window],
+    );
   }
 
   private async syncCandles(
@@ -1200,11 +950,11 @@ export class TickerSyncService {
     const lookbackMs =
       count * CANDLE_WINDOW_DURATION_MS[window] * CANDLE_LOOKBACK_MULTIPLIER;
 
-    const chart = await this.yahooRateLimiter.schedule(() =>
-      yahooFinance.chart(ref.ticker, {
-        period1: new Date(Date.now() - lookbackMs),
-        interval: window,
-      }),
+    const chart = await fetchCandleChart(
+      this.yahooRateLimiter,
+      ref.ticker,
+      new Date(Date.now() - lookbackMs),
+      window,
     );
 
     const candles = (chart.quotes ?? [])
