@@ -19,12 +19,6 @@ export class CompoundTechnicalDataRepository {
     private readonly compoundTechnicalTickerDataModel: Model<CompoundTechnicalTickerDataDocument>,
   ) {}
 
-  async existsForDate(isin: string, syncDate: Date): Promise<boolean> {
-    return Boolean(
-      await this.compoundTechnicalTickerDataModel.exists({ isin, syncDate }),
-    );
-  }
-
   async upsert(
     ref: TickerRef,
     syncDate: Date,

@@ -100,47 +100,6 @@ export class TickerSyncService {
     );
   }
 
-  // Refreshes tickers whose market has just closed for the day, so
-  // changePercent1d reflects today's official close (vs the daily cron,
-  // which only runs pre-market and always sees yesterday's close).
-  @Cron(CronExpression.EVERY_10_MINUTES)
-  async handleEndOfDayRefresh(): Promise<void> {
-    const syncDate = startOfToday();
-    const [staticData, marketHours] = await Promise.all([
-      this.tickerStaticDataRepository.findAllRefsWithMarket(),
-      this.marketHoursRepository.findAll(),
-    ]);
-    const marketHoursByCode = new Map(
-      marketHours.map((hours) => [hours.market, hours]),
-    );
-
-    const dueTickers: TickerRef[] = [];
-    for (const { isin, ticker, market } of staticData) {
-      const hours = market ? marketHoursByCode.get(market) : undefined;
-      if (!hours || !this.isPastRegularClose(hours)) {
-        continue;
-      }
-
-      const alreadySynced =
-        await this.compoundTechnicalDataRepository.existsForDate(
-          isin,
-          syncDate,
-        );
-      if (!alreadySynced) {
-        dueTickers.push({ isin, ticker });
-      }
-    }
-
-    await runWithConcurrency(
-      dueTickers,
-      this.getSyncConcurrency(),
-      (ref) => this.syncCompound(ref, syncDate),
-      (ref, error) => {
-        this.logger.warn(`Failed end-of-day sync for ${ref.ticker}: ${error}`);
-      },
-    );
-  }
-
   private isPastRegularClose(hours: MarketHours): boolean {
     const localTime = new Intl.DateTimeFormat('en-GB', {
       timeZone: hours.timezone,
@@ -215,6 +174,83 @@ export class TickerSyncService {
     return this.tickerSourceService.getIsinsForSources(sources);
   }
 
+  // Groups the ISIN universe by ticker_static_data.market, then caps each
+  // market's group at the configured chunk size (so a large market like
+  // NASDAQ still splits into multiple chunks). Grouping by market lets each
+  // chunk be gated on that specific market's own session state instead of
+  // mixing tickers from unrelated sessions into one arbitrary batch, and
+  // makes it easy to see which markets are still outstanding at a glance.
+  // ISINs whose market hasn't been resolved yet (e.g. pending their first
+  // static sync) fall into a single ungated group so they're never blocked
+  // on market hours they don't have yet.
+  private async buildMarketChunks(
+    isinUniverse: string[],
+  ): Promise<{ market: string | null; isins: string[] }[]> {
+    const staticRefs =
+      await this.tickerStaticDataRepository.findAllRefsWithMarket();
+    const marketByIsin = new Map(
+      staticRefs.map((ref) => [ref.isin, ref.market]),
+    );
+
+    const isinsByMarket = new Map<string, string[]>();
+    const unresolvedIsins: string[] = [];
+    for (const isin of isinUniverse) {
+      const market = marketByIsin.get(isin);
+      if (!market) {
+        unresolvedIsins.push(isin);
+        continue;
+      }
+      const group = isinsByMarket.get(market);
+      if (group) {
+        group.push(isin);
+      } else {
+        isinsByMarket.set(market, [isin]);
+      }
+    }
+
+    const chunkSize = this.getSyncChunkSize();
+    const chunks: { market: string | null; isins: string[] }[] = [];
+    for (const [market, isinsForMarket] of [...isinsByMarket.entries()].sort(
+      ([a], [b]) => a.localeCompare(b),
+    )) {
+      for (const isins of chunkArray(isinsForMarket, chunkSize)) {
+        chunks.push({ market, isins });
+      }
+    }
+    for (const isins of chunkArray(unresolvedIsins, chunkSize)) {
+      chunks.push({ market: null, isins });
+    }
+
+    return chunks;
+  }
+
+  // Only the full ticker sync and the standalone compound sync depend on a
+  // market's session having closed (so changePercent1d etc. reflect the
+  // official close rather than a mid-session price); static/fundamental/
+  // technical data isn't tied to a specific session, so those kinds sync on
+  // demand regardless of market hours. Gated on regular close only, not
+  // post-market close: waiting for post-market would delay e.g. NASDAQ
+  // until the small hours of the European morning, which is worse for
+  // same-day analysis than syncing the regular-session close a few hours
+  // earlier.
+  private isMarketCloseGated(kind: SyncKind): boolean {
+    return kind === SyncKind.Ticker || kind === SyncKind.Compound;
+  }
+
+  private isMarketDueForSync(
+    market: string | null,
+    marketHoursByCode: Map<string, MarketHours>,
+  ): boolean {
+    if (market == null) {
+      return true;
+    }
+    const hours = marketHoursByCode.get(market);
+    if (!hours) {
+      return true;
+    }
+    return this.isPastRegularClose(hours);
+  }
+
   // Atomically claims a chunk's "running" slot in sync_history, both via the
   // { syncDate, kind, chunkHash } unique index (this exact chunk hasn't been
   // processed today) and the { kind, status: 'running' } partial unique
@@ -253,6 +289,28 @@ export class TickerSyncService {
     }
   }
 
+  // Records a non-fatal per-ticker sync failure against ticker_sync_health
+  // so it counts towards TICKER_SYNC_ERROR_THRESHOLD and shows up in the
+  // hidden-tickers admin view, regardless of whether the failure happened
+  // during ISIN->ticker resolution (no `ticker` yet, so the ISIN itself is
+  // used as a placeholder) or during the actual per-ticker sync.
+  private recordTickerHealthFailure(ref: TickerRef, error: unknown): void {
+    void this.tickerHealthService
+      .recordFailure(ref, error)
+      .then((justHidden) => {
+        if (justHidden) {
+          this.logger.warn(
+            `Hiding ${ref.ticker} (${ref.isin}) after ${TICKER_SYNC_ERROR_THRESHOLD} consecutive sync failures`,
+          );
+        }
+      })
+      .catch((recordError) => {
+        this.logger.warn(
+          `Failed to record sync health for ${ref.ticker}: ${recordError}`,
+        );
+      });
+  }
+
   private async finalizeSyncLock(
     lock: SyncHistoryDocument,
     successCount: number,
@@ -268,8 +326,11 @@ export class TickerSyncService {
   }
 
   // Shared driver for every "sync all tickers" operation. Builds the ISIN
-  // universe, splits it into fixed-size chunks, and for each chunk not
-  // already done today: resolves each ISIN to its Yahoo ticker (cached in
+  // universe, groups it by market and splits each market's group into
+  // size-capped chunks (see buildMarketChunks), skips any chunk whose
+  // market hasn't closed yet (for kinds where that matters, see
+  // isMarketCloseGated), and for each remaining chunk not already done
+  // today: resolves each ISIN to its Yahoo ticker (cached in
   // ticker_sources), fans the given per-ticker sync out across a limited
   // concurrency pool (actual Yahoo request pacing is handled globally by
   // yahooRateLimiter, not per worker), and records the chunk's status.
@@ -307,9 +368,23 @@ export class TickerSyncService {
     }
 
     const syncDate = startOfToday();
-    const chunks = chunkArray(isinUniverse, this.getSyncChunkSize());
+    const marketChunks = await this.buildMarketChunks(isinUniverse);
 
-    for (const isinChunk of chunks) {
+    const closeGated = this.isMarketCloseGated(kind);
+    const marketHoursByCode = closeGated
+      ? new Map(
+          (await this.marketHoursRepository.findAll()).map((hours) => [
+            hours.market,
+            hours,
+          ]),
+        )
+      : new Map<string, MarketHours>();
+
+    for (const { market, isins: isinChunk } of marketChunks) {
+      if (closeGated && !this.isMarketDueForSync(market, marketHoursByCode)) {
+        continue;
+      }
+
       const chunkHash = hashIsinChunk(isinChunk);
       const alreadyDone = await this.syncHistoryRepository.isChunkDone(
         syncDate,
@@ -336,7 +411,7 @@ export class TickerSyncService {
 
       const chunkStartedAt = Date.now();
       this.logger.log(
-        `Starting ${kind} chunk sync: ${isinChunk.length} ISIN(s) (lock ${lock._id})`,
+        `Starting ${kind} chunk sync for market ${market ?? 'unknown'}: ${isinChunk.length} ISIN(s) (lock ${lock._id})`,
       );
 
       const refs: TickerRef[] = [];
@@ -350,7 +425,17 @@ export class TickerSyncService {
           if (ticker) {
             refs.push({ isin, ticker });
           } else {
-            errors[isin] = 'No Yahoo ticker could be resolved for this ISIN';
+            const message = 'No Yahoo ticker could be resolved for this ISIN';
+            errors[isin] = message;
+            // No resolved Yahoo ticker exists yet for this ISIN, so there's
+            // no real `ticker` value to key the health record on; the ISIN
+            // itself is used as a placeholder so this still counts towards
+            // TICKER_SYNC_ERROR_THRESHOLD and surfaces in the hidden-tickers
+            // admin view instead of being retried forever, invisibly.
+            this.recordTickerHealthFailure(
+              { isin, ticker: isin },
+              new Error(message),
+            );
           }
         } catch (error) {
           errors[isin] = error instanceof Error ? error.message : String(error);
@@ -373,6 +458,7 @@ export class TickerSyncService {
           this.logger.warn(
             `Failed to resolve Yahoo ticker for ${isin}: ${error}`,
           );
+          this.recordTickerHealthFailure({ isin, ticker: isin }, error);
         }
 
         resolved += 1;
@@ -387,7 +473,7 @@ export class TickerSyncService {
       if (resolutionAbortStatus) {
         await this.finalizeSyncLock(lock, 0, errors, resolutionAbortStatus);
         this.logger.log(
-          `Finished ${kind} chunk sync in ${Date.now() - chunkStartedAt}ms: ` +
+          `Finished ${kind} chunk sync for market ${market ?? 'unknown'} in ${Date.now() - chunkStartedAt}ms: ` +
             `aborted during ISIN resolution (status=${resolutionAbortStatus})`,
         );
         if (!processAllChunks) {
@@ -448,20 +534,7 @@ export class TickerSyncService {
           this.logger.warn(
             `Failed to sync ${kind} for ${ref.ticker}: ${error}`,
           );
-          void this.tickerHealthService
-            .recordFailure(ref, error)
-            .then((justHidden) => {
-              if (justHidden) {
-                this.logger.warn(
-                  `Hiding ${ref.ticker} (${ref.isin}) after ${TICKER_SYNC_ERROR_THRESHOLD} consecutive sync failures`,
-                );
-              }
-            })
-            .catch((recordError) => {
-              this.logger.warn(
-                `Failed to record sync health for ${ref.ticker}: ${recordError}`,
-              );
-            });
+          this.recordTickerHealthFailure(ref, error);
         },
         () => abortStatus !== null,
       );
@@ -474,7 +547,7 @@ export class TickerSyncService {
       );
 
       this.logger.log(
-        `Finished ${kind} chunk sync in ${Date.now() - chunkStartedAt}ms: ` +
+        `Finished ${kind} chunk sync for market ${market ?? 'unknown'} in ${Date.now() - chunkStartedAt}ms: ` +
           `${successCount}/${refs.length} succeeded, ${Object.keys(errors).length} error(s)` +
           (abortStatus ? `, aborted early (status=${abortStatus})` : ''),
       );

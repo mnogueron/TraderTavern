@@ -8,6 +8,21 @@ import {
 } from './schemas/ticker-sync-health.schema';
 import { TickerRef } from './helpers/sync-utils';
 
+// Error messages that indicate a ticker will never succeed on retry (e.g.
+// the ISIN has no resolvable Yahoo ticker at all, or Yahoo's response shape
+// doesn't match what the library expects), as opposed to transient network
+// or rate-limit issues. These hide the ticker on the very first occurrence
+// instead of waiting for TICKER_SYNC_ERROR_THRESHOLD retries that would
+// just reproduce the same error every time.
+const PERMANENT_FAILURE_PATTERNS = [
+  /no yahoo ticker could be resolved for this isin/i,
+  /failed yahoo schema validation/i,
+];
+
+function isPermanentFailure(message: string): boolean {
+  return PERMANENT_FAILURE_PATTERNS.some((pattern) => pattern.test(message));
+}
+
 // Tracks per-ISIN sync health so a persistently broken ticker is excluded
 // from future automated sync attempts instead of being retried forever (see
 // TICKER_SYNC_ERROR_THRESHOLD). A single shared service backs both the sync
@@ -32,9 +47,9 @@ export class TickerHealthService {
   }
 
   // Increments the error counter for this ISIN and hides it once the
-  // counter reaches TICKER_SYNC_ERROR_THRESHOLD. Returns whether this call
-  // just crossed the threshold (i.e. the ticker just became hidden), so
-  // callers can log it.
+  // counter reaches TICKER_SYNC_ERROR_THRESHOLD, or immediately if the error
+  // is a known-permanent failure (see isPermanentFailure). Returns whether
+  // this call just hid the ticker, so callers can log it.
   async recordFailure(ref: TickerRef, error: unknown): Promise<boolean> {
     const message = error instanceof Error ? error.message : String(error);
 
@@ -47,7 +62,12 @@ export class TickerHealthService {
       { upsert: true, new: true },
     );
 
-    if (updated.errorCount >= TICKER_SYNC_ERROR_THRESHOLD && !updated.hidden) {
+    const shouldHide =
+      !updated.hidden &&
+      (updated.errorCount >= TICKER_SYNC_ERROR_THRESHOLD ||
+        isPermanentFailure(message));
+
+    if (shouldHide) {
       await this.tickerSyncHealthModel.updateOne(
         { _id: updated._id },
         { $set: { hidden: true, hiddenAt: new Date() } },
