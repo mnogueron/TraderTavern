@@ -30,3 +30,13 @@ export function calendarDateKey(date: Date, timezone?: string): string {
     day: '2-digit',
   }).format(date);
 }
+
+export const startOfToday = (): Date => {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+};
+
+export const startOfTomorrow = (): Date => {
+  const today = startOfToday();
+  return new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+};

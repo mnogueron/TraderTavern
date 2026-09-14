@@ -6,6 +6,10 @@ import { FinanceService } from './finance.service';
 import { TickerSyncService } from './ticker-sync.service';
 import { TickerHealthService } from './ticker-health.service';
 import { MarketService } from './market.service';
+import { CompoundSyncService } from './compound-sync.service';
+import { FundamentalSyncService } from './fundamental-sync.service';
+import { StaticSyncService } from './static-sync.service';
+import { TechnicalSyncService } from './technical-sync.service';
 import { AuthModule } from '../auth/auth.module';
 import { UserModule } from '../user/user.module';
 import { SharedModule } from '../shared/shared.module';
@@ -88,6 +92,10 @@ import { SyncHistoryRepository } from './repositories/sync-history.repository';
     TickerSyncService,
     TickerHealthService,
     MarketService,
+    CompoundSyncService,
+    FundamentalSyncService,
+    StaticSyncService,
+    TechnicalSyncService,
     TickerStaticDataRepository,
     CompoundTechnicalDataRepository,
     FundamentalDataRepository,
