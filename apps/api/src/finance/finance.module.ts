@@ -37,6 +37,14 @@ import {
   TickerSyncHealth,
   TickerSyncHealthSchema,
 } from './schemas/ticker-sync-health.schema';
+import { TickerStaticDataRepository } from './repositories/ticker-static-data.repository';
+import { CompoundTechnicalDataRepository } from './repositories/compound-technical-data.repository';
+import { FundamentalDataRepository } from './repositories/fundamental-data.repository';
+import { TechnicalDataRepository } from './repositories/technical-data.repository';
+import { FinancialHistoryRepository } from './repositories/financial-history.repository';
+import { EarningsHistoryRepository } from './repositories/earnings-history.repository';
+import { MarketHoursRepository } from './repositories/market-hours.repository';
+import { SyncHistoryRepository } from './repositories/sync-history.repository';
 
 @Module({
   imports: [
@@ -68,6 +76,18 @@ import {
     ]),
   ],
   controllers: [FinanceController],
-  providers: [FinanceService, TickerSyncService, TickerHealthService],
+  providers: [
+    FinanceService,
+    TickerSyncService,
+    TickerHealthService,
+    TickerStaticDataRepository,
+    CompoundTechnicalDataRepository,
+    FundamentalDataRepository,
+    TechnicalDataRepository,
+    FinancialHistoryRepository,
+    EarningsHistoryRepository,
+    MarketHoursRepository,
+    SyncHistoryRepository,
+  ],
 })
 export class FinanceModule {}

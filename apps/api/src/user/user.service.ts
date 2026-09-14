@@ -70,6 +70,10 @@ export class UserService {
     return this.userModel.create(user);
   }
 
+  async getDistinctTickerSources(): Promise<TickerSourceType[]> {
+    return this.userModel.distinct('tickerSource');
+  }
+
   toDto(user: UserDocument): UserDto {
     return toUserDto(user);
   }
