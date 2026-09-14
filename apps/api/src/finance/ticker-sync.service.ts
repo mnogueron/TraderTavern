@@ -289,6 +289,28 @@ export class TickerSyncService {
     }
   }
 
+  // Records a non-fatal per-ticker sync failure against ticker_sync_health
+  // so it counts towards TICKER_SYNC_ERROR_THRESHOLD and shows up in the
+  // hidden-tickers admin view, regardless of whether the failure happened
+  // during ISIN->ticker resolution (no `ticker` yet, so the ISIN itself is
+  // used as a placeholder) or during the actual per-ticker sync.
+  private recordTickerHealthFailure(ref: TickerRef, error: unknown): void {
+    void this.tickerHealthService
+      .recordFailure(ref, error)
+      .then((justHidden) => {
+        if (justHidden) {
+          this.logger.warn(
+            `Hiding ${ref.ticker} (${ref.isin}) after ${TICKER_SYNC_ERROR_THRESHOLD} consecutive sync failures`,
+          );
+        }
+      })
+      .catch((recordError) => {
+        this.logger.warn(
+          `Failed to record sync health for ${ref.ticker}: ${recordError}`,
+        );
+      });
+  }
+
   private async finalizeSyncLock(
     lock: SyncHistoryDocument,
     successCount: number,
@@ -403,7 +425,17 @@ export class TickerSyncService {
           if (ticker) {
             refs.push({ isin, ticker });
           } else {
-            errors[isin] = 'No Yahoo ticker could be resolved for this ISIN';
+            const message = 'No Yahoo ticker could be resolved for this ISIN';
+            errors[isin] = message;
+            // No resolved Yahoo ticker exists yet for this ISIN, so there's
+            // no real `ticker` value to key the health record on; the ISIN
+            // itself is used as a placeholder so this still counts towards
+            // TICKER_SYNC_ERROR_THRESHOLD and surfaces in the hidden-tickers
+            // admin view instead of being retried forever, invisibly.
+            this.recordTickerHealthFailure(
+              { isin, ticker: isin },
+              new Error(message),
+            );
           }
         } catch (error) {
           errors[isin] = error instanceof Error ? error.message : String(error);
@@ -426,6 +458,7 @@ export class TickerSyncService {
           this.logger.warn(
             `Failed to resolve Yahoo ticker for ${isin}: ${error}`,
           );
+          this.recordTickerHealthFailure({ isin, ticker: isin }, error);
         }
 
         resolved += 1;
@@ -501,20 +534,7 @@ export class TickerSyncService {
           this.logger.warn(
             `Failed to sync ${kind} for ${ref.ticker}: ${error}`,
           );
-          void this.tickerHealthService
-            .recordFailure(ref, error)
-            .then((justHidden) => {
-              if (justHidden) {
-                this.logger.warn(
-                  `Hiding ${ref.ticker} (${ref.isin}) after ${TICKER_SYNC_ERROR_THRESHOLD} consecutive sync failures`,
-                );
-              }
-            })
-            .catch((recordError) => {
-              this.logger.warn(
-                `Failed to record sync health for ${ref.ticker}: ${recordError}`,
-              );
-            });
+          this.recordTickerHealthFailure(ref, error);
         },
         () => abortStatus !== null,
       );
