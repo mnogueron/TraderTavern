@@ -86,7 +86,7 @@ function Series<T extends SeriesKind>({
 
   useEffect(() => {
     seriesRef.current?.setData(data);
-  }, [data]);
+  }, []);
 
   useEffect(() => {
     if (options) {

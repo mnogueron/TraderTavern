@@ -3,7 +3,10 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import Fuse from 'fuse.js';
 import { UserService } from '../user/user.service';
-import { TickerSource, TickerSourceDocument } from '../ticker-source/schemas/ticker-source.schema';
+import {
+  TickerSource,
+  TickerSourceDocument,
+} from '../ticker-source/schemas/ticker-source.schema';
 import { TickerDto } from './dto/Ticker.dto';
 import { FundamentalTickerDto } from './dto/FundamentalTicker.dto';
 import { CandleDto } from './dto/Candle.dto';
@@ -13,7 +16,10 @@ import { CandleWindow } from './enums/candle-window.enum';
 import { TickerSyncService } from './ticker-sync.service';
 import { TickerHealthService } from './ticker-health.service';
 import { HiddenTickerDto } from './dto/HiddenTicker.dto';
-import { TickerStaticData, TickerStaticDataDocument } from './schemas/ticker-static-data.schema';
+import {
+  TickerStaticData,
+  TickerStaticDataDocument,
+} from './schemas/ticker-static-data.schema';
 import {
   CompoundTechnicalTickerData,
   CompoundTechnicalTickerDataDocument,
@@ -26,7 +32,10 @@ import {
   TechnicalTickerData,
   TechnicalTickerDataDocument,
 } from './schemas/technical-ticker-data.schema';
-import { MarketHours, MarketHoursDocument } from './schemas/market-hours.schema';
+import {
+  MarketHours,
+  MarketHoursDocument,
+} from './schemas/market-hours.schema';
 import { MarketHoursDto } from './dto/MarketHours.dto';
 import { TickerOptionDto } from './dto/TickerOption.dto';
 import {
@@ -38,6 +47,7 @@ import {
   EpsPeriodDto,
   RevenuePeriodDto,
 } from './dto/EarningsHistory.dto';
+import { AltmanHistoryDto, AltmanScorePointDto } from './dto/AltmanHistory.dto';
 import {
   TickerFinancialHistory,
   TickerFinancialHistoryDocument,
@@ -52,7 +62,10 @@ import { PaginatedTickerDto } from './dto/PaginatedTicker.dto';
 import { PaginatedTickerOptionDto } from './dto/PaginatedTickerOption.dto';
 import { ScreenerFilterOptionsDto } from './dto/ScreenerFilterOptions.dto';
 import { SyncStatusDto } from './dto/SyncStatus.dto';
-import { SyncHistory, SyncHistoryDocument } from './schemas/sync-history.schema';
+import {
+  SyncHistory,
+  SyncHistoryDocument,
+} from './schemas/sync-history.schema';
 import { SyncStatus } from './enums/sync-status.enum';
 import {
   applyScreenerFilters,
@@ -116,7 +129,8 @@ export class FinanceService {
         return { candidate, score };
       })
       .filter(
-        (entry): entry is { candidate: T; score: number } => entry.score !== null,
+        (entry): entry is { candidate: T; score: number } =>
+          entry.score !== null,
       );
 
     if (scored.length > 0) {
@@ -171,7 +185,10 @@ export class FinanceService {
       {
         $addFields: {
           companyName: {
-            $ifNull: [{ $arrayElemAt: ['$staticData.companyName', 0] }, '$ticker'],
+            $ifNull: [
+              { $arrayElemAt: ['$staticData.companyName', 0] },
+              '$ticker',
+            ],
           },
         },
       },
@@ -246,18 +263,23 @@ export class FinanceService {
   private async buildScreenerTickers(): Promise<TickerDto[]> {
     await this.tickerSyncService.ensureSyncedToday({ type: SyncType.Auto });
 
-    const [staticData, technicalData, fundamentalData, marketHours, hiddenIsins] =
-      await Promise.all([
-        this.tickerStaticDataModel.find().lean(),
-        this.latestPerTicker<CompoundTechnicalTickerData & WithUpdatedAt>(
-          this.compoundTechnicalTickerDataModel,
-        ),
-        this.latestPerTicker<FundamentalTickerData>(
-          this.fundamentalTickerDataModel,
-        ),
-        this.marketHoursModel.find().lean(),
-        this.tickerHealthService.getHiddenIsins(),
-      ]);
+    const [
+      staticData,
+      technicalData,
+      fundamentalData,
+      marketHours,
+      hiddenIsins,
+    ] = await Promise.all([
+      this.tickerStaticDataModel.find().lean(),
+      this.latestPerTicker<CompoundTechnicalTickerData & WithUpdatedAt>(
+        this.compoundTechnicalTickerDataModel,
+      ),
+      this.latestPerTicker<FundamentalTickerData>(
+        this.fundamentalTickerDataModel,
+      ),
+      this.marketHoursModel.find().lean(),
+      this.tickerHealthService.getHiddenIsins(),
+    ]);
 
     const technicalByIsin = new Map(
       technicalData.map((doc) => [doc.isin, doc]),
@@ -338,7 +360,9 @@ export class FinanceService {
     }
 
     const marketHours = staticData.market
-      ? await this.marketHoursModel.findOne({ market: staticData.market }).lean()
+      ? await this.marketHoursModel
+          .findOne({ market: staticData.market })
+          .lean()
       : null;
 
     return this.toTickerDto(
@@ -359,7 +383,9 @@ export class FinanceService {
     }
 
     const marketHours = staticData.market
-      ? await this.marketHoursModel.findOne({ market: staticData.market }).lean()
+      ? await this.marketHoursModel
+          .findOne({ market: staticData.market })
+          .lean()
       : null;
 
     if (!marketHours) {
@@ -379,7 +405,9 @@ export class FinanceService {
 
   async getSyncStatus(): Promise<SyncStatusDto> {
     const lastSync = await this.syncHistoryModel
-      .findOne({ status: { $in: [SyncStatus.Success, SyncStatus.PartialSuccess] } })
+      .findOne({
+        status: { $in: [SyncStatus.Success, SyncStatus.PartialSuccess] },
+      })
       .sort({ syncDate: -1 })
       .lean();
 
@@ -471,9 +499,7 @@ export class FinanceService {
       .lean<TickerFinancialHistory | null>();
 
     if (!financialHistory) {
-      throw new NotFoundException(
-        `Financial history for ${ticker} not found`,
-      );
+      throw new NotFoundException(`Financial history for ${ticker} not found`);
     }
 
     return new FinancialHistoryDto(
@@ -517,6 +543,26 @@ export class FinanceService {
       ),
       earningsHistory.revenue.map(
         (period) => new RevenuePeriodDto(period.quarter, period.actual ?? null),
+      ),
+    );
+  }
+
+  // fundamental_ticker_data keeps one document per (isin, syncDate), so this
+  // doubles as the Altman Z-Score's daily history; the score itself only
+  // changes with annual filings and is carried forward on days it isn't
+  // recomputed (see FundamentalSyncService), which is fine for a trend chart.
+  async getAltmanHistory(ticker: string): Promise<AltmanHistoryDto> {
+    const history = await this.fundamentalTickerDataModel
+      .find({ ticker, altmanZScore: { $ne: null } })
+      .sort({ syncDate: 1 })
+      .select('syncDate altmanZScore')
+      .lean<Pick<FundamentalTickerData, 'syncDate' | 'altmanZScore'>[]>();
+
+    return new AltmanHistoryDto(
+      ticker,
+      history.map(
+        (point) =>
+          new AltmanScorePointDto(point.syncDate, point.altmanZScore as number),
       ),
     );
   }

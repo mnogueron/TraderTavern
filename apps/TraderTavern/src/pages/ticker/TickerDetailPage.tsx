@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CandlestickChart from '@/pages/ticker/components/CandlestickChart';
 import FinancialsTab from '@/pages/ticker/components/financials/FinancialsTab';
+import AnalysisTab from '@/pages/ticker/components/analysis/AnalysisTab';
 import PerformanceRow from '@/pages/ticker/components/PerformanceRow';
 import TickerHeader from '@/pages/ticker/components/TickerHeader';
 import {
@@ -20,6 +21,7 @@ import {
   formatNumber,
   formatPercent,
 } from '@/lib/format';
+import { altmanZoneInfo } from '@/lib/altman';
 
 type CandleWindow = '5m' | '1h' | '1d' | '1wk';
 
@@ -61,32 +63,6 @@ const StatRow = ({
     </span>
   </>
 );
-
-// Standard Altman Z-Score zone thresholds (original 1968 model).
-const altmanZoneInfo = (
-  score: number,
-): { label: string; description: string; className: string } => {
-  if (score > 2.99) {
-    return {
-      label: 'Safe Zone',
-      description: 'Low probability of bankruptcy within the next two years.',
-      className: 'text-emerald-600',
-    };
-  }
-  if (score >= 1.81) {
-    return {
-      label: 'Grey Zone',
-      description:
-        'Some risk of financial distress; not clearly safe or at risk.',
-      className: 'text-amber-600',
-    };
-  }
-  return {
-    label: 'Distress Zone',
-    description: 'High probability of bankruptcy within the next two years.',
-    className: 'text-red-600',
-  };
-};
 
 type TickerDetailPageProps = {
   ticker: string;
@@ -191,6 +167,7 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
         <TabsList variant="line" className="shrink-0">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="financials">Financials</TabsTrigger>
+          <TabsTrigger value="analysis">Analysis</TabsTrigger>
         </TabsList>
 
         <TabsContent
@@ -712,7 +689,8 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
                             altmanZoneInfo(fundamental.altmanZScore).className
                           }
                         >
-                          Altman Z-Score {formatNumber(fundamental.altmanZScore, 2)} (
+                          Altman Z-Score{' '}
+                          {formatNumber(fundamental.altmanZScore, 2)} (
                           {altmanZoneInfo(fundamental.altmanZScore).label}):
                         </span>{' '}
                         {altmanZoneInfo(fundamental.altmanZScore).description}
@@ -735,6 +713,10 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
             currency={tickerData?.currency ?? null}
             marketCap={tickerData?.marketCap ?? null}
           />
+        </TabsContent>
+
+        <TabsContent value="analysis" className="min-h-0 flex-1">
+          <AnalysisTab ticker={ticker} />
         </TabsContent>
       </Tabs>
     </div>
