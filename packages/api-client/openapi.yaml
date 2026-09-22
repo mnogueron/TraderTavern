@@ -494,6 +494,26 @@ paths:
         - cookie: []
       tags:
         - Finance
+  /finance/ticker/{id}/altman-history:
+    get:
+      operationId: getTickerAltmanHistory
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AltmanHistoryDto'
+      security:
+        - cookie: []
+      tags:
+        - Finance
   /finance/ticker/{id}/chart:
     get:
       operationId: getTickerChart
@@ -1810,6 +1830,29 @@ components:
         - ticker
         - eps
         - revenue
+    AltmanScorePointDto:
+      type: object
+      properties:
+        date:
+          format: date-time
+          type: string
+        score:
+          type: number
+      required:
+        - date
+        - score
+    AltmanHistoryDto:
+      type: object
+      properties:
+        ticker:
+          type: string
+        history:
+          type: array
+          items:
+            $ref: '#/components/schemas/AltmanScorePointDto'
+      required:
+        - ticker
+        - history
     CandleDto:
       type: object
       properties:

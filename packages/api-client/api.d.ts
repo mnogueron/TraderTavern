@@ -436,6 +436,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/finance/ticker/{id}/altman-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getTickerAltmanHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/finance/ticker/{id}/chart": {
         parameters: {
             query?: never;
@@ -965,6 +981,15 @@ export interface components {
             ticker: string;
             eps: components["schemas"]["EpsPeriodDto"][];
             revenue: components["schemas"]["RevenuePeriodDto"][];
+        };
+        AltmanScorePointDto: {
+            /** Format: date-time */
+            date: string;
+            score: number;
+        };
+        AltmanHistoryDto: {
+            ticker: string;
+            history: components["schemas"]["AltmanScorePointDto"][];
         };
         CandleDto: {
             /** Format: date-time */
@@ -1593,6 +1618,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EarningsHistoryDto"];
+                };
+            };
+        };
+    };
+    getTickerAltmanHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AltmanHistoryDto"];
                 };
             };
         };

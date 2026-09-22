@@ -6,6 +6,7 @@ import { TickerDto } from './dto/Ticker.dto';
 import { FundamentalTickerDto } from './dto/FundamentalTicker.dto';
 import { FinancialHistoryDto } from './dto/FinancialHistory.dto';
 import { EarningsHistoryDto } from './dto/EarningsHistory.dto';
+import { AltmanHistoryDto } from './dto/AltmanHistory.dto';
 import { TickerChartDto } from './dto/TickerChart.dto';
 import { GetTickerChartDto } from './dto/GetTickerChart.dto';
 import { GetScreenerDto } from './dto/GetScreener.dto';
@@ -187,6 +188,13 @@ export class FinanceController {
     @Param('id') id: string,
   ): Promise<EarningsHistoryDto> {
     return this.financeService.getEarningsHistory(id.toUpperCase());
+  }
+
+  @Get('ticker/:id/altman-history')
+  @Auth()
+  @ApiOkResponse({ type: AltmanHistoryDto })
+  getTickerAltmanHistory(@Param('id') id: string): Promise<AltmanHistoryDto> {
+    return this.financeService.getAltmanHistory(id.toUpperCase());
   }
 
   @Get('ticker/:id/chart')
