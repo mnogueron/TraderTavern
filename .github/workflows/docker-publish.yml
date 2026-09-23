@@ -27,8 +27,6 @@ jobs:
           context: .
           platforms: linux/amd64
           push: true
-          tags: |
-            ${{ secrets.REGISTRY_URL }}/tradertavern:latest
-            ${{ secrets.REGISTRY_URL }}/tradertavern:${{ github.sha }}
+          tags: ${{ secrets.REGISTRY_URL }}/tradertavern:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
