@@ -528,6 +528,10 @@ export class FinanceService {
       doc.triggeredByUserId ? [doc.triggeredByUserId] : [],
     );
     const base = this.toSyncHistoryListItemDto(doc, usernameById);
+    const marketLabel = doc.market
+      ? ((await this.marketHoursModel.findOne({ market: doc.market }).lean())
+          ?.label ?? null)
+      : null;
 
     const staticData = doc.isins.length
       ? await this.tickerStaticDataModel
@@ -550,7 +554,7 @@ export class FinanceService {
       ? (JSON.parse(doc.errors) as Record<string, string>)
       : null;
 
-    return new SyncHistoryDetailDto(base, tickers, errors);
+    return new SyncHistoryDetailDto(base, marketLabel, tickers, errors);
   }
 
   private async getUsernamesByIds(

@@ -920,6 +920,7 @@ export interface components {
             /** Format: date-time */
             syncDate: string;
             market: string | null;
+            marketLabel: string | null;
             tickerCount: number;
             triggeredByUserId: string | null;
             triggeredByUsername: string | null;

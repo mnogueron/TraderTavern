@@ -1623,6 +1623,9 @@ components:
         market:
           type: string
           nullable: true
+        marketLabel:
+          type: string
+          nullable: true
         tickerCount:
           type: number
         triggeredByUserId:
@@ -1652,6 +1655,7 @@ components:
         - status
         - syncDate
         - market
+        - marketLabel
         - tickerCount
         - triggeredByUserId
         - triggeredByUsername

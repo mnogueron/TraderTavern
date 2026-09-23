@@ -24,6 +24,9 @@ export class SyncHistoryDetailDto {
   @ApiProperty({ nullable: true, type: String })
   market: string | null;
 
+  @ApiProperty({ nullable: true, type: String })
+  marketLabel: string | null;
+
   @ApiProperty()
   tickerCount: number;
 
@@ -47,6 +50,7 @@ export class SyncHistoryDetailDto {
 
   constructor(
     base: SyncHistoryListItemDto,
+    marketLabel: string | null,
     tickers: SyncHistoryTickerDto[],
     errors: Record<string, string> | null,
   ) {
@@ -56,6 +60,7 @@ export class SyncHistoryDetailDto {
     this.status = base.status;
     this.syncDate = base.syncDate;
     this.market = base.market;
+    this.marketLabel = marketLabel;
     this.tickerCount = base.tickerCount;
     this.triggeredByUserId = base.triggeredByUserId;
     this.triggeredByUsername = base.triggeredByUsername;

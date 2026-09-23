@@ -78,7 +78,11 @@ const SyncHistoryDetailSheet = ({
                 <dd>{formatSyncTrigger(data.type, data.triggeredByUsername)}</dd>
 
                 <dt className="text-muted-foreground">Market</dt>
-                <dd>{data.market ?? '—'}</dd>
+                <dd>
+                  {data.market
+                    ? `${data.market}${data.marketLabel ? ` — ${data.marketLabel}` : ''}`
+                    : '—'}
+                </dd>
 
                 <dt className="text-muted-foreground">Started</dt>
                 <dd className="tabular-nums">{formatDateTime(data.startedAt)}</dd>
@@ -102,7 +106,7 @@ const SyncHistoryDetailSheet = ({
                     <TableRow>
                       <TableHead>ISIN</TableHead>
                       <TableHead>Company</TableHead>
-                      <TableHead>Market</TableHead>
+                      <TableHead>Ticker</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -118,7 +122,9 @@ const SyncHistoryDetailSheet = ({
                             logoUrl={ticker.logoUrl}
                           />
                         </TableCell>
-                        <TableCell>{data.market ?? '—'}</TableCell>
+                        <TableCell className="font-mono text-xs">
+                          {ticker.ticker ?? '—'}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
