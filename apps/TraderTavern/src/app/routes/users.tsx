@@ -1,6 +1,8 @@
 import UsersPage from '@/pages/users/UsersPage';
 import RoleGuard from '@/components/auth/RoleGuard';
 
+export const handle = { title: 'Users' };
+
 export default function UsersRoute() {
   return (
     <RoleGuard roles={['admin']}>
