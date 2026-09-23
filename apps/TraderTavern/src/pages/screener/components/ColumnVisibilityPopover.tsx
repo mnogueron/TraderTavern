@@ -10,25 +10,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { columns } from '@/pages/screener/components/columns';
-
-type ColumnMeta = {
-  label: string;
-  sticky: boolean;
-};
-
-const columnMetaById = new Map<string, ColumnMeta>(
-  columns
-    .map((column) => {
-      const id = 'accessorKey' in column ? String(column.accessorKey) : column.id;
-      if (!id) return null;
-      return [
-        id,
-        { label: column.meta?.label ?? id, sticky: column.meta?.sticky ?? false },
-      ] as const;
-    })
-    .filter((entry): entry is [string, ColumnMeta] => entry !== null),
-);
+import { columnMetaById } from '@/pages/screener/components/columns';
 
 type ColumnVisibilityPopoverProps = {
   columnVisibility: VisibilityState;

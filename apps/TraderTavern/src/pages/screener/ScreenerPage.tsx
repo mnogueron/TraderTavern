@@ -270,7 +270,12 @@ const ScreenerPage = () => {
         )}
       >
         {isPending || !data ? (
-          <TickerTableSkeleton rows={limit} fillHeight={fillHeight} />
+          <TickerTableSkeleton
+            rows={limit}
+            fillHeight={fillHeight}
+            columnOrder={columnOrder}
+            columnVisibility={columnVisibility}
+          />
         ) : (
           <TickerTable
             tickers={data.data}

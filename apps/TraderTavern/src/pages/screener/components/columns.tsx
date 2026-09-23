@@ -27,6 +27,7 @@ declare module '@tanstack/react-table' {
   interface ColumnMeta<TData, TValue> {
     sticky?: boolean;
     label?: string;
+    align?: 'left' | 'right';
   }
 }
 
@@ -192,7 +193,7 @@ const numericColumn = (config: NumericFieldConfig): ColumnDef<Ticker> => ({
   header: ({ column }) => (
     <SortableHeader column={column} label={config.label} align="right" />
   ),
-  meta: { label: config.label },
+  meta: { label: config.label, align: 'right' },
   cell: ({ row }) => {
     const value = row.original[config.id] as number | null;
     switch (config.kind) {
@@ -287,7 +288,7 @@ export const columns: ColumnDef<Ticker>[] = [
     header: ({ column }) => (
       <SortableHeader column={column} label="Market Cap" align="right" />
     ),
-    meta: { label: 'Market Cap' },
+    meta: { label: 'Market Cap', align: 'right' },
     cell: ({ row }) => (
       <CurrencyCell
         value={row.original.marketCap}
@@ -301,7 +302,7 @@ export const columns: ColumnDef<Ticker>[] = [
     header: ({ column }) => (
       <SortableHeader column={column} label="P/E" align="right" />
     ),
-    meta: { label: 'P/E' },
+    meta: { label: 'P/E', align: 'right' },
     cell: ({ row }) => (
       <div className="text-right tabular-nums">
         {formatNumber(row.original.peRatio)}
@@ -313,7 +314,7 @@ export const columns: ColumnDef<Ticker>[] = [
     header: ({ column }) => (
       <SortableHeader column={column} label="Price" align="right" />
     ),
-    meta: { label: 'Price' },
+    meta: { label: 'Price', align: 'right' },
     cell: ({ row }) => (
       <CurrencyCell
         value={row.original.price}
@@ -327,7 +328,7 @@ export const columns: ColumnDef<Ticker>[] = [
     header: ({ column }) => (
       <SortableHeader column={column} label="1D" align="right" />
     ),
-    meta: { label: '1D Change' },
+    meta: { label: '1D Change', align: 'right' },
     cell: ({ row }) => <ChangeBadge value={row.original.changePercent} />,
   },
   {
@@ -335,7 +336,7 @@ export const columns: ColumnDef<Ticker>[] = [
     header: ({ column }) => (
       <SortableHeader column={column} label="1W" align="right" />
     ),
-    meta: { label: '1W Change' },
+    meta: { label: '1W Change', align: 'right' },
     cell: ({ row }) => <ChangeBadge value={row.original.changePercent1w} />,
   },
   {
@@ -343,7 +344,7 @@ export const columns: ColumnDef<Ticker>[] = [
     header: ({ column }) => (
       <SortableHeader column={column} label="1M" align="right" />
     ),
-    meta: { label: '1M Change' },
+    meta: { label: '1M Change', align: 'right' },
     cell: ({ row }) => <ChangeBadge value={row.original.changePercent1m} />,
   },
   {
@@ -351,7 +352,7 @@ export const columns: ColumnDef<Ticker>[] = [
     header: ({ column }) => (
       <SortableHeader column={column} label="YTD" align="right" />
     ),
-    meta: { label: 'YTD Change' },
+    meta: { label: 'YTD Change', align: 'right' },
     cell: ({ row }) => <ChangeBadge value={row.original.changePercentYtd} />,
   },
   {
@@ -359,7 +360,7 @@ export const columns: ColumnDef<Ticker>[] = [
     header: ({ column }) => (
       <SortableHeader column={column} label="1Y" align="right" />
     ),
-    meta: { label: '1Y Change' },
+    meta: { label: '1Y Change', align: 'right' },
     cell: ({ row }) => <ChangeBadge value={row.original.changePercent1y} />,
   },
   {
@@ -388,3 +389,26 @@ export const columns: ColumnDef<Ticker>[] = [
     cell: ({ row }) => formatDateTime(row.original.refreshedAt),
   },
 ];
+
+export type ColumnMeta = {
+  label: string;
+  sticky: boolean;
+  align: 'left' | 'right';
+};
+
+export const columnMetaById = new Map<string, ColumnMeta>(
+  columns
+    .map((column) => {
+      const id = 'accessorKey' in column ? String(column.accessorKey) : column.id;
+      if (!id) return null;
+      return [
+        id,
+        {
+          label: column.meta?.label ?? id,
+          sticky: column.meta?.sticky ?? false,
+          align: column.meta?.align ?? 'left',
+        },
+      ] as const;
+    })
+    .filter((entry): entry is [string, ColumnMeta] => entry !== null),
+);
