@@ -16,7 +16,6 @@ const SettingsPage = () => {
       <Tabs defaultValue="general" className="gap-4">
         <TabsList variant="line">
           <TabsTrigger value="general">General</TabsTrigger>
-          {isAdmin && <TabsTrigger value="logs">Logs</TabsTrigger>}
           {isAdmin && <TabsTrigger value="data-sync">Data Sync</TabsTrigger>}
         </TabsList>
 
@@ -32,28 +31,9 @@ const SettingsPage = () => {
         </TabsContent>
 
         {isAdmin && (
-          <TabsContent value="logs">
-            <Card>
-              <CardHeader>
-                <CardTitle>Hidden tickers</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <HiddenTickersSettings />
-              </CardContent>
-            </Card>
-          </TabsContent>
-        )}
-
-        {isAdmin && (
-          <TabsContent value="data-sync">
-            <Card>
-              <CardHeader>
-                <CardTitle>Data sync</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <DataSyncSettings />
-              </CardContent>
-            </Card>
+          <TabsContent value="data-sync" className="flex flex-col gap-4">
+            <DataSyncSettings />
+            <HiddenTickersSettings />
           </TabsContent>
         )}
       </Tabs>

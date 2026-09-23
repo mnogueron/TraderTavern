@@ -16,6 +16,8 @@ import { CandleWindow } from './enums/candle-window.enum';
 import { TickerSyncService } from './ticker-sync.service';
 import { TickerHealthService } from './ticker-health.service';
 import { HiddenTickerDto } from './dto/HiddenTicker.dto';
+import { GetHiddenTickersDto } from './dto/GetHiddenTickers.dto';
+import { PaginatedHiddenTickerDto } from './dto/PaginatedHiddenTicker.dto';
 import {
   TickerStaticData,
   TickerStaticDataDocument,
@@ -311,32 +313,101 @@ export class FinanceService {
       );
   }
 
-  async getHiddenTickers(): Promise<HiddenTickerDto[]> {
+  // Same exact/prefix/substring-then-fuzzy scoring as rankTickerCandidates,
+  // but matching on isin/ticker only, since that's what hidden-ticker
+  // search is scoped to (company name isn't shown as a search field there).
+  private rankByIsinOrTicker<T extends { isin: string; ticker: string }>(
+    candidates: T[],
+    search: string,
+  ): T[] {
+    const term = search.toLowerCase();
+
+    const scored = candidates
+      .map((candidate) => {
+        const isin = candidate.isin.toLowerCase();
+        const ticker = candidate.ticker.toLowerCase();
+
+        let score: number | null = null;
+        if (isin === term || ticker === term) {
+          score = 0;
+        } else if (isin.startsWith(term) || ticker.startsWith(term)) {
+          score = 1;
+        } else if (isin.includes(term) || ticker.includes(term)) {
+          score = 2;
+        }
+
+        return { candidate, score };
+      })
+      .filter(
+        (entry): entry is { candidate: T; score: number } =>
+          entry.score !== null,
+      );
+
+    if (scored.length > 0) {
+      return scored
+        .sort(
+          (a, b) =>
+            a.score - b.score ||
+            a.candidate.ticker.localeCompare(b.candidate.ticker),
+        )
+        .map((entry) => entry.candidate);
+    }
+
+    return new Fuse(candidates, {
+      keys: [
+        { name: 'isin', weight: 0.5 },
+        { name: 'ticker', weight: 0.5 },
+      ],
+      threshold: 0.35,
+      ignoreLocation: true,
+    })
+      .search(search)
+      .map((result) => result.item);
+  }
+
+  async getHiddenTickers(
+    query: GetHiddenTickersDto,
+  ): Promise<PaginatedHiddenTickerDto> {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const search = query.search?.trim();
+
     const hidden = await this.tickerHealthService.listHidden();
     if (hidden.length === 0) {
-      return [];
+      return new PaginatedHiddenTickerDto([], page, limit, 0, 1);
     }
 
     const isins = hidden.map((doc) => doc.isin);
     const staticData = await this.tickerStaticDataModel
       .find({ isin: { $in: isins } })
-      .select('isin companyName')
+      .select('isin companyName logoUrl')
       .lean();
-    const companyNameByIsin = new Map(
-      staticData.map((doc) => [doc.isin, doc.companyName]),
-    );
+    const staticByIsin = new Map(staticData.map((doc) => [doc.isin, doc]));
 
-    return hidden.map(
-      (doc) =>
-        new HiddenTickerDto(
-          doc.isin,
-          doc.ticker,
-          companyNameByIsin.get(doc.isin) ?? null,
-          doc.errorCount,
-          doc.lastError ?? null,
-          doc.lastErrorAt ?? null,
-          doc.hiddenAt ?? null,
-        ),
+    const rows = search ? this.rankByIsinOrTicker(hidden, search) : hidden;
+
+    const total = rows.length;
+    const skip = (page - 1) * limit;
+    const data = rows.slice(skip, skip + limit).map((doc) => {
+      const info = staticByIsin.get(doc.isin);
+      return new HiddenTickerDto(
+        doc.isin,
+        doc.ticker,
+        info?.companyName ?? null,
+        info?.logoUrl ?? null,
+        doc.errorCount,
+        doc.lastError ?? null,
+        doc.lastErrorAt ?? null,
+        doc.hiddenAt ?? null,
+      );
+    });
+
+    return new PaginatedHiddenTickerDto(
+      data,
+      page,
+      limit,
+      total,
+      Math.max(Math.ceil(total / limit), 1),
     );
   }
 
@@ -458,9 +529,23 @@ export class FinanceService {
     );
     const base = this.toSyncHistoryListItemDto(doc, usernameById);
 
-    const tickers = doc.isins.map(
-      (isin) => new SyncHistoryTickerDto(isin, doc.resolvedTickers[isin] ?? null),
-    );
+    const staticData = doc.isins.length
+      ? await this.tickerStaticDataModel
+          .find({ isin: { $in: doc.isins } })
+          .select('isin companyName logoUrl')
+          .lean()
+      : [];
+    const staticByIsin = new Map(staticData.map((row) => [row.isin, row]));
+
+    const tickers = doc.isins.map((isin) => {
+      const info = staticByIsin.get(isin);
+      return new SyncHistoryTickerDto(
+        isin,
+        doc.resolvedTickers[isin] ?? null,
+        info?.companyName ?? null,
+        info?.logoUrl ?? null,
+      );
+    });
     const errors = doc.errors
       ? (JSON.parse(doc.errors) as Record<string, string>)
       : null;

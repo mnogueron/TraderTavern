@@ -18,7 +18,7 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 type TriggerTickerSyncDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSelect: (ticker: string) => void;
+  onSelect: (isin: string) => void;
 };
 
 const LIMIT = 30;
@@ -48,8 +48,8 @@ const TriggerTickerSyncDialog = ({
 
   const options = data?.data ?? [];
 
-  const handleSelect = (ticker: string) => {
-    onSelect(ticker);
+  const handleSelect = (isin: string) => {
+    onSelect(isin);
     setSearch('');
     onOpenChange(false);
   };
@@ -74,7 +74,7 @@ const TriggerTickerSyncDialog = ({
                 <CommandItem
                   key={option.isin}
                   value={option.isin}
-                  onSelect={() => handleSelect(option.ticker)}
+                  onSelect={() => handleSelect(option.isin)}
                 >
                   {option.ticker} · {option.companyName}
                 </CommandItem>

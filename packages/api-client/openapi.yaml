@@ -331,7 +331,15 @@ paths:
   /api/finance/sync:
     post:
       operationId: syncScreener
-      parameters: []
+      parameters:
+        - name: markets
+          required: false
+          in: query
+          description: >-
+            Comma-separated list of markets to scope the sync to; omit to
+            sync every market
+          schema:
+            type: string
       responses:
         '204':
           description: ''
@@ -383,11 +391,11 @@ paths:
         - cookie: []
       tags:
         - Finance
-  /api/finance/ticker/{id}/sync:
+  /api/finance/ticker/{isin}/sync:
     post:
       operationId: syncSingleTicker
       parameters:
-        - name: id
+        - name: isin
           required: true
           in: path
           schema:
@@ -399,11 +407,11 @@ paths:
         - cookie: []
       tags:
         - Finance
-  /api/finance/ticker/{id}/sync/static:
+  /api/finance/ticker/{isin}/sync/static:
     post:
       operationId: syncSingleTickerStatic
       parameters:
-        - name: id
+        - name: isin
           required: true
           in: path
           schema:
@@ -415,11 +423,11 @@ paths:
         - cookie: []
       tags:
         - Finance
-  /api/finance/ticker/{id}/sync/fundamental:
+  /api/finance/ticker/{isin}/sync/fundamental:
     post:
       operationId: syncSingleTickerFundamental
       parameters:
-        - name: id
+        - name: isin
           required: true
           in: path
           schema:
@@ -431,11 +439,11 @@ paths:
         - cookie: []
       tags:
         - Finance
-  /api/finance/ticker/{id}/sync/compound:
+  /api/finance/ticker/{isin}/sync/compound:
     post:
       operationId: syncSingleTickerCompound
       parameters:
-        - name: id
+        - name: isin
           required: true
           in: path
           schema:
@@ -447,11 +455,11 @@ paths:
         - cookie: []
       tags:
         - Finance
-  /api/finance/ticker/{id}/sync/technical:
+  /api/finance/ticker/{isin}/sync/technical:
     post:
       operationId: syncSingleTickerTechnical
       parameters:
-        - name: id
+        - name: isin
           required: true
           in: path
           schema:
@@ -616,16 +624,34 @@ paths:
   /api/finance/tickers/hidden:
     get:
       operationId: getHiddenTickers
-      parameters: []
+      parameters:
+        - name: page
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            default: 1
+            type: number
+        - name: limit
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            default: 20
+            type: number
+        - name: search
+          required: false
+          in: query
+          description: Fuzzy search on isin or ticker
+          schema:
+            type: string
       responses:
         '200':
           description: ''
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/HiddenTickerDto'
+                $ref: '#/components/schemas/PaginatedHiddenTickerDto'
       security:
         - cookie: []
       tags:
@@ -1553,9 +1579,17 @@ components:
         ticker:
           type: string
           nullable: true
+        companyName:
+          type: string
+          nullable: true
+        logoUrl:
+          type: string
+          nullable: true
       required:
         - isin
         - ticker
+        - companyName
+        - logoUrl
     SyncHistoryDetailDto:
       type: object
       properties:
@@ -2143,6 +2177,9 @@ components:
         companyName:
           type: string
           nullable: true
+        logoUrl:
+          type: string
+          nullable: true
         errorCount:
           type: number
         lastError:
@@ -2160,10 +2197,23 @@ components:
         - isin
         - ticker
         - companyName
+        - logoUrl
         - errorCount
         - lastError
         - lastErrorAt
         - hiddenAt
+    PaginatedHiddenTickerDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/HiddenTickerDto'
+        meta:
+          $ref: '#/components/schemas/PaginationMetaDto'
+      required:
+        - data
+        - meta
     TickerSourceSyncStatusDto:
       type: object
       properties:
