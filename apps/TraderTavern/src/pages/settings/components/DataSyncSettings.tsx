@@ -1,8 +1,6 @@
 import { useState, type MouseEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { RiPlayLine, RiRefreshLine } from '@remixicon/react';
 import { useClientMutation, useClientQuery } from '@trader-tavern/api-client';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -22,15 +20,33 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { getPageNumbers } from '@/lib/pagination';
 import { formatDateTime, formatDuration } from '@/lib/format';
-import SyncStatusIndicator from '@/pages/settings/components/SyncStatusIndicator';
-import { SYNC_KIND_LABEL, formatSyncTrigger } from '@/pages/settings/components/syncLabels';
+import SyncStatusBadge from '@/pages/settings/components/SyncStatusBadge';
+import SyncKindBadge from '@/pages/settings/components/SyncKindBadge';
+import MarketBadge from '@/pages/settings/components/MarketBadge';
+import { SYNC_STATUS_LABEL, formatSyncTrigger } from '@/pages/settings/components/syncLabels';
 import SyncHistoryDetailSheet from '@/pages/settings/components/SyncHistoryDetailSheet';
-import TriggerTickerSyncDialog from '@/pages/settings/components/TriggerTickerSyncDialog';
-import TriggerMarketSyncPopover from '@/pages/settings/components/TriggerMarketSyncPopover';
+import TriggerSyncMenu from '@/pages/settings/components/TriggerSyncMenu';
+import type { components } from '@trader-tavern/api-client';
+
+type SyncStatus = components['schemas']['SyncHistoryListItemDto']['status'];
 
 const LIMIT = 10;
+const STATUS_OPTIONS: SyncStatus[] = [
+  'running',
+  'success',
+  'partial_success',
+  'failed',
+  'timeout',
+];
 const SYNC_HISTORY_QUERY_KEY = ['get', '/api/finance/sync/history'];
 
 const getElapsedMs = (startedAt: string, finishedAt: string | null) =>
@@ -40,13 +56,21 @@ const getElapsedMs = (startedAt: string, finishedAt: string | null) =>
 const DataSyncSettings = () => {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
+  const [status, setStatus] = useState<SyncStatus | 'all'>('all');
   const [selectedSyncId, setSelectedSyncId] = useState<string | null>(null);
-  const [tickerDialogOpen, setTickerDialogOpen] = useState(false);
 
   const { data, isPending } = useClientQuery(
     'get',
     '/api/finance/sync/history',
-    { params: { query: { page, limit: LIMIT } } },
+    {
+      params: {
+        query: {
+          page,
+          limit: LIMIT,
+          status: status === 'all' ? undefined : status,
+        },
+      },
+    },
     {
       refetchInterval: (query) =>
         query.state.data?.data.some((item) => item.status === 'running')
@@ -68,6 +92,11 @@ const DataSyncSettings = () => {
     { onSuccess: invalidateHistory },
   );
 
+  const handleStatusChange = (value: string) => {
+    setStatus(value as SyncStatus | 'all');
+    setPage(1);
+  };
+
   const handlePageChange = (event: MouseEvent, targetPage: number) => {
     event.preventDefault();
     const totalPages = data?.meta.totalPages ?? 1;
@@ -81,40 +110,40 @@ const DataSyncSettings = () => {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center gap-4 space-y-0">
         <CardTitle>Sync History</CardTitle>
+        <Select value={status} onValueChange={handleStatusChange}>
+          <SelectTrigger
+            aria-label="Filter by status"
+            size="sm"
+            className="ml-auto w-40"
+          >
+            <SelectValue placeholder="All statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            {STATUS_OPTIONS.map((option) => (
+              <SelectItem key={option} value={option}>
+                {SYNC_STATUS_LABEL[option]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={fullSyncMutation.isPending}
-            onClick={() => fullSyncMutation.mutate({})}
-          >
-            <RiRefreshLine
-              className={fullSyncMutation.isPending ? 'animate-spin' : undefined}
-            />
-            Run full sync
-          </Button>
-          <TriggerMarketSyncPopover
+          <TriggerSyncMenu
             isPending={fullSyncMutation.isPending}
-            onSync={(markets) =>
+            onFullSync={() => fullSyncMutation.mutate({})}
+            onTickerSync={(isin) =>
+              tickerSyncMutation.mutate({ params: { path: { isin } } })
+            }
+            onMarketSync={(markets) =>
               fullSyncMutation.mutate({
                 params: { query: { markets: markets.join(',') } },
               })
             }
           />
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => setTickerDialogOpen(true)}
-          >
-            <RiPlayLine />
-            Sync a ticker
-          </Button>
         </div>
 
         {isPending || !data ? (
@@ -134,14 +163,15 @@ const DataSyncSettings = () => {
                 <TableHead>Started</TableHead>
                 <TableHead>Finished</TableHead>
                 <TableHead className="text-right">Elapsed</TableHead>
-                <TableHead className="text-right">Tickers</TableHead>
+                <TableHead className="text-right">Succeeded</TableHead>
+                <TableHead className="text-right">Failed</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {data.data.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={8}
+                    colSpan={9}
                     className="text-center text-sm text-muted-foreground"
                   >
                     No syncs recorded yet.
@@ -155,10 +185,14 @@ const DataSyncSettings = () => {
                     onClick={() => setSelectedSyncId(item.id)}
                   >
                     <TableCell>
-                      <SyncStatusIndicator status={item.status} />
+                      <SyncStatusBadge status={item.status} />
                     </TableCell>
-                    <TableCell>{SYNC_KIND_LABEL[item.kind]}</TableCell>
-                    <TableCell>{item.market ?? '—'}</TableCell>
+                    <TableCell>
+                      <SyncKindBadge kind={item.kind} />
+                    </TableCell>
+                    <TableCell>
+                      <MarketBadge market={item.market} marketLabel={item.marketLabel} />
+                    </TableCell>
                     <TableCell>
                       {formatSyncTrigger(item.type, item.triggeredByUsername)}
                     </TableCell>
@@ -172,7 +206,12 @@ const DataSyncSettings = () => {
                       {formatDuration(getElapsedMs(item.startedAt, item.finishedAt))}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {item.tickerCount}
+                      {item.succeededCount}
+                    </TableCell>
+                    <TableCell
+                      className={`text-right tabular-nums ${item.failedCount > 0 ? 'text-red-600' : ''}`}
+                    >
+                      {item.failedCount}
                     </TableCell>
                   </TableRow>
                 ))
@@ -182,7 +221,7 @@ const DataSyncSettings = () => {
         )}
 
         {meta && meta.totalPages > 1 && (
-          <Pagination>
+          <Pagination className="mx-0 w-auto justify-end">
             <PaginationContent>
               <PaginationItem>
                 <PaginationPrevious
@@ -226,14 +265,6 @@ const DataSyncSettings = () => {
         <SyncHistoryDetailSheet
           syncId={selectedSyncId}
           onOpenChange={(open) => !open && setSelectedSyncId(null)}
-        />
-
-        <TriggerTickerSyncDialog
-          open={tickerDialogOpen}
-          onOpenChange={setTickerDialogOpen}
-          onSelect={(isin) =>
-            tickerSyncMutation.mutate({ params: { path: { isin } } })
-          }
         />
       </CardContent>
     </Card>

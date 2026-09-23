@@ -31,8 +31,15 @@ export class SyncHistory {
   @Prop()
   triggeredByUserId?: string;
 
+  // ISIN -> error message, for every ISIN that failed to resolve or sync.
   @Prop()
-  errors?: string;
+  tickerErrors?: string;
+
+  // The reason the whole chunk stopped early (e.g. a Yahoo rate-limit
+  // cooldown, a request timeout, or a reclaimed stale lock), as opposed to
+  // an individual ticker's own error (see `tickerErrors`).
+  @Prop()
+  generalError?: string;
 
   // The single Yahoo exchange code every ISIN in this chunk belongs to
   // (chunks are grouped by market, see buildMarketChunks), or null for the

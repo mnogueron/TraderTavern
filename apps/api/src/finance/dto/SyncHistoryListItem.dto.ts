@@ -22,8 +22,17 @@ export class SyncHistoryListItemDto {
   @ApiProperty({ nullable: true, type: String })
   market: string | null;
 
+  @ApiProperty({ nullable: true, type: String })
+  marketLabel: string | null;
+
   @ApiProperty()
   tickerCount: number;
+
+  @ApiProperty()
+  succeededCount: number;
+
+  @ApiProperty()
+  failedCount: number;
 
   @ApiProperty({ nullable: true, type: String })
   triggeredByUserId: string | null;
@@ -44,7 +53,10 @@ export class SyncHistoryListItemDto {
     status: SyncStatus,
     syncDate: Date,
     market: string | null,
+    marketLabel: string | null,
     tickerCount: number,
+    succeededCount: number,
+    failedCount: number,
     triggeredByUserId: string | null,
     triggeredByUsername: string | null,
     startedAt: Date,
@@ -56,7 +68,10 @@ export class SyncHistoryListItemDto {
     this.status = status;
     this.syncDate = syncDate;
     this.market = market;
+    this.marketLabel = marketLabel;
     this.tickerCount = tickerCount;
+    this.succeededCount = succeededCount;
+    this.failedCount = failedCount;
     this.triggeredByUserId = triggeredByUserId;
     this.triggeredByUsername = triggeredByUsername;
     this.startedAt = startedAt;

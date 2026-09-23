@@ -297,6 +297,17 @@ paths:
             minimum: 1
             default: 1
             type: number
+        - name: status
+          required: false
+          in: query
+          schema:
+            type: string
+            enum:
+              - running
+              - success
+              - partial_success
+              - failed
+              - timeout
       responses:
         '200':
           description: ''
@@ -1544,7 +1555,14 @@ components:
         market:
           type: string
           nullable: true
+        marketLabel:
+          type: string
+          nullable: true
         tickerCount:
+          type: number
+        succeededCount:
+          type: number
+        failedCount:
           type: number
         triggeredByUserId:
           type: string
@@ -1566,7 +1584,10 @@ components:
         - status
         - syncDate
         - market
+        - marketLabel
         - tickerCount
+        - succeededCount
+        - failedCount
         - triggeredByUserId
         - triggeredByUsername
         - startedAt
@@ -1585,11 +1606,22 @@ components:
         logoUrl:
           type: string
           nullable: true
+        status:
+          type: string
+          enum:
+            - success
+            - failed
+            - did_not_run
+        error:
+          type: string
+          nullable: true
       required:
         - isin
         - ticker
         - companyName
         - logoUrl
+        - status
+        - error
     SyncHistoryDetailDto:
       type: object
       properties:
@@ -1623,7 +1655,14 @@ components:
         market:
           type: string
           nullable: true
+        marketLabel:
+          type: string
+          nullable: true
         tickerCount:
+          type: number
+        succeededCount:
+          type: number
+        failedCount:
           type: number
         triggeredByUserId:
           type: string
@@ -1642,8 +1681,8 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SyncHistoryTickerDto'
-        errors:
-          type: object
+        generalError:
+          type: string
           nullable: true
       required:
         - id
@@ -1652,13 +1691,16 @@ components:
         - status
         - syncDate
         - market
+        - marketLabel
         - tickerCount
+        - succeededCount
+        - failedCount
         - triggeredByUserId
         - triggeredByUsername
         - startedAt
         - finishedAt
         - tickers
-        - errors
+        - generalError
     PaginatedSyncHistoryDto:
       type: object
       properties:

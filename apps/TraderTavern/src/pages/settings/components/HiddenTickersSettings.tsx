@@ -27,7 +27,7 @@ import { formatDateTime } from '@/lib/format';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import CompanyCell from '@/components/CompanyCell';
 
-const LIMIT = 20;
+const LIMIT = 10;
 const HIDDEN_TICKERS_QUERY_KEY = ['get', '/api/finance/tickers/hidden'];
 
 const HiddenTickersSettings = () => {

@@ -74,7 +74,8 @@ import { SyncHistoryListItemDto } from './dto/SyncHistoryListItem.dto';
 import { SyncHistoryDetailDto } from './dto/SyncHistoryDetail.dto';
 import { SyncHistoryTickerDto } from './dto/SyncHistoryTicker.dto';
 import { PaginatedSyncHistoryDto } from './dto/PaginatedSyncHistory.dto';
-import { PaginationDto } from '../shared/Pagination.dto';
+import { TickerSyncStatus } from './enums/ticker-sync-status.enum';
+import { GetSyncHistoryDto } from './dto/GetSyncHistory.dto';
 import {
   applyScreenerFilters,
   parseScreenerFilters,
@@ -494,23 +495,29 @@ export class FinanceService {
   }
 
   async getSyncHistoryList(
-    paginationDto: PaginationDto,
+    query: GetSyncHistoryDto,
   ): Promise<PaginatedSyncHistoryDto> {
-    const page = paginationDto.page ?? 1;
-    const limit = paginationDto.limit ?? 10;
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
 
     const { items, total } = await this.syncHistoryRepository.list(
       page,
       limit,
+      query.status,
     );
-    const usernameById = await this.getUsernamesByIds(
-      items
-        .map((item) => item.triggeredByUserId)
-        .filter((id): id is string => !!id),
-    );
+    const [usernameById, marketLabelByCode] = await Promise.all([
+      this.getUsernamesByIds(
+        items
+          .map((item) => item.triggeredByUserId)
+          .filter((id): id is string => !!id),
+      ),
+      this.getMarketLabelsByCode(),
+    ]);
 
     return new PaginatedSyncHistoryDto(
-      items.map((item) => this.toSyncHistoryListItemDto(item, usernameById)),
+      items.map((item) =>
+        this.toSyncHistoryListItemDto(item, usernameById, marketLabelByCode),
+      ),
       page,
       limit,
       total,
@@ -524,10 +531,17 @@ export class FinanceService {
       throw new NotFoundException(`Sync history entry ${id} not found`);
     }
 
-    const usernameById = await this.getUsernamesByIds(
-      doc.triggeredByUserId ? [doc.triggeredByUserId] : [],
+    const [usernameById, marketLabelByCode] = await Promise.all([
+      this.getUsernamesByIds(
+        doc.triggeredByUserId ? [doc.triggeredByUserId] : [],
+      ),
+      this.getMarketLabelsByCode(),
+    ]);
+    const base = this.toSyncHistoryListItemDto(
+      doc,
+      usernameById,
+      marketLabelByCode,
     );
-    const base = this.toSyncHistoryListItemDto(doc, usernameById);
 
     const staticData = doc.isins.length
       ? await this.tickerStaticDataModel
@@ -536,21 +550,27 @@ export class FinanceService {
           .lean()
       : [];
     const staticByIsin = new Map(staticData.map((row) => [row.isin, row]));
+    const errorsByIsin = this.getTickerErrorsByIsin(doc);
 
     const tickers = doc.isins.map((isin) => {
       const info = staticByIsin.get(isin);
+      const ticker = doc.resolvedTickers[isin] ?? null;
       return new SyncHistoryTickerDto(
         isin,
-        doc.resolvedTickers[isin] ?? null,
+        ticker,
         info?.companyName ?? null,
         info?.logoUrl ?? null,
+        this.getTickerStatus(isin, ticker, errorsByIsin),
+        errorsByIsin.get(isin) ?? null,
       );
     });
-    const errors = doc.errors
-      ? (JSON.parse(doc.errors) as Record<string, string>)
-      : null;
 
-    return new SyncHistoryDetailDto(base, tickers, errors);
+    return new SyncHistoryDetailDto(base, tickers, doc.generalError ?? null);
+  }
+
+  private async getMarketLabelsByCode(): Promise<Map<string, string>> {
+    const marketHours = await this.marketHoursModel.find().lean();
+    return new Map(marketHours.map((doc) => [doc.market, doc.label]));
   }
 
   private async getUsernamesByIds(
@@ -564,12 +584,60 @@ export class FinanceService {
     return new Map(users.map((user) => [user._id.toString(), user.username]));
   }
 
+  private getTickerErrorsByIsin(doc: SyncHistoryDocument): Map<string, string> {
+    if (!doc.tickerErrors) {
+      return new Map();
+    }
+    return new Map(
+      Object.entries(JSON.parse(doc.tickerErrors) as Record<string, string>),
+    );
+  }
+
+  // A ticker succeeded if it resolved to a Yahoo ticker and has no
+  // recorded error, failed if it has a recorded error (whether that
+  // happened during ISIN resolution or the sync itself), and otherwise
+  // never ran at all (the chunk was aborted, e.g. by a timeout, before
+  // reaching it).
+  private getTickerStatus(
+    isin: string,
+    ticker: string | null,
+    errorsByIsin: Map<string, string>,
+  ): TickerSyncStatus {
+    if (errorsByIsin.has(isin)) {
+      return TickerSyncStatus.Failed;
+    }
+    return ticker ? TickerSyncStatus.Success : TickerSyncStatus.DidNotRun;
+  }
+
+  private getTickerOutcomeCounts(
+    doc: SyncHistoryDocument,
+  ): { succeeded: number; failed: number } {
+    const errorsByIsin = this.getTickerErrorsByIsin(doc);
+    let succeeded = 0;
+    let failed = 0;
+    for (const isin of doc.isins) {
+      const status = this.getTickerStatus(
+        isin,
+        doc.resolvedTickers[isin] ?? null,
+        errorsByIsin,
+      );
+      if (status === TickerSyncStatus.Success) {
+        succeeded += 1;
+      } else {
+        failed += 1;
+      }
+    }
+    return { succeeded, failed };
+  }
+
   private toSyncHistoryListItemDto(
     doc: SyncHistoryDocument,
     usernameById: Map<string, string>,
+    marketLabelByCode: Map<string, string>,
   ): SyncHistoryListItemDto {
     const { createdAt, updatedAt } = doc as SyncHistoryDocument &
       WithTimestamps;
+    const { succeeded, failed } = this.getTickerOutcomeCounts(doc);
 
     return new SyncHistoryListItemDto(
       doc._id.toString(),
@@ -578,7 +646,10 @@ export class FinanceService {
       doc.status,
       doc.syncDate,
       doc.market,
+      (doc.market && marketLabelByCode.get(doc.market)) ?? null,
       doc.tickerCount,
+      succeeded,
+      failed,
       doc.triggeredByUserId ?? null,
       doc.triggeredByUserId
         ? (usernameById.get(doc.triggeredByUserId) ?? null)

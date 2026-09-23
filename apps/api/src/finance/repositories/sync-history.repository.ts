@@ -90,9 +90,8 @@ export class SyncHistoryRepository {
       {
         $set: {
           status: SyncStatus.Failed,
-          errors: JSON.stringify({
-            _lock: 'Reclaimed: stale running lock, likely an abandoned process',
-          }),
+          generalError:
+            'Reclaimed: stale running lock, likely an abandoned process',
         },
       },
     );
@@ -102,11 +101,12 @@ export class SyncHistoryRepository {
   async finalize(
     lockId: SyncHistoryDocument['_id'],
     successCount: number,
-    errors: Record<string, string>,
+    tickerErrors: Record<string, string>,
     resolvedTickers: Record<string, string>,
     forcedStatus?: SyncStatus,
+    generalError?: string,
   ): Promise<void> {
-    const hasErrors = Object.keys(errors).length > 0;
+    const hasErrors = Object.keys(tickerErrors).length > 0;
     const status =
       forcedStatus ??
       (successCount === 0
@@ -120,7 +120,8 @@ export class SyncHistoryRepository {
       {
         $set: {
           status,
-          errors: hasErrors ? JSON.stringify(errors) : undefined,
+          tickerErrors: hasErrors ? JSON.stringify(tickerErrors) : undefined,
+          generalError,
           resolvedTickers,
         },
       },
@@ -130,15 +131,17 @@ export class SyncHistoryRepository {
   async list(
     page: number,
     limit: number,
+    status?: SyncStatus,
   ): Promise<{ items: SyncHistoryDocument[]; total: number }> {
+    const filter = status ? { status } : {};
     const [items, total] = await Promise.all([
       this.syncHistoryModel
-        .find()
+        .find(filter)
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
         .exec(),
-      this.syncHistoryModel.countDocuments().exec(),
+      this.syncHistoryModel.countDocuments(filter).exec(),
     ]);
     return { items, total };
   }
