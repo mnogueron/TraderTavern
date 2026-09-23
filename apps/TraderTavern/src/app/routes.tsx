@@ -11,6 +11,7 @@ export default [
     route('watchlists/:id', './routes/watchlist.tsx'),
     route('ticker/:ticker', './routes/ticker.tsx'),
     route('news', './routes/news.tsx'),
+    route('sync', './routes/sync.tsx'),
     route('settings', './routes/settings.tsx'),
   ]),
   layout('./layouts/guest-layout.tsx', [

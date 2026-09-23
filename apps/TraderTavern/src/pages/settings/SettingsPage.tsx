@@ -3,7 +3,6 @@ import { Section } from '@/components/Section';
 import TickerSourceSettings from '@/pages/settings/components/TickerSourceSettings';
 import ActiveTickersSettings from '@/pages/settings/components/ActiveTickersSettings';
 import HiddenTickersSettings from '@/pages/settings/components/HiddenTickersSettings';
-import DataSyncSettings from '@/pages/settings/components/DataSyncSettings';
 import MarketsSettings from '@/pages/settings/components/MarketsSettings';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 
@@ -16,7 +15,6 @@ const SettingsPage = () => {
       <Tabs defaultValue="tickers" className="gap-4">
         <TabsList variant="line">
           <TabsTrigger value="tickers">Tickers</TabsTrigger>
-          {isAdmin && <TabsTrigger value="data-sync">Data Sync</TabsTrigger>}
           {isAdmin && <TabsTrigger value="markets">Markets</TabsTrigger>}
         </TabsList>
 
@@ -27,12 +25,6 @@ const SettingsPage = () => {
           <ActiveTickersSettings />
           <HiddenTickersSettings />
         </TabsContent>
-
-        {isAdmin && (
-          <TabsContent value="data-sync" className="flex flex-col gap-4">
-            <DataSyncSettings />
-          </TabsContent>
-        )}
 
         {isAdmin && (
           <TabsContent value="markets" className="flex flex-col gap-4">

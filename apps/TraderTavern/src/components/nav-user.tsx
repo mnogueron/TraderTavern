@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router';
+import { CloudSync } from 'lucide-react';
 import { useClientMutation } from '@trader-tavern/api-client';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useTheme } from '@/hooks/useTheme';
@@ -91,6 +92,12 @@ export function NavUser() {
                 <DropdownMenuItem onClick={() => navigate('/users')}>
                   <RiTeamLine />
                   Users
+                </DropdownMenuItem>
+              )}
+              {isAdmin && (
+                <DropdownMenuItem onClick={() => navigate('/sync')}>
+                  <CloudSync />
+                  Sync
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem onClick={() => navigate('/settings')}>
