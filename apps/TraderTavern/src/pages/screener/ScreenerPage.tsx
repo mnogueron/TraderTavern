@@ -190,7 +190,7 @@ const ScreenerPage = () => {
           onColumnVisibilityChange={handleColumnVisibilityChange}
         />
       </div>
-      <div className="min-h-[600px] flex-1 overflow-hidden rounded-md border">
+      <div className="min-h-[600px] flex-1 overflow-hidden rounded-xl ring-1 ring-foreground/10">
         {isPending || !data ? (
           <TickerTableSkeleton rows={limit} />
         ) : (

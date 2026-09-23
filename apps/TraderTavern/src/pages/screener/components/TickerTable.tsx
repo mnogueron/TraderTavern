@@ -82,7 +82,7 @@ const TickerTable = ({
           </TableRow>
         ))}
       </TableHeader>
-      <TableBody>
+      <TableBody className="bg-card">
         {table.getRowModel().rows.map((row) => (
           <TableRow key={row.id}>
             {row.getVisibleCells().map((cell) => (
@@ -90,7 +90,7 @@ const TickerTable = ({
                 key={cell.id}
                 className={cn(
                   cell.column.columnDef.meta?.sticky &&
-                    'sticky left-0 z-10 bg-background',
+                    'sticky left-0 z-10 bg-card',
                 )}
               >
                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
