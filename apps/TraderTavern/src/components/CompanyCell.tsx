@@ -18,7 +18,9 @@ const CompanyCell = ({
   const label = companyName ?? ticker ?? '—';
 
   const content = (
-    <div className={cn('flex min-w-0 items-center gap-2', className)}>
+    <div
+      className={cn('flex min-w-0 max-w-64 items-center gap-2', className)}
+    >
       <Avatar size="sm" className="rounded-md after:rounded-md">
         {logoUrl ? <AvatarImage src={logoUrl} alt="" /> : null}
         <AvatarFallback className="rounded-md">

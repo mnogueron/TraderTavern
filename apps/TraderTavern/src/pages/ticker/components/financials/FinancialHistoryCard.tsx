@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ButtonGroup } from '@/components/ui/button-group';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatMarketCap } from '@/lib/format';
+import { formatMarketCap, formatYear } from '@/lib/format';
 import type {
   AnnualFinancialPeriod,
   FinancialHistory,
@@ -66,7 +66,7 @@ const toChartRow = (period: AnnualFinancialPeriod) => {
   const freeCashflow = period.freeCashflow;
 
   return {
-    year: new Date(period.periodEnd).getFullYear(),
+    year: formatYear(period.periodEnd),
     revenue,
     ebitda,
     netIncome,

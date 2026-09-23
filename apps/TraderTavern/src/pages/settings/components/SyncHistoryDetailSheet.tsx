@@ -18,6 +18,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import CompanyCell from '@/components/CompanyCell';
+import EmptyCell from '@/components/EmptyCell';
 import SyncStatusBadge from '@/pages/settings/components/SyncStatusBadge';
 import { SYNC_KIND_LABEL, formatSyncTrigger } from '@/pages/settings/components/syncLabels';
 import { formatDateTime, formatDuration } from '@/lib/format';
@@ -174,11 +175,15 @@ const SyncHistoryDetailSheet = ({
                             {ticker.isin}
                           </TableCell>
                           <TableCell>
-                            <CompanyCell
-                              ticker={ticker.ticker}
-                              companyName={ticker.companyName}
-                              logoUrl={ticker.logoUrl}
-                            />
+                            {ticker.companyName || ticker.ticker ? (
+                              <CompanyCell
+                                ticker={ticker.ticker}
+                                companyName={ticker.companyName}
+                                logoUrl={ticker.logoUrl}
+                              />
+                            ) : (
+                              <EmptyCell />
+                            )}
                           </TableCell>
                           <TableCell className="font-mono text-xs">
                             {ticker.ticker ?? '—'}
