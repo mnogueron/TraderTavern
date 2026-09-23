@@ -324,7 +324,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/finance/ticker/{id}/sync": {
+    "/api/finance/ticker/{isin}/sync": {
         parameters: {
             query?: never;
             header?: never;
@@ -340,7 +340,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/finance/ticker/{id}/sync/static": {
+    "/api/finance/ticker/{isin}/sync/static": {
         parameters: {
             query?: never;
             header?: never;
@@ -356,7 +356,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/finance/ticker/{id}/sync/fundamental": {
+    "/api/finance/ticker/{isin}/sync/fundamental": {
         parameters: {
             query?: never;
             header?: never;
@@ -372,7 +372,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/finance/ticker/{id}/sync/compound": {
+    "/api/finance/ticker/{isin}/sync/compound": {
         parameters: {
             query?: never;
             header?: never;
@@ -388,7 +388,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/finance/ticker/{id}/sync/technical": {
+    "/api/finance/ticker/{isin}/sync/technical": {
         parameters: {
             query?: never;
             header?: never;
@@ -906,6 +906,8 @@ export interface components {
         SyncHistoryTickerDto: {
             isin: string;
             ticker: string | null;
+            companyName: string | null;
+            logoUrl: string | null;
         };
         SyncHistoryDetailDto: {
             id: string;
@@ -1108,12 +1110,17 @@ export interface components {
             isin: string;
             ticker: string;
             companyName: string | null;
+            logoUrl: string | null;
             errorCount: number;
             lastError: string | null;
             /** Format: date-time */
             lastErrorAt: string | null;
             /** Format: date-time */
             hiddenAt: string | null;
+        };
+        PaginatedHiddenTickerDto: {
+            data: components["schemas"]["HiddenTickerDto"][];
+            meta: components["schemas"]["PaginationMetaDto"];
         };
         TickerSourceSyncStatusDto: {
             /** @enum {string} */
@@ -1485,7 +1492,10 @@ export interface operations {
     };
     syncScreener: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Comma-separated list of markets to scope the sync to; omit to sync every market */
+                markets?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1573,7 +1583,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: string;
+                isin: string;
             };
             cookie?: never;
         };
@@ -1592,7 +1602,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: string;
+                isin: string;
             };
             cookie?: never;
         };
@@ -1611,7 +1621,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: string;
+                isin: string;
             };
             cookie?: never;
         };
@@ -1630,7 +1640,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: string;
+                isin: string;
             };
             cookie?: never;
         };
@@ -1649,7 +1659,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: string;
+                isin: string;
             };
             cookie?: never;
         };
@@ -1814,7 +1824,12 @@ export interface operations {
     };
     getHiddenTickers: {
         parameters: {
-            query?: never;
+            query?: {
+                page?: number;
+                limit?: number;
+                /** @description Fuzzy search on isin or ticker */
+                search?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1826,7 +1841,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HiddenTickerDto"][];
+                    "application/json": components["schemas"]["PaginatedHiddenTickerDto"];
                 };
             };
         };
