@@ -1,4 +1,11 @@
-import { useMemo, useState, type Dispatch, type SetStateAction } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from 'react';
 import { useSearchParams } from 'react-router';
 import { useClientQuery } from '@trader-tavern/api-client';
 import { cn } from '@/lib/utils';
@@ -19,6 +26,7 @@ import type {
 } from '@/components/screener-filters/types';
 import { buildScreenerFilterConfigs } from '@/pages/screener/screenerFilters';
 import { AppPagination } from '@/components/AppPagination';
+import { PaginationSkeleton } from '@/components/PaginationSkeleton';
 import {
   Select,
   SelectContent,
@@ -30,6 +38,37 @@ import {
 const DEFAULT_LIMIT = 50;
 const PAGE_SIZE_OPTIONS = [50, 100, 200, 500];
 const MIN_ROWS_FOR_FILL_HEIGHT = 20;
+const COLUMN_ORDER_STORAGE_KEY = 'screener:column-order';
+const COLUMN_VISIBILITY_STORAGE_KEY = 'screener:column-visibility';
+
+const getDefaultColumnVisibility = (ids: string[]): VisibilityState =>
+  Object.fromEntries(ids.map((id) => [id, DEFAULT_VISIBLE_COLUMNS.includes(id)]));
+
+const loadStoredColumnOrder = (ids: string[]): string[] => {
+  try {
+    const raw = localStorage.getItem(COLUMN_ORDER_STORAGE_KEY);
+    if (!raw) return ids;
+    const stored = JSON.parse(raw) as string[];
+    const known = stored.filter((id) => ids.includes(id));
+    const missing = ids.filter((id) => !known.includes(id));
+    return [...known, ...missing];
+  } catch {
+    return ids;
+  }
+};
+
+const loadStoredColumnVisibility = (ids: string[]): VisibilityState => {
+  try {
+    const raw = localStorage.getItem(COLUMN_VISIBILITY_STORAGE_KEY);
+    if (!raw) return getDefaultColumnVisibility(ids);
+    const stored = JSON.parse(raw) as VisibilityState;
+    return Object.fromEntries(
+      ids.map((id) => [id, stored[id] ?? DEFAULT_VISIBLE_COLUMNS.includes(id)]),
+    );
+  } catch {
+    return getDefaultColumnVisibility(ids);
+  }
+};
 
 const ScreenerPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -91,16 +130,31 @@ const ScreenerPage = () => {
   );
 
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
-    () =>
-      Object.fromEntries(
-        columnIds.map((id) => [id, DEFAULT_VISIBLE_COLUMNS.includes(id)]),
-      ),
+    () => loadStoredColumnVisibility(columnIds),
   );
 
-  const [columnOrder, setColumnOrder] = useState<string[]>(columnIds);
+  const [columnOrder, setColumnOrder] = useState<string[]>(() =>
+    loadStoredColumnOrder(columnIds),
+  );
+
+  useEffect(() => {
+    localStorage.setItem(
+      COLUMN_VISIBILITY_STORAGE_KEY,
+      JSON.stringify(columnVisibility),
+    );
+  }, [columnVisibility]);
+
+  useEffect(() => {
+    localStorage.setItem(COLUMN_ORDER_STORAGE_KEY, JSON.stringify(columnOrder));
+  }, [columnOrder]);
 
   const handleColumnVisibilityChange = (id: string, visible: boolean) => {
     setColumnVisibility((prev) => ({ ...prev, [id]: visible }));
+  };
+
+  const handleColumnsReset = () => {
+    setColumnVisibility(getDefaultColumnVisibility(columnIds));
+    setColumnOrder(columnIds);
   };
 
   const sorting: SortingState = [{ id: sortBy, desc: sortOrder === 'desc' }];
@@ -181,6 +235,12 @@ const ScreenerPage = () => {
   const rowCount = data?.data.length ?? limit;
   const fillHeight = rowCount >= MIN_ROWS_FOR_FILL_HEIGHT;
 
+  const lastMetaRef = useRef<typeof meta>(undefined);
+  if (meta) {
+    lastMetaRef.current = meta;
+  }
+  const knownMeta = meta ?? lastMetaRef.current;
+
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
       {filterOptions && (
@@ -200,6 +260,7 @@ const ScreenerPage = () => {
           onColumnVisibilityChange={handleColumnVisibilityChange}
           columnOrder={columnOrder}
           onColumnOrderChange={setColumnOrder}
+          onReset={handleColumnsReset}
         />
       </div>
       <div
@@ -221,27 +282,29 @@ const ScreenerPage = () => {
           />
         )}
       </div>
-      {meta && (
-        <div className="flex shrink-0 items-center justify-between gap-2">
-          <Select value={String(limit)} onValueChange={handleLimitChange}>
-            <SelectTrigger aria-label="Page size" size="sm">
-              <SelectValue placeholder="Page size" />
-            </SelectTrigger>
-            <SelectContent>
-              {PAGE_SIZE_OPTIONS.map((size) => (
-                <SelectItem key={size} value={String(size)}>
-                  {size} / page
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      <div className="flex shrink-0 items-center justify-between gap-2">
+        <Select value={String(limit)} onValueChange={handleLimitChange}>
+          <SelectTrigger aria-label="Page size" size="sm">
+            <SelectValue placeholder="Page size" />
+          </SelectTrigger>
+          <SelectContent>
+            {PAGE_SIZE_OPTIONS.map((size) => (
+              <SelectItem key={size} value={String(size)}>
+                {size} / page
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {knownMeta ? (
           <AppPagination
-            page={meta.page}
-            totalPages={meta.totalPages}
+            page={page}
+            totalPages={knownMeta.totalPages}
             onPageChange={handlePageChange}
           />
-        </div>
-      )}
+        ) : (
+          <PaginationSkeleton />
+        )}
+      </div>
     </div>
   );
 };

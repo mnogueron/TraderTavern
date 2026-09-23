@@ -3,6 +3,7 @@ import type { VisibilityState } from '@tanstack/react-table';
 import { GripVertical, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import {
   Popover,
   PopoverContent,
@@ -34,6 +35,7 @@ type ColumnVisibilityPopoverProps = {
   onColumnVisibilityChange: (id: string, visible: boolean) => void;
   columnOrder: string[];
   onColumnOrderChange: (order: string[]) => void;
+  onReset: () => void;
 };
 
 const isVisible = (columnVisibility: VisibilityState, id: string) =>
@@ -44,9 +46,20 @@ const ColumnVisibilityPopover = ({
   onColumnVisibilityChange,
   columnOrder,
   onColumnOrderChange,
+  onReset,
 }: ColumnVisibilityPopoverProps) => {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+
+  const isSearching = search.trim().length > 0;
+
+  const visibleColumnOrder = isSearching
+    ? columnOrder.filter((id) => {
+        const meta = columnMetaById.get(id);
+        return meta?.label.toLowerCase().includes(search.trim().toLowerCase());
+      })
+    : columnOrder;
 
   const handleDragStart = (id: string) => (event: DragEvent<HTMLDivElement>) => {
     event.dataTransfer.effectAllowed = 'move';
@@ -81,6 +94,23 @@ const ColumnVisibilityPopover = ({
     setDragOverId(null);
   };
 
+  const handleVisibilityChange = (id: string, visible: boolean) => {
+    onColumnVisibilityChange(id, visible);
+    if (!visible) return;
+
+    const rest = columnOrder.filter((columnId) => columnId !== id);
+    let lastVisibleIndex = -1;
+    rest.forEach((columnId, index) => {
+      if (isVisible(columnVisibility, columnId)) {
+        lastVisibleIndex = index;
+      }
+    });
+    const next = [...rest];
+    next.splice(lastVisibleIndex + 1, 0, id);
+    onColumnOrderChange(next);
+    setSearch('');
+  };
+
   return (
     <Popover>
       <PopoverTrigger
@@ -92,11 +122,28 @@ const ColumnVisibilityPopover = ({
         }
       />
       <PopoverContent align="end" className="w-56 p-0">
+        <div className="flex items-center gap-1.5 border-b p-1.5">
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search columns..."
+            className="h-7 text-xs"
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 shrink-0 px-2 text-xs"
+            onClick={onReset}
+          >
+            Reset
+          </Button>
+        </div>
         <div className="max-h-72 overflow-y-auto p-1">
-          {columnOrder.map((id) => {
+          {visibleColumnOrder.map((id) => {
             const meta = columnMetaById.get(id);
             if (!meta) return null;
-            const draggable = !meta.sticky;
+            const draggable = !meta.sticky && !isSearching;
             return (
               <div
                 key={id}
@@ -121,7 +168,7 @@ const ColumnVisibilityPopover = ({
                   <Checkbox
                     checked={isVisible(columnVisibility, id)}
                     onCheckedChange={(checked) =>
-                      onColumnVisibilityChange(id, checked)
+                      handleVisibilityChange(id, checked)
                     }
                     className="size-3.5"
                   />
