@@ -24,10 +24,6 @@ export function AppPagination({
   onPageChange,
   className,
 }: AppPaginationProps) {
-  if (totalPages <= 1) {
-    return null;
-  }
-
   const goToPage = (event: MouseEvent, targetPage: number) => {
     event.preventDefault();
     if (targetPage < 1 || targetPage > totalPages || targetPage === page) {
