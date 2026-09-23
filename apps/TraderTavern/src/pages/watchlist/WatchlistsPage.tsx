@@ -32,13 +32,6 @@ const WatchlistsPage = () => {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
-      <div className="flex shrink-0 items-center justify-end">
-        <Button type="button" onClick={() => setCreateOpen(true)}>
-          <RiAddLine data-icon="inline-start" />
-          New watchlist
-        </Button>
-      </div>
-
       {isPending ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, index) => (
@@ -77,6 +70,14 @@ const WatchlistsPage = () => {
               </Card>
             </Link>
           ))}
+          <button
+            type="button"
+            onClick={() => setCreateOpen(true)}
+            className="flex h-full min-h-28 flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-input text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+          >
+            <RiAddLine className="size-5" />
+            <span className="text-sm font-medium">New watchlist</span>
+          </button>
         </div>
       )}
 
