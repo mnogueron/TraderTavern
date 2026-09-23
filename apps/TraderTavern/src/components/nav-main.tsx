@@ -5,6 +5,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from '@/components/ui/sidebar';
 
 export function NavMain({
@@ -16,13 +17,19 @@ export function NavMain({
     icon?: React.ReactNode;
   }[];
 }) {
+  const { isMobile } = useSidebar();
+
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Platform</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => (
           <SidebarMenuItem key={item.title}>
-            <SidebarMenuButton tooltip={item.title} render={<NavLink to={item.url} />}>
+            <SidebarMenuButton
+              tooltip={item.title}
+              render={<NavLink to={item.url} />}
+              className={isMobile ? 'h-11 text-base [&_svg]:size-5' : undefined}
+            >
               {item.icon}
               <span>{item.title}</span>
             </SidebarMenuButton>
