@@ -212,6 +212,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/finance/sync/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getSyncHistoryList"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/finance/sync/history/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getSyncHistoryDetail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/finance/sync": {
         parameters: {
             query?: never;
@@ -852,6 +884,56 @@ export interface components {
             /** Format: date-time */
             lastSyncDate: string | null;
         };
+        SyncHistoryListItemDto: {
+            id: string;
+            /** @enum {string} */
+            type: "auto" | "manual";
+            /** @enum {string} */
+            kind: "ticker" | "static" | "fundamental" | "compound" | "technical" | "single_ticker";
+            /** @enum {string} */
+            status: "running" | "success" | "partial_success" | "failed" | "timeout";
+            /** Format: date-time */
+            syncDate: string;
+            market: string | null;
+            tickerCount: number;
+            triggeredByUserId: string | null;
+            triggeredByUsername: string | null;
+            /** Format: date-time */
+            startedAt: string;
+            /** Format: date-time */
+            finishedAt: string | null;
+        };
+        SyncHistoryTickerDto: {
+            isin: string;
+            ticker: string | null;
+        };
+        SyncHistoryDetailDto: {
+            id: string;
+            /** @enum {string} */
+            type: "auto" | "manual";
+            /** @enum {string} */
+            kind: "ticker" | "static" | "fundamental" | "compound" | "technical" | "single_ticker";
+            /** @enum {string} */
+            status: "running" | "success" | "partial_success" | "failed" | "timeout";
+            /** Format: date-time */
+            syncDate: string;
+            market: string | null;
+            tickerCount: number;
+            triggeredByUserId: string | null;
+            triggeredByUsername: string | null;
+            /** Format: date-time */
+            startedAt: string;
+            /** Format: date-time */
+            finishedAt: string | null;
+            tickers: components["schemas"]["SyncHistoryTickerDto"][];
+            errors: {
+                [key: string]: string;
+            } | null;
+        };
+        PaginatedSyncHistoryDto: {
+            data: components["schemas"]["SyncHistoryListItemDto"][];
+            meta: components["schemas"]["PaginationMetaDto"];
+        };
         FundamentalTickerDto: {
             ticker: string;
             marketCap: number | null;
@@ -1354,6 +1436,49 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SyncStatusDto"];
+                };
+            };
+        };
+    };
+    getSyncHistoryList: {
+        parameters: {
+            query?: {
+                limit?: number;
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedSyncHistoryDto"];
+                };
+            };
+        };
+    };
+    getSyncHistoryDetail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncHistoryDetailDto"];
                 };
             };
         };

@@ -67,6 +67,12 @@ import {
   SyncHistoryDocument,
 } from './schemas/sync-history.schema';
 import { SyncStatus } from './enums/sync-status.enum';
+import { SyncHistoryRepository } from './repositories/sync-history.repository';
+import { SyncHistoryListItemDto } from './dto/SyncHistoryListItem.dto';
+import { SyncHistoryDetailDto } from './dto/SyncHistoryDetail.dto';
+import { SyncHistoryTickerDto } from './dto/SyncHistoryTicker.dto';
+import { PaginatedSyncHistoryDto } from './dto/PaginatedSyncHistory.dto';
+import { PaginationDto } from '../shared/Pagination.dto';
 import {
   applyScreenerFilters,
   parseScreenerFilters,
@@ -74,6 +80,7 @@ import {
 } from './screener-filters';
 
 type WithUpdatedAt = { updatedAt: Date };
+type WithTimestamps = { createdAt: Date; updatedAt: Date };
 
 @Injectable()
 export class FinanceService {
@@ -99,6 +106,7 @@ export class FinanceService {
     private readonly tickerEarningsHistoryModel: Model<TickerEarningsHistoryDocument>,
     @InjectModel(SyncHistory.name)
     private readonly syncHistoryModel: Model<SyncHistoryDocument>,
+    private readonly syncHistoryRepository: SyncHistoryRepository,
   ) {}
 
   // Ranks tickers by how closely they match the search term: exact match,
@@ -412,6 +420,87 @@ export class FinanceService {
       .lean();
 
     return new SyncStatusDto(lastSync?.syncDate ?? null);
+  }
+
+  async getSyncHistoryList(
+    paginationDto: PaginationDto,
+  ): Promise<PaginatedSyncHistoryDto> {
+    const page = paginationDto.page ?? 1;
+    const limit = paginationDto.limit ?? 10;
+
+    const { items, total } = await this.syncHistoryRepository.list(
+      page,
+      limit,
+    );
+    const usernameById = await this.getUsernamesByIds(
+      items
+        .map((item) => item.triggeredByUserId)
+        .filter((id): id is string => !!id),
+    );
+
+    return new PaginatedSyncHistoryDto(
+      items.map((item) => this.toSyncHistoryListItemDto(item, usernameById)),
+      page,
+      limit,
+      total,
+      Math.max(Math.ceil(total / limit), 1),
+    );
+  }
+
+  async getSyncHistoryDetail(id: string): Promise<SyncHistoryDetailDto> {
+    const doc = await this.syncHistoryRepository.findById(id);
+    if (!doc) {
+      throw new NotFoundException(`Sync history entry ${id} not found`);
+    }
+
+    const usernameById = await this.getUsernamesByIds(
+      doc.triggeredByUserId ? [doc.triggeredByUserId] : [],
+    );
+    const base = this.toSyncHistoryListItemDto(doc, usernameById);
+
+    const tickers = doc.isins.map(
+      (isin) => new SyncHistoryTickerDto(isin, doc.resolvedTickers[isin] ?? null),
+    );
+    const errors = doc.errors
+      ? (JSON.parse(doc.errors) as Record<string, string>)
+      : null;
+
+    return new SyncHistoryDetailDto(base, tickers, errors);
+  }
+
+  private async getUsernamesByIds(
+    ids: string[],
+  ): Promise<Map<string, string>> {
+    const uniqueIds = Array.from(new Set(ids));
+    if (uniqueIds.length === 0) {
+      return new Map();
+    }
+    const users = await this.userService.findByIds(uniqueIds);
+    return new Map(users.map((user) => [user._id.toString(), user.username]));
+  }
+
+  private toSyncHistoryListItemDto(
+    doc: SyncHistoryDocument,
+    usernameById: Map<string, string>,
+  ): SyncHistoryListItemDto {
+    const { createdAt, updatedAt } = doc as SyncHistoryDocument &
+      WithTimestamps;
+
+    return new SyncHistoryListItemDto(
+      doc._id.toString(),
+      doc.type,
+      doc.kind,
+      doc.status,
+      doc.syncDate,
+      doc.market,
+      doc.tickerCount,
+      doc.triggeredByUserId ?? null,
+      doc.triggeredByUserId
+        ? (usernameById.get(doc.triggeredByUserId) ?? null)
+        : null,
+      createdAt,
+      doc.status === SyncStatus.Running ? null : updatedAt,
+    );
   }
 
   async getFundamental(ticker: string): Promise<FundamentalTickerDto> {

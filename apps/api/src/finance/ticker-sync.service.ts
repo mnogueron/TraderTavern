@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { ConflictException, Injectable, Logger } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import {
   DEFAULT_SYNC_CHUNK_SIZE,
@@ -171,6 +172,8 @@ export class TickerSyncService {
     syncDate: Date,
     chunkHash: string,
     tickerCount: number,
+    market: string | null,
+    isins: string[],
   ): Promise<SyncHistoryDocument | null> {
     const lock = await this.syncHistoryRepository.claimLock(
       trigger,
@@ -178,6 +181,8 @@ export class TickerSyncService {
       syncDate,
       chunkHash,
       tickerCount,
+      market,
+      isins,
     );
     if (!lock) {
       this.logger.warn(
@@ -224,12 +229,17 @@ export class TickerSyncService {
     lock: SyncHistoryDocument,
     successCount: number,
     errors: Record<string, string>,
+    refs: TickerRef[],
     forcedStatus?: SyncStatus,
   ): Promise<void> {
+    const resolvedTickers = Object.fromEntries(
+      refs.map((ref) => [ref.isin, ref.ticker]),
+    );
     await this.syncHistoryRepository.finalize(
       lock._id,
       successCount,
       errors,
+      resolvedTickers,
       forcedStatus,
     );
   }
@@ -308,6 +318,8 @@ export class TickerSyncService {
         syncDate,
         chunkHash,
         isinChunk.length,
+        market,
+        isinChunk,
       );
       if (!lock) {
         if (!processAllChunks) {
@@ -378,7 +390,13 @@ export class TickerSyncService {
       }
 
       if (resolutionAbortStatus) {
-        await this.finalizeSyncLock(lock, 0, errors, resolutionAbortStatus);
+        await this.finalizeSyncLock(
+          lock,
+          0,
+          errors,
+          refs,
+          resolutionAbortStatus,
+        );
         this.logger.log(
           `Finished ${kind} chunk sync for market ${market ?? 'unknown'} in ${Date.now() - chunkStartedAt}ms: ` +
             `aborted during ISIN resolution (status=${resolutionAbortStatus})`,
@@ -453,6 +471,7 @@ export class TickerSyncService {
         lock,
         successCount,
         errors,
+        refs,
         abortStatus ?? undefined,
       );
 
@@ -518,9 +537,51 @@ export class TickerSyncService {
     await this.syncTechnical(ref);
   }
 
-  async syncSingleTicker(ticker: string): Promise<void> {
+  // Wraps a single-ticker admin sync with the same sync_history logging as
+  // the chunked syncs, under its own SyncKind.SingleTicker so it doesn't
+  // contend for the chunked cron's per-kind lock. Uses a random chunk hash
+  // (rather than one derived from the ISIN alone) so the same ticker can be
+  // resynced multiple times a day without tripping the idempotency index;
+  // the { kind, status: 'running' } lock still ensures only one
+  // single-ticker sync runs at a time.
+  async syncSingleTicker(ticker: string, trigger: SyncTrigger): Promise<void> {
     const ref = await this.tickerSourceService.resolveRefForTicker(ticker);
-    await this.syncTicker(ref, startOfToday());
+    const marketByIsin = await this.marketService.getMarketByIsin();
+    const market = marketByIsin.get(ref.isin) ?? null;
+    const syncDate = startOfToday();
+
+    const lock = await this.syncHistoryRepository.claimLock(
+      trigger,
+      SyncKind.SingleTicker,
+      syncDate,
+      hashIsinChunk([ref.isin, randomUUID()]),
+      1,
+      market,
+      [ref.isin],
+    );
+    if (!lock) {
+      throw new ConflictException(
+        'A single-ticker sync is already running, try again shortly',
+      );
+    }
+
+    try {
+      await this.syncTicker(ref, syncDate);
+      await this.tickerHealthService.recordSuccess(ref);
+      await this.syncHistoryRepository.finalize(lock._id, 1, {}, {
+        [ref.isin]: ref.ticker,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.recordTickerHealthFailure(ref, error);
+      await this.syncHistoryRepository.finalize(
+        lock._id,
+        0,
+        { [ref.ticker]: message },
+        { [ref.isin]: ref.ticker },
+      );
+      throw error;
+    }
   }
 
   private async syncTicker(ref: TickerRef, syncDate: Date): Promise<void> {

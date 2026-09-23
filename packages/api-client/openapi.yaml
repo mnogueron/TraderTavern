@@ -279,6 +279,55 @@ paths:
         - cookie: []
       tags:
         - Finance
+  /api/finance/sync/history:
+    get:
+      operationId: getSyncHistoryList
+      parameters:
+        - name: limit
+          required: false
+          in: query
+          schema:
+            minimum: 10
+            default: 10
+            type: number
+        - name: page
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            default: 1
+            type: number
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSyncHistoryDto'
+      security:
+        - cookie: []
+      tags:
+        - Finance
+  /api/finance/sync/history/{id}:
+    get:
+      operationId: getSyncHistoryDetail
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncHistoryDetailDto'
+      security:
+        - cookie: []
+      tags:
+        - Finance
   /api/finance/sync:
     post:
       operationId: syncScreener
@@ -1436,6 +1485,158 @@ components:
           nullable: true
       required:
         - lastSyncDate
+    SyncHistoryListItemDto:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum:
+            - auto
+            - manual
+        kind:
+          type: string
+          enum:
+            - ticker
+            - static
+            - fundamental
+            - compound
+            - technical
+            - single_ticker
+        status:
+          type: string
+          enum:
+            - running
+            - success
+            - partial_success
+            - failed
+            - timeout
+        syncDate:
+          format: date-time
+          type: string
+        market:
+          type: string
+          nullable: true
+        tickerCount:
+          type: number
+        triggeredByUserId:
+          type: string
+          nullable: true
+        triggeredByUsername:
+          type: string
+          nullable: true
+        startedAt:
+          format: date-time
+          type: string
+        finishedAt:
+          format: date-time
+          type: string
+          nullable: true
+      required:
+        - id
+        - type
+        - kind
+        - status
+        - syncDate
+        - market
+        - tickerCount
+        - triggeredByUserId
+        - triggeredByUsername
+        - startedAt
+        - finishedAt
+    SyncHistoryTickerDto:
+      type: object
+      properties:
+        isin:
+          type: string
+        ticker:
+          type: string
+          nullable: true
+      required:
+        - isin
+        - ticker
+    SyncHistoryDetailDto:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum:
+            - auto
+            - manual
+        kind:
+          type: string
+          enum:
+            - ticker
+            - static
+            - fundamental
+            - compound
+            - technical
+            - single_ticker
+        status:
+          type: string
+          enum:
+            - running
+            - success
+            - partial_success
+            - failed
+            - timeout
+        syncDate:
+          format: date-time
+          type: string
+        market:
+          type: string
+          nullable: true
+        tickerCount:
+          type: number
+        triggeredByUserId:
+          type: string
+          nullable: true
+        triggeredByUsername:
+          type: string
+          nullable: true
+        startedAt:
+          format: date-time
+          type: string
+        finishedAt:
+          format: date-time
+          type: string
+          nullable: true
+        tickers:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncHistoryTickerDto'
+        errors:
+          type: object
+          nullable: true
+      required:
+        - id
+        - type
+        - kind
+        - status
+        - syncDate
+        - market
+        - tickerCount
+        - triggeredByUserId
+        - triggeredByUsername
+        - startedAt
+        - finishedAt
+        - tickers
+        - errors
+    PaginatedSyncHistoryDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncHistoryListItemDto'
+        meta:
+          $ref: '#/components/schemas/PaginationMetaDto'
+      required:
+        - data
+        - meta
     FundamentalTickerDto:
       type: object
       properties:

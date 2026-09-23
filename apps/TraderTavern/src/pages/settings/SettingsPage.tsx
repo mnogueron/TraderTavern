@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import TickerSourceSettings from '@/pages/settings/components/TickerSourceSettings';
 import HiddenTickersSettings from '@/pages/settings/components/HiddenTickersSettings';
+import DataSyncSettings from '@/pages/settings/components/DataSyncSettings';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 const SettingsPage = () => {
@@ -16,6 +17,7 @@ const SettingsPage = () => {
         <TabsList variant="line">
           <TabsTrigger value="general">General</TabsTrigger>
           {isAdmin && <TabsTrigger value="logs">Logs</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="data-sync">Data Sync</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="general">
@@ -37,6 +39,19 @@ const SettingsPage = () => {
               </CardHeader>
               <CardContent>
                 <HiddenTickersSettings />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
+        {isAdmin && (
+          <TabsContent value="data-sync">
+            <Card>
+              <CardHeader>
+                <CardTitle>Data sync</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <DataSyncSettings />
               </CardContent>
             </Card>
           </TabsContent>
