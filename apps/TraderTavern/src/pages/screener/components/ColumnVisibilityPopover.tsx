@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
+import { useState, type DragEvent } from 'react';
 import type { VisibilityState } from '@tanstack/react-table';
-import { Settings2 } from 'lucide-react';
+import { GripVertical, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -8,25 +8,32 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 import { columns } from '@/pages/screener/components/columns';
 
-type ColumnOption = {
-  id: string;
+type ColumnMeta = {
   label: string;
+  sticky: boolean;
 };
 
-const columnOptions: ColumnOption[] = columns
-  .map((column) => {
-    const id = 'accessorKey' in column ? String(column.accessorKey) : column.id;
-    if (!id) return null;
-    const label = column.meta?.label ?? id;
-    return { id, label };
-  })
-  .filter((option): option is ColumnOption => option !== null);
+const columnMetaById = new Map<string, ColumnMeta>(
+  columns
+    .map((column) => {
+      const id = 'accessorKey' in column ? String(column.accessorKey) : column.id;
+      if (!id) return null;
+      return [
+        id,
+        { label: column.meta?.label ?? id, sticky: column.meta?.sticky ?? false },
+      ] as const;
+    })
+    .filter((entry): entry is [string, ColumnMeta] => entry !== null),
+);
 
 type ColumnVisibilityPopoverProps = {
   columnVisibility: VisibilityState;
   onColumnVisibilityChange: (id: string, visible: boolean) => void;
+  columnOrder: string[];
+  onColumnOrderChange: (order: string[]) => void;
 };
 
 const isVisible = (columnVisibility: VisibilityState, id: string) =>
@@ -35,19 +42,44 @@ const isVisible = (columnVisibility: VisibilityState, id: string) =>
 const ColumnVisibilityPopover = ({
   columnVisibility,
   onColumnVisibilityChange,
+  columnOrder,
+  onColumnOrderChange,
 }: ColumnVisibilityPopoverProps) => {
-  const { enabled, disabled } = useMemo(() => {
-    const enabledOptions: ColumnOption[] = [];
-    const disabledOptions: ColumnOption[] = [];
-    for (const option of columnOptions) {
-      if (isVisible(columnVisibility, option.id)) {
-        enabledOptions.push(option);
-      } else {
-        disabledOptions.push(option);
-      }
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+
+  const handleDragStart = (id: string) => (event: DragEvent<HTMLDivElement>) => {
+    event.dataTransfer.effectAllowed = 'move';
+    setDraggedId(id);
+  };
+
+  const handleDragOver = (id: string) => (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    if (id !== draggedId) {
+      setDragOverId(id);
     }
-    return { enabled: enabledOptions, disabled: disabledOptions };
-  }, [columnVisibility]);
+  };
+
+  const handleDrop = (targetId: string) => (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setDragOverId(null);
+    if (!draggedId || draggedId === targetId) {
+      setDraggedId(null);
+      return;
+    }
+    const next = [...columnOrder];
+    const from = next.indexOf(draggedId);
+    const to = next.indexOf(targetId);
+    next.splice(from, 1);
+    next.splice(to, 0, draggedId);
+    onColumnOrderChange(next);
+    setDraggedId(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedId(null);
+    setDragOverId(null);
+  };
 
   return (
     <Popover>
@@ -59,22 +91,45 @@ const ColumnVisibilityPopover = ({
           </Button>
         }
       />
-      <PopoverContent align="end" className="w-64 p-0">
-        <div className="max-h-80 overflow-y-auto p-1.5">
-          {[...enabled, ...disabled].map((option) => (
-            <label
-              key={option.id}
-              className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent"
-            >
-              <Checkbox
-                checked={isVisible(columnVisibility, option.id)}
-                onCheckedChange={(checked) =>
-                  onColumnVisibilityChange(option.id, checked)
-                }
-              />
-              <span className="truncate">{option.label}</span>
-            </label>
-          ))}
+      <PopoverContent align="end" className="w-56 p-0">
+        <div className="max-h-72 overflow-y-auto p-1">
+          {columnOrder.map((id) => {
+            const meta = columnMetaById.get(id);
+            if (!meta) return null;
+            const draggable = !meta.sticky;
+            return (
+              <div
+                key={id}
+                draggable={draggable}
+                onDragStart={draggable ? handleDragStart(id) : undefined}
+                onDragOver={draggable ? handleDragOver(id) : undefined}
+                onDrop={draggable ? handleDrop(id) : undefined}
+                onDragEnd={draggable ? handleDragEnd : undefined}
+                className={cn(
+                  'flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs hover:bg-accent',
+                  draggedId === id && 'opacity-50',
+                  dragOverId === id && 'bg-accent',
+                )}
+              >
+                <GripVertical
+                  className={cn(
+                    'h-3 w-3 shrink-0 text-muted-foreground',
+                    draggable ? 'cursor-grab' : 'invisible',
+                  )}
+                />
+                <label className="flex flex-1 items-center gap-1.5 truncate">
+                  <Checkbox
+                    checked={isVisible(columnVisibility, id)}
+                    onCheckedChange={(checked) =>
+                      onColumnVisibilityChange(id, checked)
+                    }
+                    className="size-3.5"
+                  />
+                  <span className="truncate">{meta.label}</span>
+                </label>
+              </div>
+            );
+          })}
         </div>
       </PopoverContent>
     </Popover>

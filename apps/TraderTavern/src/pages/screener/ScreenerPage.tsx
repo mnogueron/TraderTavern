@@ -78,17 +78,24 @@ const ScreenerPage = () => {
     },
   });
 
+  const columnIds = useMemo(
+    () =>
+      columns
+        .map((column) =>
+          'accessorKey' in column ? String(column.accessorKey) : column.id,
+        )
+        .filter((id): id is string => Boolean(id)),
+    [],
+  );
+
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
     () =>
       Object.fromEntries(
-        columns
-          .map((column) =>
-            'accessorKey' in column ? String(column.accessorKey) : column.id,
-          )
-          .filter((id): id is string => Boolean(id))
-          .map((id) => [id, DEFAULT_VISIBLE_COLUMNS.includes(id)]),
+        columnIds.map((id) => [id, DEFAULT_VISIBLE_COLUMNS.includes(id)]),
       ),
   );
+
+  const [columnOrder, setColumnOrder] = useState<string[]>(columnIds);
 
   const handleColumnVisibilityChange = (id: string, visible: boolean) => {
     setColumnVisibility((prev) => ({ ...prev, [id]: visible }));
@@ -187,6 +194,8 @@ const ScreenerPage = () => {
         <ColumnVisibilityPopover
           columnVisibility={columnVisibility}
           onColumnVisibilityChange={handleColumnVisibilityChange}
+          columnOrder={columnOrder}
+          onColumnOrderChange={setColumnOrder}
         />
       </div>
       <div className="min-h-[600px] flex-1 overflow-hidden rounded-xl ring-1 ring-foreground/10">
@@ -198,6 +207,7 @@ const ScreenerPage = () => {
             sorting={sorting}
             onSortingChange={handleSortingChange}
             columnVisibility={columnVisibility}
+            columnOrder={columnOrder}
           />
         )}
       </div>

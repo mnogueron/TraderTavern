@@ -3,6 +3,7 @@ import {
   flexRender,
   getCoreRowModel,
   useReactTable,
+  type ColumnOrderState,
   type OnChangeFn,
   type SortingState,
   type VisibilityState,
@@ -23,6 +24,7 @@ type TickerTableProps = {
   sorting: SortingState;
   onSortingChange: OnChangeFn<SortingState>;
   columnVisibility: VisibilityState;
+  columnOrder: ColumnOrderState;
 };
 
 const StickyEdgeGradient = () => (
@@ -34,13 +36,14 @@ const TickerTable = ({
   sorting,
   onSortingChange,
   columnVisibility,
+  columnOrder,
 }: TickerTableProps) => {
   const [isScrolled, setIsScrolled] = useState(false);
 
   const table = useReactTable({
     data: tickers,
     columns,
-    state: { sorting, columnVisibility },
+    state: { sorting, columnVisibility, columnOrder },
     onSortingChange,
     manualSorting: true,
     getCoreRowModel: getCoreRowModel(),
