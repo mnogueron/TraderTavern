@@ -168,6 +168,11 @@ const ScreenerFilterBar = ({
     setPendingFocusKey(key);
   };
 
+  const handleTabChange = (next: string) => {
+    setTab(next as FilterTab);
+    setOpen(true);
+  };
+
   const renderControl = (config: ScreenerFilterConfig) => {
     const value = values[config.key] ?? DEFAULT_VALUE_BY_TYPE[config.type];
 
@@ -237,7 +242,7 @@ const ScreenerFilterBar = ({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
             <ScreenerFilterSearch configs={configs} onSelect={handleFilterSearchSelect} />
-            <Tabs value={tab} onValueChange={(next) => setTab(next as FilterTab)}>
+            <Tabs value={tab} onValueChange={handleTabChange}>
               <TabsList variant="line" className="h-6">
                 <TabsTrigger value="descriptive" className="text-xs">
                   Descriptive
