@@ -1,6 +1,7 @@
 import { useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import { useSearchParams } from 'react-router';
 import { useClientQuery } from '@trader-tavern/api-client';
+import { cn } from '@/lib/utils';
 import type { SortingState, VisibilityState } from '@tanstack/react-table';
 import TickerTable from '@/pages/screener/components/TickerTable';
 import TickerTableSkeleton from '@/pages/screener/components/TickerTableSkeleton';
@@ -26,8 +27,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-const DEFAULT_LIMIT = 20;
-const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+const DEFAULT_LIMIT = 50;
+const PAGE_SIZE_OPTIONS = [50, 100, 200, 500];
+const MIN_ROWS_FOR_FILL_HEIGHT = 20;
 
 const ScreenerPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -176,6 +178,8 @@ const ScreenerPage = () => {
   };
 
   const meta = data?.meta;
+  const rowCount = data?.data.length ?? limit;
+  const fillHeight = rowCount >= MIN_ROWS_FOR_FILL_HEIGHT;
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
@@ -198,9 +202,14 @@ const ScreenerPage = () => {
           onColumnOrderChange={setColumnOrder}
         />
       </div>
-      <div className="min-h-[600px] flex-1 overflow-hidden rounded-xl ring-1 ring-foreground/10">
+      <div
+        className={cn(
+          'overflow-hidden rounded-xl ring-1 ring-foreground/10',
+          fillHeight ? 'min-h-[780px] flex-1' : 'shrink-0',
+        )}
+      >
         {isPending || !data ? (
-          <TickerTableSkeleton rows={limit} />
+          <TickerTableSkeleton rows={limit} fillHeight={fillHeight} />
         ) : (
           <TickerTable
             tickers={data.data}
@@ -208,6 +217,7 @@ const ScreenerPage = () => {
             onSortingChange={handleSortingChange}
             columnVisibility={columnVisibility}
             columnOrder={columnOrder}
+            fillHeight={fillHeight}
           />
         )}
       </div>

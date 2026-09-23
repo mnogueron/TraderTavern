@@ -8,7 +8,7 @@ export class GetScreenerDto {
   @IsOptional()
   page?: number;
 
-  @ApiProperty({ required: false, minimum: 1, default: 20 })
+  @ApiProperty({ required: false, minimum: 1, default: 50 })
   @Type(() => Number)
   @IsOptional()
   limit?: number;

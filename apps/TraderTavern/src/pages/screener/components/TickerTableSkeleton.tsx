@@ -10,11 +10,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 type TickerTableSkeletonProps = {
   rows: number;
+  fillHeight: boolean;
 };
 
-const TickerTableSkeleton = ({ rows }: TickerTableSkeletonProps) => {
+const TickerTableSkeleton = ({ rows, fillHeight }: TickerTableSkeletonProps) => {
   return (
-    <Table containerClassName="h-full" className="text-xs">
+    <Table
+      containerClassName={fillHeight ? 'h-full' : undefined}
+      className="text-xs"
+    >
       <TableHeader>
         <TableRow>
           <TableHead className="sticky left-0 z-20 bg-background">

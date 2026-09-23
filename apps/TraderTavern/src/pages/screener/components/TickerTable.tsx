@@ -25,6 +25,7 @@ type TickerTableProps = {
   onSortingChange: OnChangeFn<SortingState>;
   columnVisibility: VisibilityState;
   columnOrder: ColumnOrderState;
+  fillHeight: boolean;
 };
 
 const StickyEdgeGradient = () => (
@@ -37,6 +38,7 @@ const TickerTable = ({
   onSortingChange,
   columnVisibility,
   columnOrder,
+  fillHeight,
 }: TickerTableProps) => {
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -55,7 +57,7 @@ const TickerTable = ({
 
   return (
     <Table
-      containerClassName="h-full"
+      containerClassName={fillHeight ? 'h-full' : undefined}
       className="text-xs"
       onScroll={handleScroll}
     >
