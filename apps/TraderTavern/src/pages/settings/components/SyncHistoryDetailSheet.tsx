@@ -7,6 +7,7 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Table,
   TableBody,
@@ -72,6 +73,12 @@ const SyncHistoryDetailSheet = ({
             </div>
           ) : (
             <>
+              {data.generalError && (
+                <Alert variant="destructive">
+                  <AlertDescription>{data.generalError}</AlertDescription>
+                </Alert>
+              )}
+
               <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                 <dt className="text-muted-foreground">Status</dt>
                 <dd>
@@ -104,13 +111,6 @@ const SyncHistoryDetailSheet = ({
 
                 <dt className="text-muted-foreground">Tickers</dt>
                 <dd className="tabular-nums">{data.tickerCount}</dd>
-
-                {data.generalError && (
-                  <>
-                    <dt className="text-muted-foreground">General error</dt>
-                    <dd className="text-destructive">{data.generalError}</dd>
-                  </>
-                )}
               </dl>
 
               {succeededTickers && succeededTickers.length > 0 && (
