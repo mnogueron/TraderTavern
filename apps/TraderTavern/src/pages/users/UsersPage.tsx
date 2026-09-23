@@ -46,7 +46,6 @@ const UsersPage = () => {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
-      <h1 className="shrink-0 text-2xl font-semibold">Users</h1>
       <div className="min-h-[600px] flex-1 overflow-hidden rounded-md border">
         {isPending || !data ? (
           <UserListSkeleton rows={limit} />

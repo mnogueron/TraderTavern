@@ -13,9 +13,9 @@ export function PageHeader() {
     .find((value) => Boolean(value));
 
   return (
-    <header className="sticky top-0 z-10 flex h-12 shrink-0 items-center gap-2 border-b bg-background px-4">
+    <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b bg-background px-4">
       <SidebarTrigger className="-ml-1 md:hidden" />
-      {title && <h1 className="text-sm font-semibold">{title}</h1>}
+      {title && <h1 className="text-xl font-semibold">{title}</h1>}
     </header>
   );
 }

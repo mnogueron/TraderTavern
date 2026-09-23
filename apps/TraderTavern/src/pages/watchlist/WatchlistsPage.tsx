@@ -32,8 +32,7 @@ const WatchlistsPage = () => {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
-      <div className="flex shrink-0 items-center justify-between">
-        <h1 className="text-2xl font-semibold">Watchlists</h1>
+      <div className="flex shrink-0 items-center justify-end">
         <Button type="button" onClick={() => setCreateOpen(true)}>
           <RiAddLine data-icon="inline-start" />
           New watchlist

@@ -13,8 +13,6 @@ const SettingsPage = () => {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-lg font-semibold">Settings</h1>
-
       <Tabs defaultValue="tickers" className="gap-4">
         <TabsList variant="line">
           <TabsTrigger value="tickers">Tickers</TabsTrigger>
