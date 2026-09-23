@@ -1,3 +1,4 @@
+import { AlertCircleIcon } from 'lucide-react';
 import { useClientQuery } from '@trader-tavern/api-client';
 import {
   Sheet,
@@ -7,7 +8,7 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import {
   Table,
   TableBody,
@@ -75,6 +76,8 @@ const SyncHistoryDetailSheet = ({
             <>
               {data.generalError && (
                 <Alert variant="destructive">
+                  <AlertCircleIcon />
+                  <AlertTitle>Sync error</AlertTitle>
                   <AlertDescription>{data.generalError}</AlertDescription>
                 </Alert>
               )}
