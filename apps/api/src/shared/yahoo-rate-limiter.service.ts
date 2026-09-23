@@ -66,7 +66,12 @@ export class YahooRateLimiterService {
   // the next ticker just spreads the same rate limiting across the rest of
   // the chunk. Once the backoff would exceed RATE_LIMIT_BACKOFF_MAX_MS,
   // gives up and throws RateLimitCooldownError.
-  async schedule<T>(fn: () => Promise<T>): Promise<T> {
+  //
+  // `fn` receives an AbortSignal that fires when the request times out, so
+  // callers can pass it through to yahoo-finance2 (via `fetchOptions`) and
+  // let the underlying HTTP request actually get cancelled instead of being
+  // abandoned to run to completion in the background (see runOnce).
+  async schedule<T>(fn: (signal: AbortSignal) => Promise<T>): Promise<T> {
     let backoffMs = RATE_LIMIT_BACKOFF_INITIAL_MS;
     let attempt = 0;
 
@@ -93,7 +98,9 @@ export class YahooRateLimiterService {
     }
   }
 
-  private async runOnce<T>(fn: () => Promise<T>): Promise<T> {
+  private async runOnce<T>(
+    fn: (signal: AbortSignal) => Promise<T>,
+  ): Promise<T> {
     const now = Date.now();
     const runAt = Math.max(now, this.nextAvailableAt);
     this.nextAvailableAt = runAt + this.minIntervalMs;
@@ -103,21 +110,25 @@ export class YahooRateLimiterService {
       await delay(wait);
     }
 
+    // Aborting on timeout (rather than just racing it) is what actually
+    // frees the underlying socket/response buffer when Yahoo stalls
+    // indefinitely, instead of leaving the request to run to completion
+    // unobserved in the background.
+    const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<never>((_, reject) => {
-      timer = setTimeout(
-        () =>
-          reject(
-            new YahooTimeoutError(
-              `Yahoo request timed out after ${YAHOO_REQUEST_TIMEOUT_MS}ms`,
-            ),
+      timer = setTimeout(() => {
+        controller.abort();
+        reject(
+          new YahooTimeoutError(
+            `Yahoo request timed out after ${YAHOO_REQUEST_TIMEOUT_MS}ms`,
           ),
-        YAHOO_REQUEST_TIMEOUT_MS,
-      );
+        );
+      }, YAHOO_REQUEST_TIMEOUT_MS);
     });
 
     try {
-      return await Promise.race([fn(), timeout]);
+      return await Promise.race([fn(controller.signal), timeout]);
     } finally {
       clearTimeout(timer);
     }

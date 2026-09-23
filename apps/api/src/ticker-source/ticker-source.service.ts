@@ -155,8 +155,12 @@ export class TickerSourceService {
 
     const startedAt = Date.now();
     this.logger.debug(`Resolving Yahoo ticker for ISIN ${isin}...`);
-    const result = (await this.yahooRateLimiter.schedule(() =>
-      yahooFinance.search(isin, { quotesCount: 5 }, { validateResult: false }),
+    const result = (await this.yahooRateLimiter.schedule((signal) =>
+      yahooFinance.search(
+        isin,
+        { quotesCount: 5 },
+        { validateResult: false, fetchOptions: { signal } },
+      ),
     )) as { quotes?: RawYahooSearchQuote[] };
     this.logger.debug(
       `Resolved Yahoo ticker lookup for ISIN ${isin} in ${Date.now() - startedAt}ms`,
@@ -236,11 +240,11 @@ export class TickerSourceService {
     isin?: string;
     currency?: string;
   }> {
-    const result = (await this.yahooRateLimiter.schedule(() =>
+    const result = (await this.yahooRateLimiter.schedule((signal) =>
       yahooFinance.search(
         ticker,
         { quotesCount: 5 },
-        { validateResult: false },
+        { validateResult: false, fetchOptions: { signal } },
       ),
     )) as { quotes?: RawYahooSearchQuote[] };
 

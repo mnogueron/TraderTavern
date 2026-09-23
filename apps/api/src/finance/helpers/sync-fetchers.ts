@@ -27,17 +27,21 @@ export async function fetchQuoteSummary(
   yahooRateLimiter: YahooRateLimiterService,
   ticker: string,
 ) {
-  return yahooRateLimiter.schedule(() =>
-    yahooFinance.quoteSummary(ticker, {
-      modules: [
-        'price',
-        'summaryDetail',
-        'assetProfile',
-        'financialData',
-        'defaultKeyStatistics',
-        'earningsHistory',
-      ],
-    }),
+  return yahooRateLimiter.schedule((signal) =>
+    yahooFinance.quoteSummary(
+      ticker,
+      {
+        modules: [
+          'price',
+          'summaryDetail',
+          'assetProfile',
+          'financialData',
+          'defaultKeyStatistics',
+          'earningsHistory',
+        ],
+      },
+      { fetchOptions: { signal } },
+    ),
   );
 }
 
@@ -45,13 +49,17 @@ export async function fetchDailyChart(
   yahooRateLimiter: YahooRateLimiterService,
   ticker: string,
 ) {
-  return yahooRateLimiter.schedule(() =>
-    yahooFinance.chart(ticker, {
-      period1: new Date(
-        Date.now() - HISTORY_LOOKBACK_DAYS * 24 * 60 * 60 * 1000,
-      ),
-      interval: '1d',
-    }),
+  return yahooRateLimiter.schedule((signal) =>
+    yahooFinance.chart(
+      ticker,
+      {
+        period1: new Date(
+          Date.now() - HISTORY_LOOKBACK_DAYS * 24 * 60 * 60 * 1000,
+        ),
+        interval: '1d',
+      },
+      { fetchOptions: { signal } },
+    ),
   );
 }
 
@@ -61,8 +69,12 @@ export async function fetchCandleChart(
   period1: Date,
   interval: '5m' | '1h' | '1d' | '1wk',
 ) {
-  return yahooRateLimiter.schedule(() =>
-    yahooFinance.chart(ticker, { period1, interval }),
+  return yahooRateLimiter.schedule((signal) =>
+    yahooFinance.chart(
+      ticker,
+      { period1, interval },
+      { fetchOptions: { signal } },
+    ),
   );
 }
 
@@ -80,28 +92,40 @@ export async function fetchFinancialHistory(
 
   const [financials, cashFlow, balanceSheet] = await Promise.all([
     yahooRateLimiter.schedule(
-      () =>
-        yahooFinance.fundamentalsTimeSeries(ticker, {
-          period1,
-          type: 'annual',
-          module: 'financials',
-        }) as unknown as Promise<FundamentalsTimeSeriesRow[]>,
+      (signal) =>
+        yahooFinance.fundamentalsTimeSeries(
+          ticker,
+          {
+            period1,
+            type: 'annual',
+            module: 'financials',
+          },
+          { fetchOptions: { signal } },
+        ) as unknown as Promise<FundamentalsTimeSeriesRow[]>,
     ),
     yahooRateLimiter.schedule(
-      () =>
-        yahooFinance.fundamentalsTimeSeries(ticker, {
-          period1,
-          type: 'annual',
-          module: 'cash-flow',
-        }) as unknown as Promise<FundamentalsTimeSeriesRow[]>,
+      (signal) =>
+        yahooFinance.fundamentalsTimeSeries(
+          ticker,
+          {
+            period1,
+            type: 'annual',
+            module: 'cash-flow',
+          },
+          { fetchOptions: { signal } },
+        ) as unknown as Promise<FundamentalsTimeSeriesRow[]>,
     ),
     yahooRateLimiter.schedule(
-      () =>
-        yahooFinance.fundamentalsTimeSeries(ticker, {
-          period1,
-          type: 'annual',
-          module: 'balance-sheet',
-        }) as unknown as Promise<FundamentalsTimeSeriesRow[]>,
+      (signal) =>
+        yahooFinance.fundamentalsTimeSeries(
+          ticker,
+          {
+            period1,
+            type: 'annual',
+            module: 'balance-sheet',
+          },
+          { fetchOptions: { signal } },
+        ) as unknown as Promise<FundamentalsTimeSeriesRow[]>,
     ),
   ]);
 
@@ -217,12 +241,16 @@ export async function fetchQuarterlyRevenueHistory(
   period1.setFullYear(period1.getFullYear() - QUARTERLY_REVENUE_HISTORY_YEARS);
 
   const rows = (await yahooRateLimiter.schedule(
-    () =>
-      yahooFinance.fundamentalsTimeSeries(ticker, {
-        period1,
-        type: 'quarterly',
-        module: 'financials',
-      }) as unknown as Promise<FundamentalsTimeSeriesRow[]>,
+    (signal) =>
+      yahooFinance.fundamentalsTimeSeries(
+        ticker,
+        {
+          period1,
+          type: 'quarterly',
+          module: 'financials',
+        },
+        { fetchOptions: { signal } },
+      ) as unknown as Promise<FundamentalsTimeSeriesRow[]>,
   )) as FundamentalsTimeSeriesRow[];
 
   return rows.map((row) => ({
