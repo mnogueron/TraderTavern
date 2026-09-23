@@ -24,6 +24,11 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe({ transform: true }));
 
+  // Always mounted under /api — kept constant regardless of domain mode
+  // because the generated API client's paths are frozen with this prefix
+  // at generation time. Same-domain deployments reach it via a relative
+  // /api URL; own-domain deployments (API_DOMAIN set) reach it via
+  // https://<API_DOMAIN>/api.
   app.setGlobalPrefix('api');
 
   const config = new DocumentBuilder()

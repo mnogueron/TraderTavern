@@ -9,6 +9,10 @@ services:
       NODE_ENV: production
       DOMAIN: ${DOMAIN}
       FRONTEND_ORIGIN: https://${DOMAIN}
+      # Leave unset for the default same-domain mode (API reachable at a
+      # relative /api path). Set to a bare host (e.g. api.example.com) to
+      # serve the API on its own domain instead.
+      API_DOMAIN: ${API_DOMAIN:-}
       MONGODB_URI: mongodb://mongo:27017/tradertavern
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1d}

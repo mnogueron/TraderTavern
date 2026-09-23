@@ -23,7 +23,7 @@ export type ApiResponse<
 
 let api: QueryClient | undefined = undefined;
 
-const AUTH_PATH_PREFIX = '/auth';
+const AUTH_PATH_PREFIX = '/api/auth';
 
 export const initClient = (baseUrl: string) => {
   const fetchClient = createFetchClient<paths>({

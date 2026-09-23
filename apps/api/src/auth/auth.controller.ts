@@ -36,10 +36,15 @@ export class AuthController {
   }
 
   private get cookieOptions(): CookieOptions {
+    // When the API is served on its own domain (API_DOMAIN set), the
+    // frontend's requests are cross-site from the cookie's perspective,
+    // so the cookie needs SameSite=None (which browsers only honor
+    // alongside Secure).
+    const crossSite = Boolean(process.env.API_DOMAIN);
     return {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: crossSite || process.env.NODE_ENV === 'production',
+      sameSite: crossSite ? 'none' : 'lax',
     };
   }
 

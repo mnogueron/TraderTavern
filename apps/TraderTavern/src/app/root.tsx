@@ -4,6 +4,7 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useLoaderData,
   type MetaFunction,
   type LinksFunction,
 } from 'react-router';
@@ -15,7 +16,31 @@ import { initClient } from '@trader-tavern/api-client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from '@/components/theme-provider';
 
-initClient(import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api');
+declare global {
+  interface Window {
+    ENV?: { apiUrl: string };
+  }
+}
+
+// The generated OpenAPI client's paths already include the /api prefix
+// (e.g. "/api/auth/login"), so the base URL passed here must NOT also
+// include /api or requests double up to /api/api/....
+//
+// Same domain as the frontend (default): base URL is just the empty
+// origin, so requests resolve as relative /api/... paths.
+// Own domain (API_DOMAIN set): the API lives on a different host, so the
+// browser needs its absolute origin, resolved server-side per request and
+// handed to the client via `window.ENV` (see the loader/script below) —
+// this keeps a single image portable across both modes without a rebuild.
+export async function loader() {
+  return {
+    ENV: {
+      apiUrl: process.env.API_DOMAIN ? `https://${process.env.API_DOMAIN}` : '',
+    },
+  };
+}
+
+initClient(typeof window !== 'undefined' ? (window.ENV?.apiUrl ?? '') : '');
 
 // Runs before hydration to set the theme class synchronously, avoiding a
 // flash of the wrong theme on page load.
@@ -50,6 +75,8 @@ export const links: LinksFunction = () => [
 const queryClient = new QueryClient();
 
 export function Layout({ children }: { children: React.ReactNode }) {
+  const data = useLoaderData<typeof loader>();
+
   return (
     <html lang="en">
       <head>
@@ -69,6 +96,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </QueryClientProvider>
           </ThemeProvider>
         </div>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.ENV = ${JSON.stringify(data?.ENV).replace(/</g, '\\u003c')}`,
+          }}
+        />
         <Scripts />
       </body>
     </html>

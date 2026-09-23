@@ -28,8 +28,6 @@ RUN npm ci && \
 FROM deps AS build
 WORKDIR /app
 COPY . .
-ARG VITE_API_URL=/api
-ENV VITE_API_URL=$VITE_API_URL
 RUN npx nx build api-client \
   && npx nx build api \
   && npx nx build TraderTavern
@@ -69,6 +67,11 @@ ENV FRONTEND_PORT=4710
 # FRONTEND_ORIGIN for CORS when not explicitly overridden.
 ARG DOMAIN
 ENV DOMAIN=$DOMAIN
+# When set, the API is treated as living on its own domain (reachable at
+# https://<API_DOMAIN>/api) rather than under the frontend's /api path —
+# the frontend, CORS, and cookie SameSite behavior all switch accordingly.
+ARG API_DOMAIN
+ENV API_DOMAIN=$API_DOMAIN
 EXPOSE 4710 4711
 
 RUN addgroup -S app && adduser -S app -G app && chown -R app:app /app
