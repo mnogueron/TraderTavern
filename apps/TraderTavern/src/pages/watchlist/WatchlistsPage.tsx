@@ -73,7 +73,7 @@ const WatchlistsPage = () => {
           <button
             type="button"
             onClick={() => setCreateOpen(true)}
-            className="flex h-full min-h-28 flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-input text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+            className="flex h-full min-h-28 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-input text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
           >
             <RiAddLine className="size-5" />
             <span className="text-sm font-medium">New watchlist</span>
