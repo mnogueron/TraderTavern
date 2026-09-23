@@ -19,7 +19,6 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import {
-  RiArrowUpDownLine,
   RiSettingsLine,
   RiLogoutBoxLine,
   RiTeamLine,
@@ -62,7 +61,6 @@ export function NavUser() {
               </span>
               <span className="truncate text-xs">{currentUser.email}</span>
             </div>
-            <RiArrowUpDownLine className="ml-auto size-4" />
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="w-fit"

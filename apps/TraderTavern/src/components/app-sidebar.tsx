@@ -15,6 +15,12 @@ import {
   RiBookmarkLine,
 } from '@remixicon/react';
 
+const Logo = () => (
+  <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground group-data-[collapsible=icon]:size-6 group-data-[collapsible=icon]:text-xs">
+    TT
+  </div>
+);
+
 const navMain = [
   {
     title: 'Dashboard',
@@ -42,7 +48,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <span className="px-2 py-1 text-sm font-semibold">TraderTavern</span>
+        <div className="flex items-center gap-2 px-2 py-1">
+          <Logo />
+          <span className="truncate text-base font-semibold group-data-[collapsible=icon]:hidden">
+            TraderTavern
+          </span>
+        </div>
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={navMain} />
