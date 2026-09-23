@@ -1,6 +1,6 @@
 openapi: 3.0.0
 paths:
-  /:
+  /api:
     get:
       operationId: getData
       parameters: []
@@ -9,7 +9,7 @@ paths:
           description: ''
       tags:
         - App
-  /user:
+  /api/user:
     get:
       operationId: getUsers
       parameters:
@@ -38,7 +38,7 @@ paths:
         - cookie: []
       tags:
         - User
-  /user/me/settings:
+  /api/user/me/settings:
     patch:
       operationId: updateSettings
       parameters: []
@@ -59,7 +59,7 @@ paths:
         - cookie: []
       tags:
         - User
-  /auth/register:
+  /api/auth/register:
     post:
       operationId: register
       parameters: []
@@ -78,7 +78,7 @@ paths:
                 $ref: '#/components/schemas/UserDto'
       tags:
         - Auth
-  /auth/login:
+  /api/auth/login:
     post:
       operationId: login
       parameters: []
@@ -97,7 +97,7 @@ paths:
                 $ref: '#/components/schemas/UserDto'
       tags:
         - Auth
-  /auth/logout:
+  /api/auth/logout:
     post:
       operationId: logout
       parameters: []
@@ -108,7 +108,7 @@ paths:
         - cookie: []
       tags:
         - Auth
-  /auth/reset-password:
+  /api/auth/reset-password:
     post:
       operationId: resetPassword
       parameters: []
@@ -127,7 +127,7 @@ paths:
                 $ref: '#/components/schemas/ResetPasswordResponseDto'
       tags:
         - Auth
-  /auth/me:
+  /api/auth/me:
     get:
       operationId: me
       parameters: []
@@ -142,7 +142,7 @@ paths:
         - cookie: []
       tags:
         - Auth
-  /finance/screener:
+  /api/finance/screener:
     get:
       operationId: getScreener
       parameters:
@@ -191,7 +191,7 @@ paths:
         - cookie: []
       tags:
         - Finance
-  /finance/tickers:
+  /api/finance/tickers:
     get:
       operationId: getTickers
       parameters:
@@ -214,7 +214,7 @@ paths:
         - cookie: []
       tags:
         - Finance
-  /finance/screener/filters/options:
+  /api/finance/screener/filters/options:
     get:
       operationId: getScreenerFilterOptions
       parameters: []
@@ -229,7 +229,7 @@ paths:
         - cookie: []
       tags:
         - Finance
-  /finance/screener/filters/tickers:
+  /api/finance/screener/filters/tickers:
     get:
       operationId: getScreenerTickerOptions
       parameters:
@@ -264,7 +264,7 @@ paths:
         - cookie: []
       tags:
         - Finance
-  /finance/sync/status:
+  /api/finance/sync/status:
     get:
       operationId: getSyncStatus
       parameters: []
@@ -279,7 +279,7 @@ paths:
         - cookie: []
       tags:
         - Finance
-  /finance/sync:
+  /api/finance/sync:
     post:
       operationId: syncScreener
       parameters: []
@@ -290,7 +290,7 @@ paths:
         - cookie: []
       tags:
         - Finance
-  /finance/sync/static:
+  /api/finance/sync/static:
     post:
       operationId: syncStatic
       parameters: []
@@ -301,7 +301,7 @@ paths:
         - cookie: []
       tags:
         - Finance
-  /finance/sync/fundamental:
+  /api/finance/sync/fundamental:
     post:
       operationId: syncFundamental
       parameters: []
@@ -312,7 +312,7 @@ paths:
         - cookie: []
       tags:
         - Finance
-  /finance/sync/compound:
+  /api/finance/sync/compound:
     post:
       operationId: syncCompound
       parameters: []
@@ -323,7 +323,7 @@ paths:
         - cookie: []
       tags:
         - Finance
-  /finance/sync/technical:
+  /api/finance/sync/technical:
     post:
       operationId: syncTechnical
       parameters: []
@@ -334,7 +334,7 @@ paths:
         - cookie: []
       tags:
         - Finance
-  /finance/ticker/{id}/sync:
+  /api/finance/ticker/{id}/sync:
     post:
       operationId: syncSingleTicker
       parameters:
@@ -350,7 +350,7 @@ paths:
         - cookie: []
       tags:
         - Finance
-  /finance/ticker/{id}/sync/static:
+  /api/finance/ticker/{id}/sync/static:
     post:
       operationId: syncSingleTickerStatic
       parameters:
@@ -366,7 +366,7 @@ paths:
         - cookie: []
       tags:
         - Finance
-  /finance/ticker/{id}/sync/fundamental:
+  /api/finance/ticker/{id}/sync/fundamental:
     post:
       operationId: syncSingleTickerFundamental
       parameters:
@@ -382,7 +382,7 @@ paths:
         - cookie: []
       tags:
         - Finance
-  /finance/ticker/{id}/sync/compound:
+  /api/finance/ticker/{id}/sync/compound:
     post:
       operationId: syncSingleTickerCompound
       parameters:
@@ -398,7 +398,7 @@ paths:
         - cookie: []
       tags:
         - Finance
-  /finance/ticker/{id}/sync/technical:
+  /api/finance/ticker/{id}/sync/technical:
     post:
       operationId: syncSingleTickerTechnical
       parameters:
@@ -414,7 +414,7 @@ paths:
         - cookie: []
       tags:
         - Finance
-  /finance/ticker/{id}:
+  /api/finance/ticker/{id}:
     get:
       operationId: getTicker
       parameters:
@@ -434,7 +434,7 @@ paths:
         - cookie: []
       tags:
         - Finance
-  /finance/ticker/{id}/fundamental:
+  /api/finance/ticker/{id}/fundamental:
     get:
       operationId: getTickerFundamental
       parameters:
@@ -454,7 +454,7 @@ paths:
         - cookie: []
       tags:
         - Finance
-  /finance/ticker/{id}/financial-history:
+  /api/finance/ticker/{id}/financial-history:
     get:
       operationId: getTickerFinancialHistory
       parameters:
@@ -474,7 +474,7 @@ paths:
         - cookie: []
       tags:
         - Finance
-  /finance/ticker/{id}/earnings-history:
+  /api/finance/ticker/{id}/earnings-history:
     get:
       operationId: getTickerEarningsHistory
       parameters:
@@ -494,7 +494,7 @@ paths:
         - cookie: []
       tags:
         - Finance
-  /finance/ticker/{id}/altman-history:
+  /api/finance/ticker/{id}/altman-history:
     get:
       operationId: getTickerAltmanHistory
       parameters:
@@ -514,7 +514,7 @@ paths:
         - cookie: []
       tags:
         - Finance
-  /finance/ticker/{id}/chart:
+  /api/finance/ticker/{id}/chart:
     get:
       operationId: getTickerChart
       parameters:
@@ -544,7 +544,7 @@ paths:
         - cookie: []
       tags:
         - Finance
-  /finance/ticker/{id}/market-hours:
+  /api/finance/ticker/{id}/market-hours:
     get:
       operationId: getTickerMarketHours
       parameters:
@@ -564,7 +564,7 @@ paths:
         - cookie: []
       tags:
         - Finance
-  /finance/tickers/hidden:
+  /api/finance/tickers/hidden:
     get:
       operationId: getHiddenTickers
       parameters: []
@@ -581,7 +581,7 @@ paths:
         - cookie: []
       tags:
         - Finance
-  /finance/ticker/{id}/unhide:
+  /api/finance/ticker/{id}/unhide:
     post:
       operationId: unhideTicker
       parameters:
@@ -597,7 +597,7 @@ paths:
         - cookie: []
       tags:
         - Finance
-  /ticker-source/{source}/sync/status:
+  /api/ticker-source/{source}/sync/status:
     get:
       operationId: getTickerSourceSyncStatus
       parameters:
@@ -620,7 +620,7 @@ paths:
         - cookie: []
       tags:
         - TickerSource
-  /ticker-source/yahoo/sync:
+  /api/ticker-source/yahoo/sync:
     post:
       operationId: syncYahoo
       parameters: []
@@ -631,7 +631,7 @@ paths:
         - cookie: []
       tags:
         - TickerSource
-  /ticker-source/xtb/sync/upload:
+  /api/ticker-source/xtb/sync/upload:
     post:
       operationId: syncXtb
       parameters: []
@@ -654,7 +654,7 @@ paths:
         - cookie: []
       tags:
         - TickerSource
-  /watchlists:
+  /api/watchlists:
     get:
       operationId: getAll
       parameters: []
@@ -691,7 +691,7 @@ paths:
         - cookie: []
       tags:
         - Watchlist
-  /watchlists/membership/{ticker}:
+  /api/watchlists/membership/{ticker}:
     get:
       operationId: getMembership
       parameters:
@@ -732,7 +732,7 @@ paths:
         - cookie: []
       tags:
         - Watchlist
-  /watchlists/{id}:
+  /api/watchlists/{id}:
     get:
       operationId: getById
       parameters:
@@ -792,7 +792,7 @@ paths:
         - cookie: []
       tags:
         - Watchlist
-  /watchlists/{id}/tickers:
+  /api/watchlists/{id}/tickers:
     post:
       operationId: addTicker
       parameters:
@@ -818,7 +818,7 @@ paths:
         - cookie: []
       tags:
         - Watchlist
-  /watchlists/{id}/tickers/{ticker}:
+  /api/watchlists/{id}/tickers/{ticker}:
     delete:
       operationId: removeTicker
       parameters:

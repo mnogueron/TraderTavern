@@ -15,7 +15,7 @@ import { initClient } from '@trader-tavern/api-client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from '@/components/theme-provider';
 
-initClient('http://localhost:3000');
+initClient(import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api');
 
 // Runs before hydration to set the theme class synchronously, avoiding a
 // flash of the wrong theme on page load.

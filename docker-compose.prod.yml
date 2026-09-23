@@ -1,0 +1,50 @@
+services:
+  app:
+    image: ${REGISTRY:-registry.noguetith.fr}/tradertavern:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    ports:
+      - '4710:4710'
+      - '4711:4711'
+    environment:
+      NODE_ENV: production
+      DOMAIN: ${DOMAIN}
+      FRONTEND_ORIGIN: https://${DOMAIN}
+      MONGODB_URI: mongodb://mongo:27017/tradertavern
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1d}
+      AUTH_COOKIE_NAME: ${AUTH_COOKIE_NAME:-access_token}
+      RESET_PASSWORD_TOKEN_TTL_MINUTES: ${RESET_PASSWORD_TOKEN_TTL_MINUTES:-30}
+      CANDLE_COUNT_5M: ${CANDLE_COUNT_5M:-100}
+      CANDLE_COUNT_1H: ${CANDLE_COUNT_1H:-200}
+      CANDLE_COUNT_1D: ${CANDLE_COUNT_1D:-100}
+      CANDLE_COUNT_1W: ${CANDLE_COUNT_1W:-52}
+    depends_on:
+      - mongo
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+
+  # Polls the registry and auto-pulls/restarts only containers labeled
+  # watchtower.enable=true, so it won't touch other projects' containers
+  # running on the same host. Requires the host to already be logged in
+  # to the registry (`docker login registry.noguetith.fr`) so Watchtower
+  # can read credentials from ~/.docker/config.json.
+  watchtower:
+    image: containrrr/watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${HOME}/.docker/config.json:/config.json:ro
+    environment:
+      DOCKER_CONFIG: /
+      WATCHTOWER_LABEL_ENABLE: 'true'
+      WATCHTOWER_CLEANUP: 'true'
+      WATCHTOWER_POLL_INTERVAL: '60'
+
+volumes:
+  mongo-data:

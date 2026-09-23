@@ -1,0 +1,15 @@
+**/node_modules
+**/dist
+**/build
+.git
+.nx
+.claude
+.agents
+.vscode
+.idea
+*.log
+.env
+.env.local
+tmp
+out-tsc
+coverage

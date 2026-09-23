@@ -1,8 +1,3 @@
-/**
- * This is not a production server yet!
- * This is only a minimal backend to get started.
- */
-
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import {
@@ -29,8 +24,7 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe({ transform: true }));
 
-  //const globalPrefix = 'api';
-  //app.setGlobalPrefix(globalPrefix);
+  app.setGlobalPrefix('api');
 
   const config = new DocumentBuilder()
     .setTitle('TraderTavern API')
@@ -52,7 +46,7 @@ async function bootstrap() {
 
   SwaggerModule.setup('api-json', app, document);
 
-  app.use('/api', apiReference({ spec: { content: document } }));
+  app.use('/docs', apiReference({ spec: { content: document } }));
 
   const port = process.env.PORT || 3000;
   await app.listen(port);
