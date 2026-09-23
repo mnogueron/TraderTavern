@@ -1,8 +1,8 @@
-import { useState, type MouseEvent } from 'react';
+import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useClientMutation, useClientQuery } from '@trader-tavern/api-client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import {
   Table,
   TableBody,
@@ -11,15 +11,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination';
+import { AppPagination } from '@/components/AppPagination';
+import { Section } from '@/components/Section';
 import {
   Select,
   SelectContent,
@@ -27,7 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { getPageNumbers } from '@/lib/pagination';
 import { formatDateTime, formatDuration } from '@/lib/format';
 import SyncStatusBadge from '@/pages/settings/components/SyncStatusBadge';
 import SyncKindBadge from '@/pages/settings/components/SyncKindBadge';
@@ -97,41 +89,26 @@ const DataSyncSettings = () => {
     setPage(1);
   };
 
-  const handlePageChange = (event: MouseEvent, targetPage: number) => {
-    event.preventDefault();
-    const totalPages = data?.meta.totalPages ?? 1;
-    if (targetPage < 1 || targetPage > totalPages || targetPage === page) {
-      return;
-    }
-    setPage(targetPage);
-  };
-
   const meta = data?.meta;
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center gap-4 space-y-0">
-        <CardTitle>Sync History</CardTitle>
-        <Select value={status} onValueChange={handleStatusChange}>
-          <SelectTrigger
-            aria-label="Filter by status"
-            size="sm"
-            className="ml-auto w-40"
-          >
-            <SelectValue placeholder="All statuses" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            {STATUS_OPTIONS.map((option) => (
-              <SelectItem key={option} value={option}>
-                {SYNC_STATUS_LABEL[option]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        <div className="flex items-center gap-2">
+    <Section
+      title="Sync History"
+      actionElement={
+        <>
+          <Select value={status} onValueChange={handleStatusChange}>
+            <SelectTrigger aria-label="Filter by status" size="sm" className="w-40">
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              {STATUS_OPTIONS.map((option) => (
+                <SelectItem key={option} value={option}>
+                  {SYNC_STATUS_LABEL[option]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <TriggerSyncMenu
             isPending={fullSyncMutation.isPending}
             onFullSync={() => fullSyncMutation.mutate({})}
@@ -144,8 +121,10 @@ const DataSyncSettings = () => {
               })
             }
           />
-        </div>
-
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4">
         {isPending || !data ? (
           <div className="flex flex-col gap-2">
             {Array.from({ length: LIMIT }).map((_, index) => (
@@ -206,12 +185,20 @@ const DataSyncSettings = () => {
                       {formatDuration(getElapsedMs(item.startedAt, item.finishedAt))}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {item.succeededCount}
+                      {item.status === 'running' ? (
+                        <Spinner className="ml-auto" />
+                      ) : (
+                        item.succeededCount
+                      )}
                     </TableCell>
                     <TableCell
                       className={`text-right tabular-nums ${item.failedCount > 0 ? 'text-red-600' : ''}`}
                     >
-                      {item.failedCount}
+                      {item.status === 'running' ? (
+                        <Spinner className="ml-auto" />
+                      ) : (
+                        item.failedCount
+                      )}
                     </TableCell>
                   </TableRow>
                 ))
@@ -220,54 +207,20 @@ const DataSyncSettings = () => {
           </Table>
         )}
 
-        {meta && meta.totalPages > 1 && (
-          <Pagination className="mx-0 w-auto justify-end">
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  href="#"
-                  aria-disabled={meta.page <= 1}
-                  className={
-                    meta.page <= 1 ? 'pointer-events-none opacity-50' : undefined
-                  }
-                  onClick={(event) => handlePageChange(event, meta.page - 1)}
-                />
-              </PaginationItem>
-              {getPageNumbers(meta.page, meta.totalPages).map(
-                (pageNumber, index) =>
-                  pageNumber === 'ellipsis' ? (
-                    <PaginationItem key={`ellipsis-${index}`}>
-                      <PaginationEllipsis />
-                    </PaginationItem>
-                  ) : (
-                    <PaginationItem key={pageNumber}>
-                      <PaginationLink
-                        href="#"
-                        isActive={pageNumber === meta.page}
-                        onClick={(event) => handlePageChange(event, pageNumber)}
-                      >
-                        {pageNumber}
-                      </PaginationLink>
-                    </PaginationItem>
-                  ),
-              )}
-              <PaginationItem>
-                <PaginationNext
-                  href="#"
-                  aria-disabled={meta.page >= meta.totalPages}
-                  onClick={(event) => handlePageChange(event, meta.page + 1)}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
+        {meta && (
+          <AppPagination
+            page={meta.page}
+            totalPages={meta.totalPages}
+            onPageChange={setPage}
+          />
         )}
 
         <SyncHistoryDetailSheet
           syncId={selectedSyncId}
           onOpenChange={(open) => !open && setSelectedSyncId(null)}
         />
-      </CardContent>
-    </Card>
+      </div>
+    </Section>
   );
 };
 
