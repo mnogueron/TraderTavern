@@ -1,7 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
-import { RiAddLine, RiArrowLeftLine, RiDeleteBinLine, RiPencilLine } from '@remixicon/react';
+import {
+  RiAddLine,
+  RiArrowLeftLine,
+  RiDeleteBinLine,
+  RiPencilLine,
+} from '@remixicon/react';
 import { useClientMutation, useClientQuery } from '@trader-tavern/api-client';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -26,7 +31,7 @@ const WatchlistDetailPage = ({ watchlistId }: WatchlistDetailPageProps) => {
 
   const { data: watchlist, isPending: isWatchlistPending } = useClientQuery(
     'get',
-    '/watchlists/{id}',
+    '/api/watchlists/{id}',
     { params: { path: { id: watchlistId } } },
   );
 
@@ -34,33 +39,41 @@ const WatchlistDetailPage = ({ watchlistId }: WatchlistDetailPageProps) => {
 
   const { data: tickerData, isPending: isTickersPending } = useClientQuery(
     'get',
-    '/finance/tickers',
+    '/api/finance/tickers',
     { params: { query: { tickers: tickers.join(',') } } },
     { enabled: tickers.length > 0 },
   );
 
-  const watchlistQueryKey = ['get', '/watchlists/{id}', { params: { path: { id: watchlistId } } }];
+  const watchlistQueryKey = [
+    'get',
+    '/api/watchlists/{id}',
+    { params: { path: { id: watchlistId } } },
+  ];
 
-  const updateMutation = useClientMutation('patch', '/watchlists/{id}', {
+  const updateMutation = useClientMutation('patch', '/api/watchlists/{id}', {
     onSuccess: (data) => {
       queryClient.setQueryData(watchlistQueryKey, data);
-      queryClient.invalidateQueries({ queryKey: ['get', '/watchlists'] });
+      queryClient.invalidateQueries({ queryKey: ['get', '/api/watchlists'] });
       setEditOpen(false);
     },
   });
 
-  const deleteMutation = useClientMutation('delete', '/watchlists/{id}', {
+  const deleteMutation = useClientMutation('delete', '/api/watchlists/{id}', {
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['get', '/watchlists'] });
+      queryClient.invalidateQueries({ queryKey: ['get', '/api/watchlists'] });
       navigate('/watchlists');
     },
   });
 
-  const addTickerMutation = useClientMutation('post', '/watchlists/{id}/tickers', {
-    onSuccess: (data) => {
-      queryClient.setQueryData(watchlistQueryKey, data);
+  const addTickerMutation = useClientMutation(
+    'post',
+    '/api/watchlists/{id}/tickers',
+    {
+      onSuccess: (data) => {
+        queryClient.setQueryData(watchlistQueryKey, data);
+      },
     },
-  });
+  );
 
   const handleAddTicker = (ticker: string) => {
     addTickerMutation.mutate({
@@ -92,7 +105,11 @@ const WatchlistDetailPage = ({ watchlistId }: WatchlistDetailPageProps) => {
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
       <div className="flex shrink-0 items-center gap-3">
-        <Button variant="ghost" size="icon-sm" render={<Link to="/watchlists" />}>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          render={<Link to="/watchlists" />}
+        >
           <RiArrowLeftLine />
         </Button>
         <div className="flex min-w-0 flex-col">
@@ -104,11 +121,21 @@ const WatchlistDetailPage = ({ watchlistId }: WatchlistDetailPageProps) => {
           )}
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={() => setAddOpen(true)}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setAddOpen(true)}
+          >
             <RiAddLine data-icon="inline-start" />
             Add
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setEditOpen(true)}
+          >
             <RiPencilLine data-icon="inline-start" />
             Edit
           </Button>
@@ -128,7 +155,11 @@ const WatchlistDetailPage = ({ watchlistId }: WatchlistDetailPageProps) => {
         {tickers.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
             <p className="text-sm">No tickers in this watchlist yet.</p>
-            <Button type="button" variant="outline" onClick={() => setAddOpen(true)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setAddOpen(true)}
+            >
               Add a ticker
             </Button>
           </div>

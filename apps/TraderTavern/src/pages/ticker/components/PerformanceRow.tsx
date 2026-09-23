@@ -2,7 +2,7 @@ import type { ApiResponse } from '@trader-tavern/api-client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { changePercentClassName, formatChangePercent } from '@/lib/format';
 
-type Ticker = ApiResponse<'get', '/finance/ticker/{id}'>;
+type Ticker = ApiResponse<'get', '/api/finance/ticker/{id}'>;
 
 type PerformanceRowProps = {
   ticker: Ticker | null;
@@ -32,7 +32,9 @@ const PerformanceRow = ({ ticker, isPending }: PerformanceRowProps) => {
           className="flex shrink-0 flex-col items-center gap-1 rounded-md border px-3 py-2"
         >
           <span className="text-xs text-muted-foreground">{label}</span>
-          <span className={`text-sm tabular-nums ${changePercentClassName(value)}`}>
+          <span
+            className={`text-sm tabular-nums ${changePercentClassName(value)}`}
+          >
             {formatChangePercent(value)}
           </span>
         </div>

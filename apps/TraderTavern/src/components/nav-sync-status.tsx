@@ -10,7 +10,7 @@ import { formatDateTime } from '@/lib/format';
 
 export function NavSyncStatus() {
   const { state } = useSidebar();
-  const { data } = useClientQuery('get', '/finance/sync/status');
+  const { data } = useClientQuery('get', '/api/finance/sync/status');
   const lastSync = formatDateTime(data?.lastSyncDate ?? null);
 
   if (state === 'collapsed') {

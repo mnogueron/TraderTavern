@@ -15,8 +15,8 @@ import {
   formatNumber,
 } from '@/lib/format';
 
-type Ticker = ApiResponse<'get', '/finance/ticker/{id}'>;
-type Fundamental = ApiResponse<'get', '/finance/ticker/{id}/fundamental'>;
+type Ticker = ApiResponse<'get', '/api/finance/ticker/{id}'>;
+type Fundamental = ApiResponse<'get', '/api/finance/ticker/{id}/fundamental'>;
 
 type TickerHeaderProps = {
   ticker: Ticker | null;
@@ -24,7 +24,11 @@ type TickerHeaderProps = {
   isPending: boolean;
 };
 
-const TickerHeader = ({ ticker, fundamental, isPending }: TickerHeaderProps) => {
+const TickerHeader = ({
+  ticker,
+  fundamental,
+  isPending,
+}: TickerHeaderProps) => {
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [isDescriptionClamped, setIsDescriptionClamped] = useState(false);
   const descriptionRef = useRef<HTMLParagraphElement>(null);
@@ -83,10 +87,7 @@ const TickerHeader = ({ ticker, fundamental, isPending }: TickerHeaderProps) => 
           {metaParts.length > 0 || websiteHostname ? (
             <div className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
               {metaParts.map((part, index) => (
-                <span
-                  key={part.value}
-                  className="flex items-center gap-1.5"
-                >
+                <span key={part.value} className="flex items-center gap-1.5">
                   {index > 0 && <span>·</span>}
                   {part.flag && <CountryFlag country={part.value} />}
                   {part.value}

@@ -18,7 +18,10 @@ import {
   type AsyncMultiSelectScreenerFilterConfig,
   type MultiSelectScreenerFilterValue,
 } from '@/components/screener-filters/types';
-import { cacheTickerLabel, getCachedTickerLabel } from '@/components/screener-filters/tickerLabelCache';
+import {
+  cacheTickerLabel,
+  getCachedTickerLabel,
+} from '@/components/screener-filters/tickerLabelCache';
 import { RiArrowDownSLine } from '@remixicon/react';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 
@@ -40,32 +43,27 @@ const AsyncMultiSelectFilterControl = ({
   const debouncedSearch = useDebouncedValue(search, 250);
   const scrollParentRef = useRef<HTMLDivElement>(null);
 
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isPending,
-  } = useClientInfiniteQuery(
-    'get',
-    '/finance/screener/filters/tickers',
-    {
-      params: {
-        query: {
-          limit: LIMIT,
-          search: debouncedSearch || undefined,
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isPending } =
+    useClientInfiniteQuery(
+      'get',
+      '/api/finance/screener/filters/tickers',
+      {
+        params: {
+          query: {
+            limit: LIMIT,
+            search: debouncedSearch || undefined,
+          },
         },
       },
-    },
-    {
-      pageParamName: 'page',
-      initialPageParam: 1,
-      getNextPageParam: (lastPage) =>
-        lastPage.meta.page < lastPage.meta.totalPages
-          ? lastPage.meta.page + 1
-          : undefined,
-    },
-  );
+      {
+        pageParamName: 'page',
+        initialPageParam: 1,
+        getNextPageParam: (lastPage) =>
+          lastPage.meta.page < lastPage.meta.totalPages
+            ? lastPage.meta.page + 1
+            : undefined,
+      },
+    );
 
   const options = useMemo(() => {
     const rows = data?.pages.flatMap((page) => page.data) ?? [];
@@ -133,7 +131,10 @@ const AsyncMultiSelectFilterControl = ({
             placeholder={`Search ${config.label.toLowerCase()}...`}
             className="text-xs"
           />
-          <div ref={scrollParentRef} className="max-h-72 overflow-y-auto pt-1.5">
+          <div
+            ref={scrollParentRef}
+            className="max-h-72 overflow-y-auto pt-1.5"
+          >
             {!isPending && options.length === 0 ? (
               <CommandEmpty>No results found.</CommandEmpty>
             ) : (

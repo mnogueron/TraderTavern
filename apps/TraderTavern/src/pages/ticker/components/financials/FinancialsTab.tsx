@@ -12,18 +12,21 @@ type FinancialsTabProps = {
 };
 
 const FinancialsTab = ({ ticker, currency, marketCap }: FinancialsTabProps) => {
-  const { data: fundamental, isPending: isFundamentalPending } =
-    useClientQuery('get', '/finance/ticker/{id}/fundamental', {
+  const { data: fundamental, isPending: isFundamentalPending } = useClientQuery(
+    'get',
+    '/api/finance/ticker/{id}/fundamental',
+    {
       params: { path: { id: ticker } },
-    });
+    },
+  );
 
   const { data: financialHistory, isPending: isFinancialHistoryPending } =
-    useClientQuery('get', '/finance/ticker/{id}/financial-history', {
+    useClientQuery('get', '/api/finance/ticker/{id}/financial-history', {
       params: { path: { id: ticker } },
     });
 
   const { data: earningsHistory, isPending: isEarningsHistoryPending } =
-    useClientQuery('get', '/finance/ticker/{id}/earnings-history', {
+    useClientQuery('get', '/api/finance/ticker/{id}/earnings-history', {
       params: { path: { id: ticker } },
     });
 

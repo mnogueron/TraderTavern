@@ -4,7 +4,10 @@ import type {
   ScreenerFilterOption,
 } from '@/components/screener-filters/types';
 
-export type ScreenerFilterOptions = ApiResponse<'get', '/finance/screener/filters/options'>;
+export type ScreenerFilterOptions = ApiResponse<
+  'get',
+  '/api/finance/screener/filters/options'
+>;
 
 const toOptions = (values: string[]): ScreenerFilterOption[] =>
   values.map((value) => ({ value, label: value }));
@@ -566,4 +569,3 @@ export const buildScreenerFilterConfigs = (
     category: 'quality',
   },
 ];
-

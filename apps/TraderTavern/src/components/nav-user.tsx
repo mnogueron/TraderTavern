@@ -33,7 +33,7 @@ export function NavUser() {
   const { data: currentUser } = useCurrentUser();
   const { theme, toggleTheme } = useTheme();
 
-  const logoutMutation = useClientMutation('post', '/auth/logout', {
+  const logoutMutation = useClientMutation('post', '/api/auth/logout', {
     onSuccess: () => navigate('/login'),
   });
 
@@ -57,7 +57,9 @@ export function NavUser() {
               <AvatarFallback>{initials}</AvatarFallback>
             </Avatar>
             <div className="grid flex-1 text-left text-sm leading-tight">
-              <span className="truncate font-medium">{currentUser.username}</span>
+              <span className="truncate font-medium">
+                {currentUser.username}
+              </span>
               <span className="truncate text-xs">{currentUser.email}</span>
             </div>
             <RiArrowUpDownLine className="ml-auto size-4" />
@@ -75,8 +77,12 @@ export function NavUser() {
                     <AvatarFallback>{initials}</AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-medium">{currentUser.username}</span>
-                    <span className="truncate text-xs">{currentUser.email}</span>
+                    <span className="truncate font-medium">
+                      {currentUser.username}
+                    </span>
+                    <span className="truncate text-xs">
+                      {currentUser.email}
+                    </span>
                   </div>
                 </div>
               </DropdownMenuLabel>
