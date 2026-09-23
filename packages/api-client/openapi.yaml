@@ -1546,6 +1546,10 @@ components:
           nullable: true
         tickerCount:
           type: number
+        succeededCount:
+          type: number
+        failedCount:
+          type: number
         triggeredByUserId:
           type: string
           nullable: true
@@ -1567,6 +1571,8 @@ components:
         - syncDate
         - market
         - tickerCount
+        - succeededCount
+        - failedCount
         - triggeredByUserId
         - triggeredByUsername
         - startedAt
@@ -1585,11 +1591,22 @@ components:
         logoUrl:
           type: string
           nullable: true
+        status:
+          type: string
+          enum:
+            - success
+            - failed
+            - did_not_run
+        error:
+          type: string
+          nullable: true
       required:
         - isin
         - ticker
         - companyName
         - logoUrl
+        - status
+        - error
     SyncHistoryDetailDto:
       type: object
       properties:
@@ -1628,6 +1645,10 @@ components:
           nullable: true
         tickerCount:
           type: number
+        succeededCount:
+          type: number
+        failedCount:
+          type: number
         triggeredByUserId:
           type: string
           nullable: true
@@ -1645,8 +1666,8 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SyncHistoryTickerDto'
-        errors:
-          type: object
+        generalError:
+          type: string
           nullable: true
       required:
         - id
@@ -1657,12 +1678,14 @@ components:
         - market
         - marketLabel
         - tickerCount
+        - succeededCount
+        - failedCount
         - triggeredByUserId
         - triggeredByUsername
         - startedAt
         - finishedAt
         - tickers
-        - errors
+        - generalError
     PaginatedSyncHistoryDto:
       type: object
       properties:

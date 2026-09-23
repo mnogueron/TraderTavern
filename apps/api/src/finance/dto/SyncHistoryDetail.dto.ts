@@ -30,6 +30,12 @@ export class SyncHistoryDetailDto {
   @ApiProperty()
   tickerCount: number;
 
+  @ApiProperty()
+  succeededCount: number;
+
+  @ApiProperty()
+  failedCount: number;
+
   @ApiProperty({ nullable: true, type: String })
   triggeredByUserId: string | null;
 
@@ -45,14 +51,17 @@ export class SyncHistoryDetailDto {
   @ApiProperty({ type: SyncHistoryTickerDto, isArray: true })
   tickers: SyncHistoryTickerDto[];
 
-  @ApiProperty({ nullable: true, type: Object })
-  errors: Record<string, string> | null;
+  // The reason the whole run stopped early (e.g. a Yahoo rate-limit
+  // cooldown or request timeout), as opposed to a single ticker's own
+  // error, which lives on that ticker in `tickers` instead.
+  @ApiProperty({ nullable: true, type: String })
+  generalError: string | null;
 
   constructor(
     base: SyncHistoryListItemDto,
     marketLabel: string | null,
     tickers: SyncHistoryTickerDto[],
-    errors: Record<string, string> | null,
+    generalError: string | null,
   ) {
     this.id = base.id;
     this.type = base.type;
@@ -62,11 +71,13 @@ export class SyncHistoryDetailDto {
     this.market = base.market;
     this.marketLabel = marketLabel;
     this.tickerCount = base.tickerCount;
+    this.succeededCount = base.succeededCount;
+    this.failedCount = base.failedCount;
     this.triggeredByUserId = base.triggeredByUserId;
     this.triggeredByUsername = base.triggeredByUsername;
     this.startedAt = base.startedAt;
     this.finishedAt = base.finishedAt;
     this.tickers = tickers;
-    this.errors = errors;
+    this.generalError = generalError;
   }
 }

@@ -896,6 +896,8 @@ export interface components {
             syncDate: string;
             market: string | null;
             tickerCount: number;
+            succeededCount: number;
+            failedCount: number;
             triggeredByUserId: string | null;
             triggeredByUsername: string | null;
             /** Format: date-time */
@@ -908,6 +910,9 @@ export interface components {
             ticker: string | null;
             companyName: string | null;
             logoUrl: string | null;
+            /** @enum {string} */
+            status: "success" | "failed" | "did_not_run";
+            error: string | null;
         };
         SyncHistoryDetailDto: {
             id: string;
@@ -922,6 +927,8 @@ export interface components {
             market: string | null;
             marketLabel: string | null;
             tickerCount: number;
+            succeededCount: number;
+            failedCount: number;
             triggeredByUserId: string | null;
             triggeredByUsername: string | null;
             /** Format: date-time */
@@ -929,9 +936,7 @@ export interface components {
             /** Format: date-time */
             finishedAt: string | null;
             tickers: components["schemas"]["SyncHistoryTickerDto"][];
-            errors: {
-                [key: string]: string;
-            } | null;
+            generalError: string | null;
         };
         PaginatedSyncHistoryDto: {
             data: components["schemas"]["SyncHistoryListItemDto"][];

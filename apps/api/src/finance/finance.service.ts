@@ -74,6 +74,7 @@ import { SyncHistoryListItemDto } from './dto/SyncHistoryListItem.dto';
 import { SyncHistoryDetailDto } from './dto/SyncHistoryDetail.dto';
 import { SyncHistoryTickerDto } from './dto/SyncHistoryTicker.dto';
 import { PaginatedSyncHistoryDto } from './dto/PaginatedSyncHistory.dto';
+import { TickerSyncStatus } from './enums/ticker-sync-status.enum';
 import { PaginationDto } from '../shared/Pagination.dto';
 import {
   applyScreenerFilters,
@@ -540,21 +541,27 @@ export class FinanceService {
           .lean()
       : [];
     const staticByIsin = new Map(staticData.map((row) => [row.isin, row]));
+    const errorsByIsin = this.getTickerErrorsByIsin(doc);
 
     const tickers = doc.isins.map((isin) => {
       const info = staticByIsin.get(isin);
+      const ticker = doc.resolvedTickers[isin] ?? null;
       return new SyncHistoryTickerDto(
         isin,
-        doc.resolvedTickers[isin] ?? null,
+        ticker,
         info?.companyName ?? null,
         info?.logoUrl ?? null,
+        this.getTickerStatus(isin, ticker, errorsByIsin),
+        errorsByIsin.get(isin) ?? null,
       );
     });
-    const errors = doc.errors
-      ? (JSON.parse(doc.errors) as Record<string, string>)
-      : null;
 
-    return new SyncHistoryDetailDto(base, marketLabel, tickers, errors);
+    return new SyncHistoryDetailDto(
+      base,
+      marketLabel,
+      tickers,
+      doc.generalError ?? null,
+    );
   }
 
   private async getUsernamesByIds(
@@ -568,12 +575,59 @@ export class FinanceService {
     return new Map(users.map((user) => [user._id.toString(), user.username]));
   }
 
+  private getTickerErrorsByIsin(doc: SyncHistoryDocument): Map<string, string> {
+    if (!doc.tickerErrors) {
+      return new Map();
+    }
+    return new Map(
+      Object.entries(JSON.parse(doc.tickerErrors) as Record<string, string>),
+    );
+  }
+
+  // A ticker succeeded if it resolved to a Yahoo ticker and has no
+  // recorded error, failed if it has a recorded error (whether that
+  // happened during ISIN resolution or the sync itself), and otherwise
+  // never ran at all (the chunk was aborted, e.g. by a timeout, before
+  // reaching it).
+  private getTickerStatus(
+    isin: string,
+    ticker: string | null,
+    errorsByIsin: Map<string, string>,
+  ): TickerSyncStatus {
+    if (errorsByIsin.has(isin)) {
+      return TickerSyncStatus.Failed;
+    }
+    return ticker ? TickerSyncStatus.Success : TickerSyncStatus.DidNotRun;
+  }
+
+  private getTickerOutcomeCounts(
+    doc: SyncHistoryDocument,
+  ): { succeeded: number; failed: number } {
+    const errorsByIsin = this.getTickerErrorsByIsin(doc);
+    let succeeded = 0;
+    let failed = 0;
+    for (const isin of doc.isins) {
+      const status = this.getTickerStatus(
+        isin,
+        doc.resolvedTickers[isin] ?? null,
+        errorsByIsin,
+      );
+      if (status === TickerSyncStatus.Success) {
+        succeeded += 1;
+      } else {
+        failed += 1;
+      }
+    }
+    return { succeeded, failed };
+  }
+
   private toSyncHistoryListItemDto(
     doc: SyncHistoryDocument,
     usernameById: Map<string, string>,
   ): SyncHistoryListItemDto {
     const { createdAt, updatedAt } = doc as SyncHistoryDocument &
       WithTimestamps;
+    const { succeeded, failed } = this.getTickerOutcomeCounts(doc);
 
     return new SyncHistoryListItemDto(
       doc._id.toString(),
@@ -583,6 +637,8 @@ export class FinanceService {
       doc.syncDate,
       doc.market,
       doc.tickerCount,
+      succeeded,
+      failed,
       doc.triggeredByUserId ?? null,
       doc.triggeredByUserId
         ? (usernameById.get(doc.triggeredByUserId) ?? null)

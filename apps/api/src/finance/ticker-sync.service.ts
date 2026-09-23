@@ -231,6 +231,7 @@ export class TickerSyncService {
     errors: Record<string, string>,
     refs: TickerRef[],
     forcedStatus?: SyncStatus,
+    generalError?: string,
   ): Promise<void> {
     const resolvedTickers = Object.fromEntries(
       refs.map((ref) => [ref.isin, ref.ticker]),
@@ -241,6 +242,7 @@ export class TickerSyncService {
       errors,
       resolvedTickers,
       forcedStatus,
+      generalError,
     );
   }
 
@@ -345,6 +347,7 @@ export class TickerSyncService {
       const refs: TickerRef[] = [];
       const errors: Record<string, string> = {};
       let resolutionAbortStatus: SyncStatus | null = null;
+      let generalError: string | null = null;
       let resolved = 0;
       for (const isin of isinChunk) {
         try {
@@ -373,6 +376,7 @@ export class TickerSyncService {
               `Aborting ${kind} chunk sync during ISIN resolution after sustained Yahoo rate limiting on ${isin}: ${error.message}`,
             );
             resolutionAbortStatus = SyncStatus.Failed;
+            generalError = error.message;
             break;
           }
           if (error instanceof YahooTimeoutError) {
@@ -380,6 +384,7 @@ export class TickerSyncService {
               `Aborting ${kind} chunk sync during ISIN resolution after a request timeout on ${isin}: ${error.message}`,
             );
             resolutionAbortStatus = SyncStatus.Timeout;
+            generalError = error.message;
             break;
           }
 
@@ -405,6 +410,7 @@ export class TickerSyncService {
           errors,
           refs,
           resolutionAbortStatus,
+          generalError ?? undefined,
         );
         this.logger.log(
           `Finished ${kind} chunk sync for market ${market ?? 'unknown'} in ${Date.now() - chunkStartedAt}ms: ` +
@@ -432,6 +438,7 @@ export class TickerSyncService {
       // hung call. Either way, stopping immediately and letting the chunk
       // cool down until the next sync attempt is cheaper and safer.
       let abortStatus: SyncStatus | null = null;
+      let syncGeneralError: string | null = null;
       const successCount = await runWithConcurrency(
         refs,
         this.configService.getNumber(
@@ -450,7 +457,7 @@ export class TickerSyncService {
           }
         },
         (ref, error) => {
-          errors[ref.ticker] =
+          errors[ref.isin] =
             error instanceof Error ? error.message : String(error);
 
           if (error instanceof RateLimitCooldownError) {
@@ -458,6 +465,7 @@ export class TickerSyncService {
               `Aborting ${kind} chunk sync after sustained Yahoo rate limiting on ${ref.ticker}: ${error.message}`,
             );
             abortStatus = SyncStatus.Failed;
+            syncGeneralError = error.message;
             return;
           }
           if (error instanceof YahooTimeoutError) {
@@ -465,6 +473,7 @@ export class TickerSyncService {
               `Aborting ${kind} chunk sync after a request timeout on ${ref.ticker}: ${error.message}`,
             );
             abortStatus = SyncStatus.Timeout;
+            syncGeneralError = error.message;
             return;
           }
 
@@ -482,6 +491,7 @@ export class TickerSyncService {
         errors,
         refs,
         abortStatus ?? undefined,
+        syncGeneralError ?? undefined,
       );
 
       this.logger.log(
@@ -590,7 +600,7 @@ export class TickerSyncService {
       await this.syncHistoryRepository.finalize(
         lock._id,
         0,
-        { [ref.ticker]: message },
+        { [ref.isin]: message },
         { [ref.isin]: ref.ticker },
       );
       throw error;

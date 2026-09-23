@@ -25,6 +25,12 @@ export class SyncHistoryListItemDto {
   @ApiProperty()
   tickerCount: number;
 
+  @ApiProperty()
+  succeededCount: number;
+
+  @ApiProperty()
+  failedCount: number;
+
   @ApiProperty({ nullable: true, type: String })
   triggeredByUserId: string | null;
 
@@ -45,6 +51,8 @@ export class SyncHistoryListItemDto {
     syncDate: Date,
     market: string | null,
     tickerCount: number,
+    succeededCount: number,
+    failedCount: number,
     triggeredByUserId: string | null,
     triggeredByUsername: string | null,
     startedAt: Date,
@@ -57,6 +65,8 @@ export class SyncHistoryListItemDto {
     this.syncDate = syncDate;
     this.market = market;
     this.tickerCount = tickerCount;
+    this.succeededCount = succeededCount;
+    this.failedCount = failedCount;
     this.triggeredByUserId = triggeredByUserId;
     this.triggeredByUsername = triggeredByUsername;
     this.startedAt = startedAt;

@@ -45,6 +45,13 @@ const SyncHistoryDetailSheet = ({
       new Date(data.startedAt).getTime()
     : 0;
 
+  const succeededTickers = data?.tickers.filter(
+    (ticker) => ticker.status === 'success',
+  );
+  const failedTickers = data?.tickers.filter(
+    (ticker) => ticker.status !== 'success',
+  );
+
   return (
     <Sheet open={!!syncId} onOpenChange={onOpenChange}>
       <SheetContent className="data-[side=right]:sm:max-w-xl">
@@ -97,48 +104,100 @@ const SyncHistoryDetailSheet = ({
 
                 <dt className="text-muted-foreground">Tickers</dt>
                 <dd className="tabular-nums">{data.tickerCount}</dd>
+
+                {data.generalError && (
+                  <>
+                    <dt className="text-muted-foreground">General error</dt>
+                    <dd className="text-destructive">{data.generalError}</dd>
+                  </>
+                )}
               </dl>
 
-              <div className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium">Tickers</span>
-                <Table containerClassName="max-h-64 rounded-lg border border-input">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>ISIN</TableHead>
-                      <TableHead>Company</TableHead>
-                      <TableHead>Ticker</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {data.tickers.map((ticker) => (
-                      <TableRow key={ticker.isin}>
-                        <TableCell className="font-mono text-xs">
-                          {ticker.isin}
-                        </TableCell>
-                        <TableCell>
-                          <CompanyCell
-                            ticker={ticker.ticker}
-                            companyName={ticker.companyName}
-                            logoUrl={ticker.logoUrl}
-                          />
-                        </TableCell>
-                        <TableCell className="font-mono text-xs">
-                          {ticker.ticker ?? '—'}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {data.errors && (
+              {succeededTickers && succeededTickers.length > 0 && (
                 <div className="flex flex-col gap-1.5">
-                  <span className="text-sm font-medium text-destructive">
-                    Errors
+                  <span className="text-sm font-medium text-emerald-600">
+                    Succeeded
                   </span>
-                  <pre className="max-h-64 overflow-auto rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs">
-                    {JSON.stringify(data.errors, null, 2)}
-                  </pre>
+                  <Table containerClassName="max-h-64 rounded-lg border border-input">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>ISIN</TableHead>
+                        <TableHead>Company</TableHead>
+                        <TableHead>Ticker</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {succeededTickers.map((ticker) => (
+                        <TableRow key={ticker.isin}>
+                          <TableCell className="font-mono text-xs">
+                            {ticker.isin}
+                          </TableCell>
+                          <TableCell>
+                            <CompanyCell
+                              ticker={ticker.ticker}
+                              companyName={ticker.companyName}
+                              logoUrl={ticker.logoUrl}
+                            />
+                          </TableCell>
+                          <TableCell className="font-mono text-xs">
+                            {ticker.ticker ?? '—'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+
+              {failedTickers && failedTickers.length > 0 && (
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-sm font-medium text-red-600">
+                    Failed
+                  </span>
+                  <Table containerClassName="max-h-64 rounded-lg border border-input">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>ISIN</TableHead>
+                        <TableHead>Company</TableHead>
+                        <TableHead>Ticker</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Error</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {failedTickers.map((ticker) => (
+                        <TableRow key={ticker.isin}>
+                          <TableCell className="font-mono text-xs">
+                            {ticker.isin}
+                          </TableCell>
+                          <TableCell>
+                            <CompanyCell
+                              ticker={ticker.ticker}
+                              companyName={ticker.companyName}
+                              logoUrl={ticker.logoUrl}
+                            />
+                          </TableCell>
+                          <TableCell className="font-mono text-xs">
+                            {ticker.ticker ?? '—'}
+                          </TableCell>
+                          <TableCell
+                            className={
+                              ticker.status === 'did_not_run'
+                                ? 'text-muted-foreground'
+                                : 'text-red-600'
+                            }
+                          >
+                            {ticker.status === 'did_not_run'
+                              ? 'Did not run'
+                              : 'Failed'}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {ticker.error ?? '—'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
               )}
             </>

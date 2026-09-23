@@ -134,14 +134,15 @@ const DataSyncSettings = () => {
                 <TableHead>Started</TableHead>
                 <TableHead>Finished</TableHead>
                 <TableHead className="text-right">Elapsed</TableHead>
-                <TableHead className="text-right">Tickers</TableHead>
+                <TableHead className="text-right">Succeeded</TableHead>
+                <TableHead className="text-right">Failed</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {data.data.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={8}
+                    colSpan={9}
                     className="text-center text-sm text-muted-foreground"
                   >
                     No syncs recorded yet.
@@ -172,7 +173,12 @@ const DataSyncSettings = () => {
                       {formatDuration(getElapsedMs(item.startedAt, item.finishedAt))}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {item.tickerCount}
+                      {item.succeededCount}
+                    </TableCell>
+                    <TableCell
+                      className={`text-right tabular-nums ${item.failedCount > 0 ? 'text-red-600' : ''}`}
+                    >
+                      {item.failedCount}
                     </TableCell>
                   </TableRow>
                 ))
