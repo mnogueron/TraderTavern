@@ -1,3 +1,5 @@
+import { format, intervalToDuration } from 'date-fns';
+
 export const getCurrencySymbol = (currency: string | null) => {
   if (currency === null) {
     return '';
@@ -58,17 +60,14 @@ export const formatDate = (value: string | null) => {
   if (value === null) {
     return '—';
   }
-  return new Date(value).toLocaleDateString(undefined, { dateStyle: 'medium' });
+  return format(new Date(value), 'MMM d, yyyy');
 };
 
 export const formatMonthYear = (value: string | null) => {
   if (value === null) {
     return '—';
   }
-  return new Date(value).toLocaleDateString(undefined, {
-    month: 'short',
-    year: 'numeric',
-  });
+  return format(new Date(value), 'MMM yyyy');
 };
 
 export const changePercentClassName = (value: number | null) => {
@@ -80,30 +79,31 @@ export const changePercentClassName = (value: number | null) => {
 
 export const formatCandleTime = (value: string, isIntraday: boolean) => {
   const date = new Date(value);
-  return isIntraday
-    ? date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
-    : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return isIntraday ? format(date, 'hh:mm a') : format(date, 'MMM d');
 };
 
 export const formatCandleTooltipTime = (value: string) => {
-  const date = new Date(value);
-  const time = date.toLocaleTimeString(undefined, {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
-  const day = String(date.getDate()).padStart(2, '0');
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const year = date.getFullYear();
-  return `${time} ${day}.${month}.${year}`;
+  return format(new Date(value), 'HH:mm dd.MM.yyyy');
 };
 
 export const formatDateTime = (value: string | null) => {
   if (value === null) {
     return '—';
   }
-  return new Date(value).toLocaleString(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  });
+  return format(new Date(value), 'MMM d, yyyy, h:mm a');
+};
+
+export const formatDuration = (ms: number) => {
+  const duration = intervalToDuration({ start: 0, end: Math.max(0, ms) });
+  const hours = (duration.days ?? 0) * 24 + (duration.hours ?? 0);
+  const minutes = duration.minutes ?? 0;
+  const seconds = duration.seconds ?? 0;
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m ${seconds}s`;
+  }
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`;
+  }
+  return `${seconds}s`;
 };
