@@ -1,18 +1,9 @@
-import { type MouseEvent } from 'react';
+import { type Dispatch, type SetStateAction } from 'react';
 import { useSearchParams } from 'react-router';
 import UserList from '@/pages/users/components/UserList';
 import UserListSkeleton from '@/pages/users/components/UserListSkeleton';
 import { useClientQuery } from '@trader-tavern/api-client';
-import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination';
+import { AppPagination } from '@/components/AppPagination';
 import {
   Select,
   SelectContent,
@@ -20,7 +11,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { getPageNumbers } from '@/lib/pagination';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 
@@ -33,14 +23,10 @@ const UsersPage = () => {
     params: { query: { page, limit } },
   });
 
-  const handlePageChange = (event: MouseEvent, targetPage: number) => {
-    event.preventDefault();
-    const totalPages = data?.meta.totalPages ?? 1;
-    if (targetPage < 1 || targetPage > totalPages || targetPage === page) {
-      return;
-    }
+  const handlePageChange: Dispatch<SetStateAction<number>> = (value) => {
     setSearchParams((params) => {
-      params.set('page', String(targetPage));
+      const nextPage = typeof value === 'function' ? value(page) : value;
+      params.set('page', String(nextPage));
       return params;
     });
   };
@@ -59,71 +45,35 @@ const UsersPage = () => {
   const meta = data?.meta;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Users</h1>
-        <Select value={String(limit)} onValueChange={handleLimitChange}>
-          <SelectTrigger aria-label="Page size">
-            <SelectValue placeholder="Page size" />
-          </SelectTrigger>
-          <SelectContent>
-            {PAGE_SIZE_OPTIONS.map((size) => (
-              <SelectItem key={size} value={String(size)}>
-                {size} / page
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+    <div className="flex h-full min-h-0 flex-col gap-3">
+      <h1 className="shrink-0 text-2xl font-semibold">Users</h1>
+      <div className="min-h-[600px] flex-1 overflow-hidden rounded-md border">
+        {isPending || !data ? (
+          <UserListSkeleton rows={limit} />
+        ) : (
+          <UserList users={data.data} />
+        )}
       </div>
-
-      {isPending || !data || !meta ? (
-        <UserListSkeleton rows={limit} />
-      ) : (
-        <UserList users={data.data} />
-      )}
-
-      {isPending || !data || !meta ? (
-        <Skeleton className="mx-auto h-9 w-72" />
-      ) : (
-        <Pagination>
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                href="#"
-                aria-disabled={meta.page <= 1}
-                className={
-                  meta.page <= 1 ? 'pointer-events-none opacity-50' : undefined
-                }
-                onClick={(event) => handlePageChange(event, meta.page - 1)}
-              />
-            </PaginationItem>
-            {getPageNumbers(meta.page, meta.totalPages).map(
-              (pageNumber, index) =>
-                pageNumber === 'ellipsis' ? (
-                  <PaginationItem key={`ellipsis-${index}`}>
-                    <PaginationEllipsis />
-                  </PaginationItem>
-                ) : (
-                  <PaginationItem key={pageNumber}>
-                    <PaginationLink
-                      href="#"
-                      isActive={pageNumber === meta.page}
-                      onClick={(event) => handlePageChange(event, pageNumber)}
-                    >
-                      {pageNumber}
-                    </PaginationLink>
-                  </PaginationItem>
-                ),
-            )}
-            <PaginationItem>
-              <PaginationNext
-                href="#"
-                aria-disabled={meta.page >= meta.totalPages}
-                onClick={(event) => handlePageChange(event, meta.page + 1)}
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
+      {meta && (
+        <div className="flex shrink-0 items-center justify-between gap-2">
+          <Select value={String(limit)} onValueChange={handleLimitChange}>
+            <SelectTrigger aria-label="Page size" size="sm">
+              <SelectValue placeholder="Page size" />
+            </SelectTrigger>
+            <SelectContent>
+              {PAGE_SIZE_OPTIONS.map((size) => (
+                <SelectItem key={size} value={String(size)}>
+                  {size} / page
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <AppPagination
+            page={meta.page}
+            totalPages={meta.totalPages}
+            onPageChange={handlePageChange}
+          />
+        </div>
       )}
     </div>
   );

@@ -1,4 +1,4 @@
-import { useMemo, useState, type MouseEvent } from 'react';
+import { useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import { useSearchParams } from 'react-router';
 import { useClientQuery } from '@trader-tavern/api-client';
 import type { SortingState, VisibilityState } from '@tanstack/react-table';
@@ -17,15 +17,7 @@ import type {
   ScreenerFilterValues,
 } from '@/components/screener-filters/types';
 import { buildScreenerFilterConfigs } from '@/pages/screener/screenerFilters';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination';
+import { AppPagination } from '@/components/AppPagination';
 import {
   Select,
   SelectContent,
@@ -33,7 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { getPageNumbers } from '@/lib/pagination';
 
 const DEFAULT_LIMIT = 20;
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
@@ -152,15 +143,11 @@ const ScreenerPage = () => {
     );
   };
 
-  const handlePageChange = (event: MouseEvent, targetPage: number) => {
-    event.preventDefault();
-    const totalPages = data?.meta.totalPages ?? 1;
-    if (targetPage < 1 || targetPage > totalPages || targetPage === page) {
-      return;
-    }
+  const handlePageChange: Dispatch<SetStateAction<number>> = (value) => {
     setSearchParams(
       (params) => {
-        params.set('page', String(targetPage));
+        const nextPage = typeof value === 'function' ? value(page) : value;
+        params.set('page', String(nextPage));
         return params;
       },
       { replace: true },
@@ -229,56 +216,11 @@ const ScreenerPage = () => {
               ))}
             </SelectContent>
           </Select>
-          {meta.totalPages > 1 && (
-            <Pagination className="mx-0 w-auto justify-end">
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    aria-disabled={meta.page <= 1}
-                    className={
-                      meta.page <= 1
-                        ? 'pointer-events-none opacity-50'
-                        : undefined
-                    }
-                    onClick={(event) => handlePageChange(event, meta.page - 1)}
-                  />
-                </PaginationItem>
-                {getPageNumbers(meta.page, meta.totalPages).map(
-                  (pageNumber, index) =>
-                    pageNumber === 'ellipsis' ? (
-                      <PaginationItem key={`ellipsis-${index}`}>
-                        <PaginationEllipsis />
-                      </PaginationItem>
-                    ) : (
-                      <PaginationItem key={pageNumber}>
-                        <PaginationLink
-                          href="#"
-                          isActive={pageNumber === meta.page}
-                          onClick={(event) =>
-                            handlePageChange(event, pageNumber)
-                          }
-                        >
-                          {pageNumber}
-                        </PaginationLink>
-                      </PaginationItem>
-                    ),
-                )}
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    aria-disabled={meta.page >= meta.totalPages}
-                    className={
-                      meta.page >= meta.totalPages
-                        ? 'pointer-events-none opacity-50'
-                        : undefined
-                    }
-                    onClick={(event) => handlePageChange(event, meta.page + 1)}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          )}
+          <AppPagination
+            page={meta.page}
+            totalPages={meta.totalPages}
+            onPageChange={handlePageChange}
+          />
         </div>
       )}
     </div>
