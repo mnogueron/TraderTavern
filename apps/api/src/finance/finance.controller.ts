@@ -1,6 +1,9 @@
 import { Controller, Get, HttpCode, Param, Post, Query } from '@nestjs/common';
 import { ApiOkResponse } from '@nestjs/swagger';
 import { FinanceService } from './finance.service';
+import { SyncHistoryDetailDto } from './dto/SyncHistoryDetail.dto';
+import { PaginatedSyncHistoryDto } from './dto/PaginatedSyncHistory.dto';
+import { PaginationDto } from '../shared/Pagination.dto';
 import { TickerSyncService } from './ticker-sync.service';
 import { TickerDto } from './dto/Ticker.dto';
 import { FundamentalTickerDto } from './dto/FundamentalTicker.dto';
@@ -73,6 +76,22 @@ export class FinanceController {
     return this.financeService.getSyncStatus();
   }
 
+  @Get('sync/history')
+  @Auth(Role.Admin)
+  @ApiOkResponse({ type: PaginatedSyncHistoryDto })
+  getSyncHistoryList(
+    @Query() query: PaginationDto,
+  ): Promise<PaginatedSyncHistoryDto> {
+    return this.financeService.getSyncHistoryList(query);
+  }
+
+  @Get('sync/history/:id')
+  @Auth(Role.Admin)
+  @ApiOkResponse({ type: SyncHistoryDetailDto })
+  getSyncHistoryDetail(@Param('id') id: string): Promise<SyncHistoryDetailDto> {
+    return this.financeService.getSyncHistoryDetail(id);
+  }
+
   @Post('sync')
   @HttpCode(204)
   @Auth(Role.Admin)
@@ -126,8 +145,14 @@ export class FinanceController {
   @Post('ticker/:id/sync')
   @HttpCode(204)
   @Auth(Role.Admin)
-  syncSingleTicker(@Param('id') id: string): Promise<void> {
-    return this.tickerSyncService.syncSingleTicker(id.toUpperCase());
+  syncSingleTicker(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<void> {
+    return this.tickerSyncService.syncSingleTicker(id.toUpperCase(), {
+      type: SyncType.Manual,
+      userId: user.sub,
+    });
   }
 
   @Post('ticker/:id/sync/static')

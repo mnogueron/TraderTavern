@@ -7,4 +7,8 @@ export enum SyncKind {
   Fundamental = 'fundamental',
   Compound = 'compound',
   Technical = 'technical',
+  // Ad-hoc admin-triggered sync of a single ticker, logged under its own
+  // kind so it doesn't contend for the chunked cron's per-kind "one running
+  // at a time" lock.
+  SingleTicker = 'single_ticker',
 }

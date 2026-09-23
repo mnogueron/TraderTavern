@@ -57,6 +57,8 @@ export class SyncHistoryRepository {
     syncDate: Date,
     chunkHash: string,
     tickerCount: number,
+    market: string | null,
+    isins: string[],
   ): Promise<SyncHistoryDocument | null> {
     try {
       return await this.syncHistoryModel.create({
@@ -67,6 +69,8 @@ export class SyncHistoryRepository {
         chunkHash,
         tickerCount,
         triggeredByUserId: trigger.userId,
+        market,
+        isins,
       });
     } catch (error) {
       if (isDuplicateKeyError(error)) {
@@ -99,6 +103,7 @@ export class SyncHistoryRepository {
     lockId: SyncHistoryDocument['_id'],
     successCount: number,
     errors: Record<string, string>,
+    resolvedTickers: Record<string, string>,
     forcedStatus?: SyncStatus,
   ): Promise<void> {
     const hasErrors = Object.keys(errors).length > 0;
@@ -112,7 +117,33 @@ export class SyncHistoryRepository {
 
     await this.syncHistoryModel.updateOne(
       { _id: lockId },
-      { $set: { status, errors: hasErrors ? JSON.stringify(errors) : undefined } },
+      {
+        $set: {
+          status,
+          errors: hasErrors ? JSON.stringify(errors) : undefined,
+          resolvedTickers,
+        },
+      },
     );
+  }
+
+  async list(
+    page: number,
+    limit: number,
+  ): Promise<{ items: SyncHistoryDocument[]; total: number }> {
+    const [items, total] = await Promise.all([
+      this.syncHistoryModel
+        .find()
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .exec(),
+      this.syncHistoryModel.countDocuments().exec(),
+    ]);
+    return { items, total };
+  }
+
+  async findById(id: string): Promise<SyncHistoryDocument | null> {
+    return this.syncHistoryModel.findById(id).exec();
   }
 }

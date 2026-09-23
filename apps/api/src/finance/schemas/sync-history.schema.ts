@@ -33,6 +33,23 @@ export class SyncHistory {
 
   @Prop()
   errors?: string;
+
+  // The single Yahoo exchange code every ISIN in this chunk belongs to
+  // (chunks are grouped by market, see buildMarketChunks), or null for the
+  // ungated group of ISINs whose market hasn't been resolved yet.
+  @Prop({ type: String, default: null })
+  market!: string | null;
+
+  // The full set of ISINs this chunk covers, regardless of whether each one
+  // was successfully resolved/synced, so the admin sync log can show what
+  // was attempted.
+  @Prop({ type: [String], default: [] })
+  isins!: string[];
+
+  // ISIN -> Yahoo ticker for every ISIN in `isins` that was successfully
+  // resolved, populated as the sync progresses/finishes.
+  @Prop({ type: Object, default: {} })
+  resolvedTickers!: Record<string, string>;
 }
 
 export const SyncHistorySchema = SchemaFactory.createForClass(SyncHistory);

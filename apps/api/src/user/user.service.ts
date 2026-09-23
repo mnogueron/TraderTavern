@@ -55,6 +55,10 @@ export class UserService {
     return this.userModel.findById(id).exec();
   }
 
+  async findByIds(ids: string[]): Promise<UserDocument[]> {
+    return this.userModel.find({ _id: { $in: ids } }).exec();
+  }
+
   async updateTickerSource(
     id: string,
     tickerSource: TickerSourceType,
