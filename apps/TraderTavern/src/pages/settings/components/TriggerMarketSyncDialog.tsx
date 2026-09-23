@@ -1,6 +1,11 @@
 import { useState } from 'react';
-import { RiArrowDownSLine, RiPlayLine } from '@remixicon/react';
 import { useClientQuery } from '@trader-tavern/api-client';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import {
   Command,
@@ -10,22 +15,20 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 
-type TriggerMarketSyncPopoverProps = {
+type TriggerMarketSyncDialogProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onSync: (markets: string[]) => void;
   isPending: boolean;
 };
 
-const TriggerMarketSyncPopover = ({
+const TriggerMarketSyncDialog = ({
+  open,
+  onOpenChange,
   onSync,
   isPending,
-}: TriggerMarketSyncPopoverProps) => {
-  const [open, setOpen] = useState(false);
+}: TriggerMarketSyncDialogProps) => {
   const [selected, setSelected] = useState<string[]>([]);
 
   const { data } = useClientQuery(
@@ -51,24 +54,26 @@ const TriggerMarketSyncPopover = ({
     }
     onSync(selected);
     setSelected([]);
-    setOpen(false);
+    onOpenChange(false);
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        render={
-          <Button type="button" size="sm" variant="outline">
-            <RiPlayLine />
-            Sync markets
-            <RiArrowDownSLine data-icon="inline-end" />
-          </Button>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          setSelected([]);
         }
-      />
-      <PopoverContent className="w-64 p-0" align="start">
+        onOpenChange(nextOpen);
+      }}
+    >
+      <DialogContent className="p-0">
+        <DialogHeader className="p-4 pb-0">
+          <DialogTitle>Sync by market</DialogTitle>
+        </DialogHeader>
         <Command>
-          <CommandInput placeholder="Search markets..." className="text-xs" />
-          <CommandList className="pt-1.5">
+          <CommandInput placeholder="Search markets..." />
+          <CommandList>
             <CommandEmpty>No markets found.</CommandEmpty>
             <CommandGroup>
               {markets.map((market) => (
@@ -77,7 +82,6 @@ const TriggerMarketSyncPopover = ({
                   value={market}
                   data-checked={selected.includes(market)}
                   onSelect={() => toggleMarket(market)}
-                  className="py-1 text-xs"
                 >
                   {market}
                 </CommandItem>
@@ -85,22 +89,22 @@ const TriggerMarketSyncPopover = ({
             </CommandGroup>
           </CommandList>
         </Command>
-        <div className="flex items-center justify-end gap-2 border-t p-2">
+        <div className="flex items-center justify-end gap-2 border-t p-3">
           <span className="mr-auto text-xs text-muted-foreground">
             {selected.length > 0 ? `${selected.length} selected` : 'None selected'}
           </span>
           <Button
             type="button"
-            size="xs"
+            size="sm"
             disabled={selected.length === 0 || isPending}
             onClick={handleSync}
           >
             Run sync
           </Button>
         </div>
-      </PopoverContent>
-    </Popover>
+      </DialogContent>
+    </Dialog>
   );
 };
 
-export default TriggerMarketSyncPopover;
+export default TriggerMarketSyncDialog;

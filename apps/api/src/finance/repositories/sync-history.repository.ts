@@ -131,15 +131,17 @@ export class SyncHistoryRepository {
   async list(
     page: number,
     limit: number,
+    status?: SyncStatus,
   ): Promise<{ items: SyncHistoryDocument[]; total: number }> {
+    const filter = status ? { status } : {};
     const [items, total] = await Promise.all([
       this.syncHistoryModel
-        .find()
+        .find(filter)
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
         .exec(),
-      this.syncHistoryModel.countDocuments().exec(),
+      this.syncHistoryModel.countDocuments(filter).exec(),
     ]);
     return { items, total };
   }

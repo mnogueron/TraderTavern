@@ -3,7 +3,7 @@ import { ApiOkResponse } from '@nestjs/swagger';
 import { FinanceService } from './finance.service';
 import { SyncHistoryDetailDto } from './dto/SyncHistoryDetail.dto';
 import { PaginatedSyncHistoryDto } from './dto/PaginatedSyncHistory.dto';
-import { PaginationDto } from '../shared/Pagination.dto';
+import { GetSyncHistoryDto } from './dto/GetSyncHistory.dto';
 import { TickerSyncService } from './ticker-sync.service';
 import { TickerDto } from './dto/Ticker.dto';
 import { FundamentalTickerDto } from './dto/FundamentalTicker.dto';
@@ -82,7 +82,7 @@ export class FinanceController {
   @Auth(Role.Admin)
   @ApiOkResponse({ type: PaginatedSyncHistoryDto })
   getSyncHistoryList(
-    @Query() query: PaginationDto,
+    @Query() query: GetSyncHistoryDto,
   ): Promise<PaginatedSyncHistoryDto> {
     return this.financeService.getSyncHistoryList(query);
   }

@@ -18,7 +18,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import CompanyCell from '@/components/CompanyCell';
-import SyncStatusIndicator from '@/pages/settings/components/SyncStatusIndicator';
+import SyncStatusBadge from '@/pages/settings/components/SyncStatusBadge';
 import { SYNC_KIND_LABEL, formatSyncTrigger } from '@/pages/settings/components/syncLabels';
 import { formatDateTime, formatDuration } from '@/lib/format';
 
@@ -85,7 +85,7 @@ const SyncHistoryDetailSheet = ({
               <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                 <dt className="text-muted-foreground">Status</dt>
                 <dd>
-                  <SyncStatusIndicator status={data.status} />
+                  <SyncStatusBadge status={data.status} />
                 </dd>
 
                 <dt className="text-muted-foreground">Kind</dt>

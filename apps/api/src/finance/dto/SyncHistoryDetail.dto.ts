@@ -59,7 +59,6 @@ export class SyncHistoryDetailDto {
 
   constructor(
     base: SyncHistoryListItemDto,
-    marketLabel: string | null,
     tickers: SyncHistoryTickerDto[],
     generalError: string | null,
   ) {
@@ -69,7 +68,7 @@ export class SyncHistoryDetailDto {
     this.status = base.status;
     this.syncDate = base.syncDate;
     this.market = base.market;
-    this.marketLabel = marketLabel;
+    this.marketLabel = base.marketLabel;
     this.tickerCount = base.tickerCount;
     this.succeededCount = base.succeededCount;
     this.failedCount = base.failedCount;

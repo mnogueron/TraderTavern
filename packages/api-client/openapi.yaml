@@ -297,6 +297,17 @@ paths:
             minimum: 1
             default: 1
             type: number
+        - name: status
+          required: false
+          in: query
+          schema:
+            type: string
+            enum:
+              - running
+              - success
+              - partial_success
+              - failed
+              - timeout
       responses:
         '200':
           description: ''
@@ -1544,6 +1555,9 @@ components:
         market:
           type: string
           nullable: true
+        marketLabel:
+          type: string
+          nullable: true
         tickerCount:
           type: number
         succeededCount:
@@ -1570,6 +1584,7 @@ components:
         - status
         - syncDate
         - market
+        - marketLabel
         - tickerCount
         - succeededCount
         - failedCount

@@ -895,6 +895,7 @@ export interface components {
             /** Format: date-time */
             syncDate: string;
             market: string | null;
+            marketLabel: string | null;
             tickerCount: number;
             succeededCount: number;
             failedCount: number;
@@ -1458,6 +1459,8 @@ export interface operations {
             query?: {
                 limit?: number;
                 page?: number;
+                /** @enum {string} */
+                status?: "running" | "success" | "partial_success" | "failed" | "timeout";
             };
             header?: never;
             path?: never;

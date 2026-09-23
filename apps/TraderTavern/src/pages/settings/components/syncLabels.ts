@@ -11,6 +11,14 @@ export const SYNC_KIND_LABEL: Record<SyncHistoryItem['kind'], string> = {
   single_ticker: 'Single ticker',
 };
 
+export const SYNC_STATUS_LABEL: Record<SyncHistoryItem['status'], string> = {
+  running: 'Running',
+  success: 'Success',
+  partial_success: 'Partial success',
+  failed: 'Failed',
+  timeout: 'Timeout',
+};
+
 export const formatSyncTrigger = (
   type: SyncHistoryItem['type'],
   triggeredByUsername: string | null,
