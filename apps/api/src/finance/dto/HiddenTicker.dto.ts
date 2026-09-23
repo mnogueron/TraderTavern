@@ -10,6 +10,9 @@ export class HiddenTickerDto {
   @ApiProperty({ nullable: true, type: String })
   companyName: string | null;
 
+  @ApiProperty({ nullable: true, type: String })
+  logoUrl: string | null;
+
   @ApiProperty()
   errorCount: number;
 
@@ -26,6 +29,7 @@ export class HiddenTickerDto {
     isin: string,
     ticker: string,
     companyName: string | null,
+    logoUrl: string | null,
     errorCount: number,
     lastError: string | null,
     lastErrorAt: Date | null,
@@ -34,6 +38,7 @@ export class HiddenTickerDto {
     this.isin = isin;
     this.ticker = ticker;
     this.companyName = companyName;
+    this.logoUrl = logoUrl;
     this.errorCount = errorCount;
     this.lastError = lastError;
     this.lastErrorAt = lastErrorAt;

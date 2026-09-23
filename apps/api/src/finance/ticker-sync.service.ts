@@ -264,6 +264,7 @@ export class TickerSyncService {
     kind: SyncKind,
     processAllChunks: boolean,
     syncTicker: (ref: TickerRef) => Promise<void>,
+    markets?: string[],
   ): Promise<void> {
     await this.reclaimStaleLocks(kind);
 
@@ -287,7 +288,15 @@ export class TickerSyncService {
     }
 
     const syncDate = startOfToday();
-    const marketChunks = await this.buildMarketChunks(isinUniverse);
+    const allMarketChunks = await this.buildMarketChunks(isinUniverse);
+    const marketChunks = markets?.length
+      ? allMarketChunks.filter(
+          (chunk) => chunk.market && markets.includes(chunk.market),
+        )
+      : allMarketChunks;
+    if (marketChunks.length === 0) {
+      return;
+    }
 
     const closeGated = this.marketService.isMarketCloseGated(kind);
     const marketHoursByCode = closeGated
@@ -487,9 +496,13 @@ export class TickerSyncService {
     }
   }
 
-  async syncAll(trigger: SyncTrigger): Promise<void> {
-    await this.runChunkedSync(trigger, SyncKind.Ticker, true, (ref) =>
-      this.syncTicker(ref, startOfToday()),
+  async syncAll(trigger: SyncTrigger, markets?: string[]): Promise<void> {
+    await this.runChunkedSync(
+      trigger,
+      SyncKind.Ticker,
+      true,
+      (ref) => this.syncTicker(ref, startOfToday()),
+      markets,
     );
   }
 
@@ -517,23 +530,23 @@ export class TickerSyncService {
     );
   }
 
-  async syncSingleTickerStatic(ticker: string): Promise<void> {
-    const ref = await this.tickerSourceService.resolveRefForTicker(ticker);
+  async syncSingleTickerStatic(isin: string): Promise<void> {
+    const ref = await this.tickerSourceService.resolveRefForIsin(isin);
     await this.syncStatic(ref);
   }
 
-  async syncSingleTickerFundamental(ticker: string): Promise<void> {
-    const ref = await this.tickerSourceService.resolveRefForTicker(ticker);
+  async syncSingleTickerFundamental(isin: string): Promise<void> {
+    const ref = await this.tickerSourceService.resolveRefForIsin(isin);
     await this.syncFundamental(ref, startOfToday());
   }
 
-  async syncSingleTickerCompound(ticker: string): Promise<void> {
-    const ref = await this.tickerSourceService.resolveRefForTicker(ticker);
+  async syncSingleTickerCompound(isin: string): Promise<void> {
+    const ref = await this.tickerSourceService.resolveRefForIsin(isin);
     await this.syncCompound(ref, startOfToday());
   }
 
-  async syncSingleTickerTechnical(ticker: string): Promise<void> {
-    const ref = await this.tickerSourceService.resolveRefForTicker(ticker);
+  async syncSingleTickerTechnical(isin: string): Promise<void> {
+    const ref = await this.tickerSourceService.resolveRefForIsin(isin);
     await this.syncTechnical(ref);
   }
 
@@ -544,8 +557,8 @@ export class TickerSyncService {
   // resynced multiple times a day without tripping the idempotency index;
   // the { kind, status: 'running' } lock still ensures only one
   // single-ticker sync runs at a time.
-  async syncSingleTicker(ticker: string, trigger: SyncTrigger): Promise<void> {
-    const ref = await this.tickerSourceService.resolveRefForTicker(ticker);
+  async syncSingleTicker(isin: string, trigger: SyncTrigger): Promise<void> {
+    const ref = await this.tickerSourceService.resolveRefForIsin(isin);
     const marketByIsin = await this.marketService.getMarketByIsin();
     const market = marketByIsin.get(ref.isin) ?? null;
     const syncDate = startOfToday();

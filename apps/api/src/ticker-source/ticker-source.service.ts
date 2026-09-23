@@ -120,22 +120,13 @@ export class TickerSourceService {
     );
   }
 
-  // Reverse lookup for admin single-ticker sync endpoints, which are
-  // addressed by the Yahoo ticker symbol rather than the ISIN.
-  async findIsinByYahooTicker(ticker: string): Promise<string | null> {
-    const found = await this.tickerSourceModel
-      .findOne({ ticker, source: TickerSourceType.Yahoo })
-      .lean();
-    return found?.isin ?? null;
-  }
-
-  // Admin single-ticker sync endpoints are addressed by Yahoo ticker symbol
-  // rather than ISIN; resolve the ISIN once so the rest of the sync
-  // pipeline can key its writes by it like every other sync path.
-  async resolveRefForTicker(ticker: string): Promise<TickerRef> {
-    const isin = await this.findIsinByYahooTicker(ticker);
-    if (!isin) {
-      throw new NotFoundException(`Ticker ${ticker} not found`);
+  // Admin single-ticker sync endpoints are addressed by ISIN; resolve the
+  // Yahoo ticker symbol once so the rest of the sync pipeline can use it
+  // like every other sync path.
+  async resolveRefForIsin(isin: string): Promise<TickerRef> {
+    const ticker = await this.resolveYahooTicker(isin);
+    if (!ticker) {
+      throw new NotFoundException(`No Yahoo ticker found for ISIN ${isin}`);
     }
     return { isin, ticker };
   }

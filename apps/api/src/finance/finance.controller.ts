@@ -20,7 +20,9 @@ import { PaginatedTickerOptionDto } from './dto/PaginatedTickerOption.dto';
 import { ScreenerFilterOptionsDto } from './dto/ScreenerFilterOptions.dto';
 import { MarketHoursDto } from './dto/MarketHours.dto';
 import { SyncStatusDto } from './dto/SyncStatus.dto';
-import { HiddenTickerDto } from './dto/HiddenTicker.dto';
+import { GetHiddenTickersDto } from './dto/GetHiddenTickers.dto';
+import { PaginatedHiddenTickerDto } from './dto/PaginatedHiddenTicker.dto';
+import { TriggerSyncDto } from './dto/TriggerSync.dto';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { JwtPayload } from '../auth/types/jwt-payload.type';
@@ -95,11 +97,18 @@ export class FinanceController {
   @Post('sync')
   @HttpCode(204)
   @Auth(Role.Admin)
-  syncScreener(@CurrentUser() user: JwtPayload): Promise<void> {
-    return this.tickerSyncService.syncAll({
-      type: SyncType.Manual,
-      userId: user.sub,
-    });
+  syncScreener(
+    @CurrentUser() user: JwtPayload,
+    @Query() query: TriggerSyncDto,
+  ): Promise<void> {
+    const markets = query.markets
+      ?.split(',')
+      .map((market) => market.trim())
+      .filter(Boolean);
+    return this.tickerSyncService.syncAll(
+      { type: SyncType.Manual, userId: user.sub },
+      markets?.length ? markets : undefined,
+    );
   }
 
   @Post('sync/static')
@@ -142,45 +151,51 @@ export class FinanceController {
     });
   }
 
-  @Post('ticker/:id/sync')
+  @Post('ticker/:isin/sync')
   @HttpCode(204)
   @Auth(Role.Admin)
   syncSingleTicker(
-    @Param('id') id: string,
+    @Param('isin') isin: string,
     @CurrentUser() user: JwtPayload,
   ): Promise<void> {
-    return this.tickerSyncService.syncSingleTicker(id.toUpperCase(), {
+    return this.tickerSyncService.syncSingleTicker(isin.toUpperCase(), {
       type: SyncType.Manual,
       userId: user.sub,
     });
   }
 
-  @Post('ticker/:id/sync/static')
+  @Post('ticker/:isin/sync/static')
   @HttpCode(204)
   @Auth(Role.Admin)
-  syncSingleTickerStatic(@Param('id') id: string): Promise<void> {
-    return this.tickerSyncService.syncSingleTickerStatic(id.toUpperCase());
+  syncSingleTickerStatic(@Param('isin') isin: string): Promise<void> {
+    return this.tickerSyncService.syncSingleTickerStatic(isin.toUpperCase());
   }
 
-  @Post('ticker/:id/sync/fundamental')
+  @Post('ticker/:isin/sync/fundamental')
   @HttpCode(204)
   @Auth(Role.Admin)
-  syncSingleTickerFundamental(@Param('id') id: string): Promise<void> {
-    return this.tickerSyncService.syncSingleTickerFundamental(id.toUpperCase());
+  syncSingleTickerFundamental(@Param('isin') isin: string): Promise<void> {
+    return this.tickerSyncService.syncSingleTickerFundamental(
+      isin.toUpperCase(),
+    );
   }
 
-  @Post('ticker/:id/sync/compound')
+  @Post('ticker/:isin/sync/compound')
   @HttpCode(204)
   @Auth(Role.Admin)
-  syncSingleTickerCompound(@Param('id') id: string): Promise<void> {
-    return this.tickerSyncService.syncSingleTickerCompound(id.toUpperCase());
+  syncSingleTickerCompound(@Param('isin') isin: string): Promise<void> {
+    return this.tickerSyncService.syncSingleTickerCompound(
+      isin.toUpperCase(),
+    );
   }
 
-  @Post('ticker/:id/sync/technical')
+  @Post('ticker/:isin/sync/technical')
   @HttpCode(204)
   @Auth(Role.Admin)
-  syncSingleTickerTechnical(@Param('id') id: string): Promise<void> {
-    return this.tickerSyncService.syncSingleTickerTechnical(id.toUpperCase());
+  syncSingleTickerTechnical(@Param('isin') isin: string): Promise<void> {
+    return this.tickerSyncService.syncSingleTickerTechnical(
+      isin.toUpperCase(),
+    );
   }
 
   @Get('ticker/:id')
@@ -241,9 +256,11 @@ export class FinanceController {
 
   @Get('tickers/hidden')
   @Auth(Role.Admin)
-  @ApiOkResponse({ type: HiddenTickerDto, isArray: true })
-  getHiddenTickers(): Promise<HiddenTickerDto[]> {
-    return this.financeService.getHiddenTickers();
+  @ApiOkResponse({ type: PaginatedHiddenTickerDto })
+  getHiddenTickers(
+    @Query() query: GetHiddenTickersDto,
+  ): Promise<PaginatedHiddenTickerDto> {
+    return this.financeService.getHiddenTickers(query);
   }
 
   @Post('ticker/:id/unhide')
