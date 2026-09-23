@@ -4,7 +4,7 @@
  */
 
 export interface paths {
-    "/": {
+    "/api": {
         parameters: {
             query?: never;
             header?: never;
@@ -20,7 +20,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/user": {
+    "/api/user": {
         parameters: {
             query?: never;
             header?: never;
@@ -36,7 +36,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/user/me/settings": {
+    "/api/user/me/settings": {
         parameters: {
             query?: never;
             header?: never;
@@ -52,7 +52,7 @@ export interface paths {
         patch: operations["updateSettings"];
         trace?: never;
     };
-    "/auth/register": {
+    "/api/auth/register": {
         parameters: {
             query?: never;
             header?: never;
@@ -68,7 +68,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/auth/login": {
+    "/api/auth/login": {
         parameters: {
             query?: never;
             header?: never;
@@ -84,7 +84,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/auth/logout": {
+    "/api/auth/logout": {
         parameters: {
             query?: never;
             header?: never;
@@ -100,7 +100,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/auth/reset-password": {
+    "/api/auth/reset-password": {
         parameters: {
             query?: never;
             header?: never;
@@ -116,7 +116,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/auth/me": {
+    "/api/auth/me": {
         parameters: {
             query?: never;
             header?: never;
@@ -132,7 +132,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/finance/screener": {
+    "/api/finance/screener": {
         parameters: {
             query?: never;
             header?: never;
@@ -148,7 +148,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/finance/tickers": {
+    "/api/finance/tickers": {
         parameters: {
             query?: never;
             header?: never;
@@ -164,7 +164,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/finance/screener/filters/options": {
+    "/api/finance/screener/filters/options": {
         parameters: {
             query?: never;
             header?: never;
@@ -180,7 +180,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/finance/screener/filters/tickers": {
+    "/api/finance/screener/filters/tickers": {
         parameters: {
             query?: never;
             header?: never;
@@ -196,7 +196,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/finance/sync/status": {
+    "/api/finance/sync/status": {
         parameters: {
             query?: never;
             header?: never;
@@ -212,7 +212,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/finance/sync": {
+    "/api/finance/sync": {
         parameters: {
             query?: never;
             header?: never;
@@ -228,7 +228,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/finance/sync/static": {
+    "/api/finance/sync/static": {
         parameters: {
             query?: never;
             header?: never;
@@ -244,7 +244,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/finance/sync/fundamental": {
+    "/api/finance/sync/fundamental": {
         parameters: {
             query?: never;
             header?: never;
@@ -260,7 +260,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/finance/sync/compound": {
+    "/api/finance/sync/compound": {
         parameters: {
             query?: never;
             header?: never;
@@ -276,7 +276,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/finance/sync/technical": {
+    "/api/finance/sync/technical": {
         parameters: {
             query?: never;
             header?: never;
@@ -292,7 +292,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/finance/ticker/{id}/sync": {
+    "/api/finance/ticker/{id}/sync": {
         parameters: {
             query?: never;
             header?: never;
@@ -308,7 +308,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/finance/ticker/{id}/sync/static": {
+    "/api/finance/ticker/{id}/sync/static": {
         parameters: {
             query?: never;
             header?: never;
@@ -324,7 +324,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/finance/ticker/{id}/sync/fundamental": {
+    "/api/finance/ticker/{id}/sync/fundamental": {
         parameters: {
             query?: never;
             header?: never;
@@ -340,7 +340,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/finance/ticker/{id}/sync/compound": {
+    "/api/finance/ticker/{id}/sync/compound": {
         parameters: {
             query?: never;
             header?: never;
@@ -356,7 +356,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/finance/ticker/{id}/sync/technical": {
+    "/api/finance/ticker/{id}/sync/technical": {
         parameters: {
             query?: never;
             header?: never;
@@ -372,7 +372,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/finance/ticker/{id}": {
+    "/api/finance/ticker/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -388,7 +388,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/finance/ticker/{id}/fundamental": {
+    "/api/finance/ticker/{id}/fundamental": {
         parameters: {
             query?: never;
             header?: never;
@@ -404,7 +404,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/finance/ticker/{id}/financial-history": {
+    "/api/finance/ticker/{id}/financial-history": {
         parameters: {
             query?: never;
             header?: never;
@@ -420,7 +420,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/finance/ticker/{id}/earnings-history": {
+    "/api/finance/ticker/{id}/earnings-history": {
         parameters: {
             query?: never;
             header?: never;
@@ -436,7 +436,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/finance/ticker/{id}/altman-history": {
+    "/api/finance/ticker/{id}/altman-history": {
         parameters: {
             query?: never;
             header?: never;
@@ -452,7 +452,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/finance/ticker/{id}/chart": {
+    "/api/finance/ticker/{id}/chart": {
         parameters: {
             query?: never;
             header?: never;
@@ -468,7 +468,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/finance/ticker/{id}/market-hours": {
+    "/api/finance/ticker/{id}/market-hours": {
         parameters: {
             query?: never;
             header?: never;
@@ -484,7 +484,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/finance/tickers/hidden": {
+    "/api/finance/tickers/hidden": {
         parameters: {
             query?: never;
             header?: never;
@@ -500,7 +500,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/finance/ticker/{id}/unhide": {
+    "/api/finance/ticker/{id}/unhide": {
         parameters: {
             query?: never;
             header?: never;
@@ -516,7 +516,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/ticker-source/{source}/sync/status": {
+    "/api/ticker-source/{source}/sync/status": {
         parameters: {
             query?: never;
             header?: never;
@@ -532,7 +532,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/ticker-source/yahoo/sync": {
+    "/api/ticker-source/yahoo/sync": {
         parameters: {
             query?: never;
             header?: never;
@@ -548,7 +548,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/ticker-source/xtb/sync/upload": {
+    "/api/ticker-source/xtb/sync/upload": {
         parameters: {
             query?: never;
             header?: never;
@@ -564,7 +564,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/watchlists": {
+    "/api/watchlists": {
         parameters: {
             query?: never;
             header?: never;
@@ -580,7 +580,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/watchlists/membership/{ticker}": {
+    "/api/watchlists/membership/{ticker}": {
         parameters: {
             query?: never;
             header?: never;
@@ -596,7 +596,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/watchlists/{id}": {
+    "/api/watchlists/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -612,7 +612,7 @@ export interface paths {
         patch: operations["update"];
         trace?: never;
     };
-    "/watchlists/{id}/tickers": {
+    "/api/watchlists/{id}/tickers": {
         parameters: {
             query?: never;
             header?: never;
@@ -628,7 +628,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/watchlists/{id}/tickers/{ticker}": {
+    "/api/watchlists/{id}/tickers/{ticker}": {
         parameters: {
             query?: never;
             header?: never;
