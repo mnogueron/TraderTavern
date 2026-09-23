@@ -17,15 +17,19 @@ const HiddenTickersSettings = () => {
 
   const { data: hiddenTickers, isPending } = useClientQuery(
     'get',
-    '/finance/tickers/hidden',
+    '/api/finance/tickers/hidden',
   );
 
-  const unhideMutation = useClientMutation('post', '/finance/ticker/{id}/unhide', {
-    onSuccess: () =>
-      queryClient.invalidateQueries({
-        queryKey: ['get', '/finance/tickers/hidden'],
-      }),
-  });
+  const unhideMutation = useClientMutation(
+    'post',
+    '/api/finance/ticker/{id}/unhide',
+    {
+      onSuccess: () =>
+        queryClient.invalidateQueries({
+          queryKey: ['get', '/api/finance/tickers/hidden'],
+        }),
+    },
+  );
 
   if (isPending) {
     return (

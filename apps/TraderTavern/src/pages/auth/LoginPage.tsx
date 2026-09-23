@@ -12,7 +12,7 @@ const LoginPage = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
-  const loginMutation = useClientMutation('post', '/auth/login', {
+  const loginMutation = useClientMutation('post', '/api/auth/login', {
     onSuccess: () => navigate('/users'),
   });
 
@@ -37,9 +37,7 @@ const LoginPage = () => {
       <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
         {loginMutation.isError ? (
           <Alert variant="destructive">
-            <AlertDescription>
-              Invalid username or password.
-            </AlertDescription>
+            <AlertDescription>Invalid username or password.</AlertDescription>
           </Alert>
         ) : null}
         <div className="flex flex-col gap-2">

@@ -18,11 +18,14 @@ const WatchlistsPage = () => {
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
 
-  const { data: watchlists, isPending } = useClientQuery('get', '/watchlists');
+  const { data: watchlists, isPending } = useClientQuery(
+    'get',
+    '/api/watchlists',
+  );
 
-  const createMutation = useClientMutation('post', '/watchlists', {
+  const createMutation = useClientMutation('post', '/api/watchlists', {
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['get', '/watchlists'] });
+      queryClient.invalidateQueries({ queryKey: ['get', '/api/watchlists'] });
       setCreateOpen(false);
     },
   });
@@ -47,7 +50,11 @@ const WatchlistsPage = () => {
         <div className="flex flex-1 flex-col items-center justify-center gap-2 text-muted-foreground">
           <RiBookmarkLine className="size-8" />
           <p className="text-sm">No watchlists yet.</p>
-          <Button type="button" variant="outline" onClick={() => setCreateOpen(true)}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setCreateOpen(true)}
+          >
             Create your first watchlist
           </Button>
         </div>

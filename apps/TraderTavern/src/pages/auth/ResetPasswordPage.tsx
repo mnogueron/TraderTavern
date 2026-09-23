@@ -14,18 +14,26 @@ const ResetPasswordPage = () => {
   const [newPassword, setNewPassword] = useState('');
   const [issuedToken, setIssuedToken] = useState<string | null>(null);
 
-  const requestResetMutation = useClientMutation('post', '/auth/reset-password', {
-    onSuccess: (data) => {
-      if (data?.token) {
-        setIssuedToken(data.token);
-        setToken(data.token);
-      }
+  const requestResetMutation = useClientMutation(
+    'post',
+    '/api/auth/reset-password',
+    {
+      onSuccess: (data) => {
+        if (data?.token) {
+          setIssuedToken(data.token);
+          setToken(data.token);
+        }
+      },
     },
-  });
+  );
 
-  const confirmResetMutation = useClientMutation('post', '/auth/reset-password', {
-    onSuccess: () => navigate('/login'),
-  });
+  const confirmResetMutation = useClientMutation(
+    'post',
+    '/api/auth/reset-password',
+    {
+      onSuccess: () => navigate('/login'),
+    },
+  );
 
   const handleRequestReset = (event: SubmitEvent) => {
     event.preventDefault();
@@ -61,8 +69,8 @@ const ResetPasswordPage = () => {
         {issuedToken ? (
           <Alert>
             <AlertDescription>
-              No email delivery is configured yet — here is your reset token
-              for development purposes:{' '}
+              No email delivery is configured yet — here is your reset token for
+              development purposes:{' '}
               <span className="font-mono break-all">{issuedToken}</span>
             </AlertDescription>
           </Alert>
@@ -85,12 +93,13 @@ const ResetPasswordPage = () => {
         </Button>
       </form>
 
-      <form className="flex flex-col gap-4 border-t pt-4" onSubmit={handleConfirmReset}>
+      <form
+        className="flex flex-col gap-4 border-t pt-4"
+        onSubmit={handleConfirmReset}
+      >
         {confirmResetMutation.isError ? (
           <Alert variant="destructive">
-            <AlertDescription>
-              Invalid or expired reset token.
-            </AlertDescription>
+            <AlertDescription>Invalid or expired reset token.</AlertDescription>
           </Alert>
         ) : null}
         <div className="flex flex-col gap-2">

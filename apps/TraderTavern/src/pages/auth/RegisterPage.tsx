@@ -13,7 +13,7 @@ const RegisterPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const registerMutation = useClientMutation('post', '/auth/register', {
+  const registerMutation = useClientMutation('post', '/api/auth/register', {
     onSuccess: () => navigate('/users'),
   });
 
@@ -39,8 +39,8 @@ const RegisterPage = () => {
         {registerMutation.isError ? (
           <Alert variant="destructive">
             <AlertDescription>
-              Could not create the account. The username or email may already
-              be in use.
+              Could not create the account. The username or email may already be
+              in use.
             </AlertDescription>
           </Alert>
         ) : null}

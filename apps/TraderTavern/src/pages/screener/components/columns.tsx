@@ -16,7 +16,10 @@ import {
 } from '@/lib/format';
 import CurrencyCell from '@/pages/screener/components/CurrencyCell';
 
-export type Ticker = ApiResponse<'get', '/finance/screener'>['data'][number];
+export type Ticker = ApiResponse<
+  'get',
+  '/api/finance/screener'
+>['data'][number];
 
 declare module '@tanstack/react-table' {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -157,7 +160,12 @@ const NUMERIC_FIELDS: NumericFieldConfig[] = [
   { id: 'floatShares', label: 'Float Shares', kind: 'marketCap' },
   { id: 'insidersPercent', label: 'Insiders %', kind: 'percent' },
   { id: 'institutionsPercent', label: 'Institutions %', kind: 'percent' },
-  { id: 'piotroskiScore', label: 'Piotroski F-Score', kind: 'number', decimals: 0 },
+  {
+    id: 'piotroskiScore',
+    label: 'Piotroski F-Score',
+    kind: 'number',
+    decimals: 0,
+  },
   { id: 'altmanZScore', label: 'Altman Z-Score', kind: 'number', decimals: 2 },
   { id: 'sma50', label: 'SMA (50)', kind: 'currency' },
   { id: 'sma200', label: 'SMA (200)', kind: 'currency' },
@@ -189,7 +197,9 @@ const numericColumn = (config: NumericFieldConfig): ColumnDef<Ticker> => ({
     switch (config.kind) {
       case 'marketCap':
         return (
-          <RightAligned>{formatMarketCap(value, row.original.currency)}</RightAligned>
+          <RightAligned>
+            {formatMarketCap(value, row.original.currency)}
+          </RightAligned>
         );
       case 'currency':
         return (
@@ -200,10 +210,18 @@ const numericColumn = (config: NumericFieldConfig): ColumnDef<Ticker> => ({
           />
         );
       case 'percent':
-        return <RightAligned>{formatPercent(value, config.decimals ?? 2)}</RightAligned>;
+        return (
+          <RightAligned>
+            {formatPercent(value, config.decimals ?? 2)}
+          </RightAligned>
+        );
       case 'number':
       default:
-        return <RightAligned>{formatNumber(value, config.decimals ?? 2)}</RightAligned>;
+        return (
+          <RightAligned>
+            {formatNumber(value, config.decimals ?? 2)}
+          </RightAligned>
+        );
     }
   },
 });

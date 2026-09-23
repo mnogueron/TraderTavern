@@ -34,33 +34,45 @@ const TickerSourceSettings = () => {
 
   const { data: syncStatus, isPending: isSyncStatusPending } = useClientQuery(
     'get',
-    '/ticker-source/{source}/sync/status',
+    '/api/ticker-source/{source}/sync/status',
     { params: { path: { source: selectedSource } } },
   );
 
-  const updateSettingsMutation = useClientMutation('patch', '/user/me/settings', {
-    onSuccess: (user) => {
-      queryClient.setQueryData(['get', '/auth/me'], user);
+  const updateSettingsMutation = useClientMutation(
+    'patch',
+    '/api/user/me/settings',
+    {
+      onSuccess: (user) => {
+        queryClient.setQueryData(['get', '/api/auth/me'], user);
+      },
     },
-  });
+  );
 
-  const syncYahooMutation = useClientMutation('post', '/ticker-source/yahoo/sync', {
-    onSuccess: () =>
-      queryClient.invalidateQueries({
-        queryKey: ['get', '/ticker-source/{source}/sync/status'],
-      }),
-  });
+  const syncYahooMutation = useClientMutation(
+    'post',
+    '/api/ticker-source/yahoo/sync',
+    {
+      onSuccess: () =>
+        queryClient.invalidateQueries({
+          queryKey: ['get', '/api/ticker-source/{source}/sync/status'],
+        }),
+    },
+  );
 
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const syncXtbMutation = useClientMutation('post', '/ticker-source/xtb/sync/upload', {
-    onSuccess: () => {
-      setUploadError(null);
-      queryClient.invalidateQueries({
-        queryKey: ['get', '/ticker-source/{source}/sync/status'],
-      });
+  const syncXtbMutation = useClientMutation(
+    'post',
+    '/api/ticker-source/xtb/sync/upload',
+    {
+      onSuccess: () => {
+        setUploadError(null);
+        queryClient.invalidateQueries({
+          queryKey: ['get', '/api/ticker-source/{source}/sync/status'],
+        });
+      },
+      onError: () => setUploadError('Failed to process the uploaded OMI file.'),
     },
-    onError: () => setUploadError('Failed to process the uploaded OMI file.'),
-  });
+  );
 
   const handleSourceChange = (value: TickerSource | null) => {
     if (!value) {

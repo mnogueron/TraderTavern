@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/table';
 
 type UserListProps = {
-  users: ApiResponse<'get', '/user'>['data'];
+  users: ApiResponse<'get', '/api/user'>['data'];
 };
 
 const UserList = ({ users }: UserListProps) => {

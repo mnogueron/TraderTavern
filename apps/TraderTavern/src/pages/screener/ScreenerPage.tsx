@@ -5,11 +5,17 @@ import type { SortingState, VisibilityState } from '@tanstack/react-table';
 import TickerTable from '@/pages/screener/components/TickerTable';
 import TickerTableSkeleton from '@/pages/screener/components/TickerTableSkeleton';
 import ColumnVisibilityPopover from '@/pages/screener/components/ColumnVisibilityPopover';
-import { DEFAULT_VISIBLE_COLUMNS, columns } from '@/pages/screener/components/columns';
+import {
+  DEFAULT_VISIBLE_COLUMNS,
+  columns,
+} from '@/pages/screener/components/columns';
 import ScreenerFilterBar, {
   getDefaultScreenerFilterValues,
 } from '@/components/screener-filters/ScreenerFilterBar';
-import type { ScreenerFilterValue, ScreenerFilterValues } from '@/components/screener-filters/types';
+import type {
+  ScreenerFilterValue,
+  ScreenerFilterValues,
+} from '@/components/screener-filters/types';
 import { buildScreenerFilterConfigs } from '@/pages/screener/screenerFilters';
 import {
   Pagination,
@@ -51,15 +57,25 @@ const ScreenerPage = () => {
 
   const { data: filterOptions } = useClientQuery(
     'get',
-    '/finance/screener/filters/options',
+    '/api/finance/screener/filters/options',
   );
 
   const configs = useMemo(
-    () => buildScreenerFilterConfigs(filterOptions ?? { sectors: [], industries: [], countries: [], markets: [], currencies: [], analystRatings: [] }),
+    () =>
+      buildScreenerFilterConfigs(
+        filterOptions ?? {
+          sectors: [],
+          industries: [],
+          countries: [],
+          markets: [],
+          currencies: [],
+          analystRatings: [],
+        },
+      ),
     [filterOptions],
   );
 
-  const { data, isPending } = useClientQuery('get', '/finance/screener', {
+  const { data, isPending } = useClientQuery('get', '/api/finance/screener', {
     params: {
       query: {
         page,
@@ -125,7 +141,10 @@ const ScreenerPage = () => {
   const handleFilterReset = () => {
     setSearchParams(
       (params) => {
-        params.set('filters', JSON.stringify(getDefaultScreenerFilterValues(configs)));
+        params.set(
+          'filters',
+          JSON.stringify(getDefaultScreenerFilterValues(configs)),
+        );
         params.set('page', '1');
         return params;
       },
@@ -225,22 +244,25 @@ const ScreenerPage = () => {
                     onClick={(event) => handlePageChange(event, meta.page - 1)}
                   />
                 </PaginationItem>
-                {getPageNumbers(meta.page, meta.totalPages).map((pageNumber, index) =>
-                  pageNumber === 'ellipsis' ? (
-                    <PaginationItem key={`ellipsis-${index}`}>
-                      <PaginationEllipsis />
-                    </PaginationItem>
-                  ) : (
-                    <PaginationItem key={pageNumber}>
-                      <PaginationLink
-                        href="#"
-                        isActive={pageNumber === meta.page}
-                        onClick={(event) => handlePageChange(event, pageNumber)}
-                      >
-                        {pageNumber}
-                      </PaginationLink>
-                    </PaginationItem>
-                  ),
+                {getPageNumbers(meta.page, meta.totalPages).map(
+                  (pageNumber, index) =>
+                    pageNumber === 'ellipsis' ? (
+                      <PaginationItem key={`ellipsis-${index}`}>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    ) : (
+                      <PaginationItem key={pageNumber}>
+                        <PaginationLink
+                          href="#"
+                          isActive={pageNumber === meta.page}
+                          onClick={(event) =>
+                            handlePageChange(event, pageNumber)
+                          }
+                        >
+                          {pageNumber}
+                        </PaginationLink>
+                      </PaginationItem>
+                    ),
                 )}
                 <PaginationItem>
                   <PaginationNext

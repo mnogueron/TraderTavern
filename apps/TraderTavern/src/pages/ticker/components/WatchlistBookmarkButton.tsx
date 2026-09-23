@@ -29,31 +29,40 @@ const WatchlistBookmarkButton = ({ ticker }: WatchlistBookmarkButtonProps) => {
   const [open, setOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
 
-  const { data: watchlists } = useClientQuery('get', '/watchlists', {}, { enabled: open });
+  const { data: watchlists } = useClientQuery(
+    'get',
+    '/api/watchlists',
+    {},
+    { enabled: open },
+  );
   const { data: membership } = useClientQuery(
     'get',
-    '/watchlists/membership/{ticker}',
+    '/api/watchlists/membership/{ticker}',
     { params: { path: { ticker } } },
     { enabled: open },
   );
 
   const membershipQueryKey = [
     'get',
-    '/watchlists/membership/{ticker}',
+    '/api/watchlists/membership/{ticker}',
     { params: { path: { ticker } } },
   ];
 
-  const setMembershipMutation = useClientMutation('put', '/watchlists/membership/{ticker}', {
-    onSuccess: (_data, variables) => {
-      queryClient.setQueryData(membershipQueryKey, {
-        watchlistIds: variables.body.watchlistIds,
-      });
+  const setMembershipMutation = useClientMutation(
+    'put',
+    '/api/watchlists/membership/{ticker}',
+    {
+      onSuccess: (_data, variables) => {
+        queryClient.setQueryData(membershipQueryKey, {
+          watchlistIds: variables.body.watchlistIds,
+        });
+      },
     },
-  });
+  );
 
-  const createMutation = useClientMutation('post', '/watchlists', {
+  const createMutation = useClientMutation('post', '/api/watchlists', {
     onSuccess: (watchlist) => {
-      queryClient.invalidateQueries({ queryKey: ['get', '/watchlists'] });
+      queryClient.invalidateQueries({ queryKey: ['get', '/api/watchlists'] });
       const nextIds = [...(membership?.watchlistIds ?? []), watchlist.id];
       setMembershipMutation.mutate({
         params: { path: { ticker } },
@@ -85,7 +94,11 @@ const WatchlistBookmarkButton = ({ ticker }: WatchlistBookmarkButtonProps) => {
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
           render={
-            <Button variant="outline" size="icon-sm" aria-label="Manage watchlists" />
+            <Button
+              variant="outline"
+              size="icon-sm"
+              aria-label="Manage watchlists"
+            />
           }
         >
           {isBookmarked ? <RiBookmarkFill /> : <RiBookmarkLine />}

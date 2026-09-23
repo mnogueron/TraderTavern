@@ -13,9 +13,9 @@ import { formatCandleTooltipTime, formatNumber } from '@/lib/format';
 
 type Candle = ApiResponse<
   'get',
-  '/finance/ticker/{id}/chart'
+  '/api/finance/ticker/{id}/chart'
 >['candles'][number];
-type MarketHours = ApiResponse<'get', '/finance/ticker/{id}/market-hours'>;
+type MarketHours = ApiResponse<'get', '/api/finance/ticker/{id}/market-hours'>;
 
 type CandlestickChartProps = {
   candles: Candle[];

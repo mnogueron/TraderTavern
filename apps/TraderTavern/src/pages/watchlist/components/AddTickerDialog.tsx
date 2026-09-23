@@ -35,7 +35,7 @@ const AddTickerDialog = ({
 
   const { data, isPending } = useClientQuery(
     'get',
-    '/finance/screener/filters/tickers',
+    '/api/finance/screener/filters/tickers',
     {
       params: {
         query: {
@@ -49,7 +49,9 @@ const AddTickerDialog = ({
   );
 
   const excluded = new Set(excludeTickers);
-  const options = (data?.data ?? []).filter((option) => !excluded.has(option.ticker));
+  const options = (data?.data ?? []).filter(
+    (option) => !excluded.has(option.ticker),
+  );
 
   const handleSelect = (ticker: string) => {
     onSelect(ticker);

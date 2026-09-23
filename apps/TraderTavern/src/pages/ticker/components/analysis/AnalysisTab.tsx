@@ -8,7 +8,7 @@ type AnalysisTabProps = {
 const AnalysisTab = ({ ticker }: AnalysisTabProps) => {
   const { data: altmanHistory, isPending } = useClientQuery(
     'get',
-    '/finance/ticker/{id}/altman-history',
+    '/api/finance/ticker/{id}/altman-history',
     { params: { path: { id: ticker } } },
   );
 

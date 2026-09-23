@@ -74,13 +74,13 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
 
   const { data: tickerData, isPending: isTickerPending } = useClientQuery(
     'get',
-    '/finance/ticker/{id}',
+    '/api/finance/ticker/{id}',
     { params: { path: { id: ticker } } },
   );
 
   const { data: fundamental, isPending: isFundamentalPending } = useClientQuery(
     'get',
-    '/finance/ticker/{id}/fundamental',
+    '/api/finance/ticker/{id}/fundamental',
     {
       params: { path: { id: ticker } },
     },
@@ -88,13 +88,13 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
 
   const { data: chart, isPending: isChartPending } = useClientQuery(
     'get',
-    '/finance/ticker/{id}/chart',
+    '/api/finance/ticker/{id}/chart',
     { params: { path: { id: ticker }, query: { window } } },
   );
 
   const { data: marketHours } = useClientQuery(
     'get',
-    '/finance/ticker/{id}/market-hours',
+    '/api/finance/ticker/{id}/market-hours',
     { params: { path: { id: ticker } } },
   );
 

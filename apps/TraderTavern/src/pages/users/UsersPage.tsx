@@ -29,7 +29,7 @@ const UsersPage = () => {
   const page = Number(searchParams.get('page') ?? 1);
   const limit = Number(searchParams.get('limit') ?? 10);
 
-  const { data, isPending } = useClientQuery('get', '/user', {
+  const { data, isPending } = useClientQuery('get', '/api/user', {
     params: { query: { page, limit } },
   });
 
