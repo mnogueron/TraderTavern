@@ -31,7 +31,8 @@ import type { components } from '@trader-tavern/api-client';
 
 type SyncStatus = components['schemas']['SyncHistoryListItemDto']['status'];
 
-const LIMIT = 10;
+const LIMIT = 20;
+const VISIBLE_ROWS = 10;
 const STATUS_OPTIONS: SyncStatus[] = [
   'running',
   'success',
@@ -127,12 +128,12 @@ const DataSyncSettings = () => {
       <div className="flex flex-col gap-4">
         {isPending || !data ? (
           <div className="flex flex-col gap-2">
-            {Array.from({ length: LIMIT }).map((_, index) => (
+            {Array.from({ length: VISIBLE_ROWS }).map((_, index) => (
               <Skeleton key={index} className="h-9 w-full" />
             ))}
           </div>
         ) : (
-          <Table containerClassName="rounded-lg border border-input">
+          <Table containerClassName="max-h-[410px] rounded-lg border border-input">
             <TableHeader>
               <TableRow>
                 <TableHead>Status</TableHead>
