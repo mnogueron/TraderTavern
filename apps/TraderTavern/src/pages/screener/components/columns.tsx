@@ -4,6 +4,7 @@ import { ArrowUpDown } from 'lucide-react';
 import { Link } from 'react-router';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import CompanyCell from '@/components/CompanyCell';
 import CountryFlag from '@/components/CountryFlag';
 import {
   changePercentClassName,
@@ -262,19 +263,11 @@ export const columns: ColumnDef<Ticker>[] = [
     header: 'Company',
     meta: { label: 'Company' },
     cell: ({ row }) => (
-      <div className="flex items-center gap-2">
-        {row.original.logoUrl ? (
-          <img
-            src={row.original.logoUrl}
-            alt=""
-            className="h-4 w-4 shrink-0 rounded-sm object-contain"
-            loading="lazy"
-          />
-        ) : (
-          <div className="h-4 w-4 shrink-0" />
-        )}
-        <span className="truncate">{row.original.companyName}</span>
-      </div>
+      <CompanyCell
+        ticker={row.original.ticker}
+        companyName={row.original.companyName}
+        logoUrl={row.original.logoUrl}
+      />
     ),
   },
   {

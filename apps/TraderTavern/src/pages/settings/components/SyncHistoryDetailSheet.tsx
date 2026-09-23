@@ -15,6 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import CompanyCell from '@/components/CompanyCell';
 import SyncStatusIndicator from '@/pages/settings/components/SyncStatusIndicator';
 import { SYNC_KIND_LABEL, formatSyncTrigger } from '@/pages/settings/components/syncLabels';
 import { formatDateTime, formatDuration } from '@/lib/format';
@@ -100,7 +101,7 @@ const SyncHistoryDetailSheet = ({
                   <TableHeader>
                     <TableRow>
                       <TableHead>ISIN</TableHead>
-                      <TableHead>Ticker</TableHead>
+                      <TableHead>Company</TableHead>
                       <TableHead>Market</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -110,7 +111,13 @@ const SyncHistoryDetailSheet = ({
                         <TableCell className="font-mono text-xs">
                           {ticker.isin}
                         </TableCell>
-                        <TableCell>{ticker.ticker ?? '—'}</TableCell>
+                        <TableCell>
+                          <CompanyCell
+                            ticker={ticker.ticker}
+                            companyName={ticker.companyName}
+                            logoUrl={ticker.logoUrl}
+                          />
+                        </TableCell>
                         <TableCell>{data.market ?? '—'}</TableCell>
                       </TableRow>
                     ))}
