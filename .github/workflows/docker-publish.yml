@@ -30,3 +30,9 @@ jobs:
           tags: ${{ secrets.REGISTRY_URL }}/tradertavern:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # buildx pushes a provenance attestation manifest by default,
+          # producing an OCI index with an "unknown/unknown" platform entry
+          # that Watchtower (and some Docker versions) fail to resolve
+          # against when checking for a new digest — disable it so the
+          # registry only ever holds a plain single-platform image.
+          provenance: false
