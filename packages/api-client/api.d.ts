@@ -548,6 +548,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/finance/tickers/health/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getSyncHealthSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/finance/tickers/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getSyncHealthList"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ticker-source/{source}/sync/status": {
         parameters: {
             query?: never;
@@ -1127,6 +1159,31 @@ export interface components {
         };
         PaginatedHiddenTickerDto: {
             data: components["schemas"]["HiddenTickerDto"][];
+            meta: components["schemas"]["PaginationMetaDto"];
+        };
+        SyncHealthSummaryDto: {
+            total: number;
+            healthyCount: number;
+            unhealthyCount: number;
+            healthyPercentage: number;
+        };
+        TickerSyncHealthDto: {
+            isin: string;
+            ticker: string;
+            companyName: string | null;
+            logoUrl: string | null;
+            market: string | null;
+            marketLabel: string | null;
+            /** Format: date-time */
+            lastFullSyncedAt: string | null;
+            minutesPastClose: number | null;
+            /** @enum {string} */
+            status: "healthy" | "unhealthy";
+            /** @enum {string|null} */
+            reason: "never_synced" | "stale_since_close" | null;
+        };
+        PaginatedTickerSyncHealthDto: {
+            data: components["schemas"]["TickerSyncHealthDto"][];
             meta: components["schemas"]["PaginationMetaDto"];
         };
         TickerSourceSyncStatusDto: {
@@ -1871,6 +1928,50 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    getSyncHealthSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncHealthSummaryDto"];
+                };
+            };
+        };
+    };
+    getSyncHealthList: {
+        parameters: {
+            query: {
+                status: "healthy" | "unhealthy";
+                page?: number;
+                limit?: number;
+                /** @description Fuzzy search on isin or ticker */
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedTickerSyncHealthDto"];
+                };
             };
         };
     };

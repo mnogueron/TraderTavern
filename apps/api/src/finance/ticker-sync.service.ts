@@ -20,7 +20,6 @@ import {
 import { AppConfigService } from '../shared/app-config.service';
 import { TickerSourceService } from '../ticker-source/ticker-source.service';
 import { UserService } from '../user/user.service';
-import { MarketHours } from './schemas/market-hours.schema';
 import { startOfToday, startOfTomorrow } from './helpers/date-time';
 import {
   DailyChartResult,
@@ -79,7 +78,7 @@ export class TickerSyncService {
       { type: SyncType.Auto },
       SyncKind.Ticker,
       false,
-      (ref) => this.syncTicker(ref, startOfToday()),
+      (ref, syncDate) => this.syncTicker(ref, syncDate),
     );
   }
 
@@ -99,8 +98,11 @@ export class TickerSyncService {
       return;
     }
 
-    await this.runChunkedSync(trigger, SyncKind.Ticker, false, (ref) =>
-      this.syncTicker(ref, startOfToday()),
+    await this.runChunkedSync(
+      trigger,
+      SyncKind.Ticker,
+      false,
+      (ref, syncDate) => this.syncTicker(ref, syncDate),
     );
   }
 
@@ -265,7 +267,7 @@ export class TickerSyncService {
     trigger: SyncTrigger,
     kind: SyncKind,
     processAllChunks: boolean,
-    syncTicker: (ref: TickerRef) => Promise<void>,
+    syncTicker: (ref: TickerRef, syncDate: Date) => Promise<void>,
     markets?: string[],
   ): Promise<void> {
     await this.reclaimStaleLocks(kind);
@@ -289,7 +291,6 @@ export class TickerSyncService {
       return;
     }
 
-    const syncDate = startOfToday();
     const allMarketChunks = await this.buildMarketChunks(isinUniverse);
     const marketChunks = markets?.length
       ? allMarketChunks.filter(
@@ -301,9 +302,7 @@ export class TickerSyncService {
     }
 
     const closeGated = this.marketService.isMarketCloseGated(kind);
-    const marketHoursByCode = closeGated
-      ? await this.marketService.getMarketHoursByCode()
-      : new Map<string, MarketHours>();
+    const marketHoursByCode = await this.marketService.getMarketHoursByCode();
 
     for (const { market, isins: isinChunk } of marketChunks) {
       if (
@@ -313,6 +312,13 @@ export class TickerSyncService {
         continue;
       }
 
+      // Tag this chunk (and the EOD data it produces) with the market's own
+      // closing instant rather than a shared calendar day, so different
+      // markets' sessions never get conflated under one arbitrary syncDate.
+      const syncDate = this.marketService.closingSyncDate(
+        market,
+        marketHoursByCode,
+      );
       const chunkHash = hashIsinChunk(isinChunk);
       const alreadyDone = await this.syncHistoryRepository.isChunkDone(
         syncDate,
@@ -446,8 +452,11 @@ export class TickerSyncService {
           DEFAULT_SYNC_CONCURRENCY,
         ),
         async (ref) => {
-          await syncTicker(ref);
-          await this.tickerHealthService.recordSuccess(ref);
+          await syncTicker(ref, syncDate);
+          await this.tickerHealthService.recordSuccess(
+            ref,
+            kind === SyncKind.Ticker,
+          );
           synced += 1;
           if (synced % 25 === 0 || synced === refs.length) {
             this.logger.log(
@@ -511,20 +520,26 @@ export class TickerSyncService {
       trigger,
       SyncKind.Ticker,
       true,
-      (ref) => this.syncTicker(ref, startOfToday()),
+      (ref, syncDate) => this.syncTicker(ref, syncDate),
       markets,
     );
   }
 
   async syncAllFundamental(trigger: SyncTrigger): Promise<void> {
-    await this.runChunkedSync(trigger, SyncKind.Fundamental, true, (ref) =>
-      this.syncFundamental(ref, startOfToday()),
+    await this.runChunkedSync(
+      trigger,
+      SyncKind.Fundamental,
+      true,
+      (ref, syncDate) => this.syncFundamental(ref, syncDate),
     );
   }
 
   async syncAllCompound(trigger: SyncTrigger): Promise<void> {
-    await this.runChunkedSync(trigger, SyncKind.Compound, true, (ref) =>
-      this.syncCompound(ref, startOfToday()),
+    await this.runChunkedSync(
+      trigger,
+      SyncKind.Compound,
+      true,
+      (ref, syncDate) => this.syncCompound(ref, syncDate),
     );
   }
 
@@ -547,17 +562,28 @@ export class TickerSyncService {
 
   async syncSingleTickerFundamental(isin: string): Promise<void> {
     const ref = await this.tickerSourceService.resolveRefForIsin(isin);
-    await this.syncFundamental(ref, startOfToday());
+    const syncDate = await this.resolveClosingSyncDate(ref.isin);
+    await this.syncFundamental(ref, syncDate);
   }
 
   async syncSingleTickerCompound(isin: string): Promise<void> {
     const ref = await this.tickerSourceService.resolveRefForIsin(isin);
-    await this.syncCompound(ref, startOfToday());
+    const syncDate = await this.resolveClosingSyncDate(ref.isin);
+    await this.syncCompound(ref, syncDate);
   }
 
   async syncSingleTickerTechnical(isin: string): Promise<void> {
     const ref = await this.tickerSourceService.resolveRefForIsin(isin);
     await this.syncTechnical(ref);
+  }
+
+  // The UTC instant a single-ticker sync should be tagged with: the isin's
+  // market's own closing time, same as a chunked sync would use.
+  private async resolveClosingSyncDate(isin: string): Promise<Date> {
+    const marketByIsin = await this.marketService.getMarketByIsin();
+    const market = marketByIsin.get(isin) ?? null;
+    const marketHoursByCode = await this.marketService.getMarketHoursByCode();
+    return this.marketService.closingSyncDate(market, marketHoursByCode);
   }
 
   // Wraps a single-ticker admin sync with the same sync_history logging as
@@ -571,7 +597,11 @@ export class TickerSyncService {
     const ref = await this.tickerSourceService.resolveRefForIsin(isin);
     const marketByIsin = await this.marketService.getMarketByIsin();
     const market = marketByIsin.get(ref.isin) ?? null;
-    const syncDate = startOfToday();
+    const marketHoursByCode = await this.marketService.getMarketHoursByCode();
+    const syncDate = this.marketService.closingSyncDate(
+      market,
+      marketHoursByCode,
+    );
 
     const lock = await this.syncHistoryRepository.claimLock(
       trigger,
@@ -590,7 +620,7 @@ export class TickerSyncService {
 
     try {
       await this.syncTicker(ref, syncDate);
-      await this.tickerHealthService.recordSuccess(ref);
+      await this.tickerHealthService.recordSuccess(ref, true);
       await this.syncHistoryRepository.finalize(lock._id, 1, {}, {
         [ref.isin]: ref.ticker,
       });

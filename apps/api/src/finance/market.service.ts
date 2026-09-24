@@ -3,7 +3,11 @@ import { SyncKind } from './enums/sync-kind.enum';
 import { MarketHours } from './schemas/market-hours.schema';
 import { MarketHoursRepository } from './repositories/market-hours.repository';
 import { TickerStaticDataRepository } from './repositories/ticker-static-data.repository';
-import { isPastRegularClose } from './helpers/date-time';
+import {
+  isPastRegularClose,
+  regularCloseAt,
+  startOfToday,
+} from './helpers/date-time';
 
 // Everything related to markets and market hours: looking up which market
 // each ISIN trades on, fetching market hours, and deciding whether a given
@@ -41,6 +45,22 @@ export class MarketService {
       return true;
     }
     return isPastRegularClose(hours);
+  }
+
+  // The UTC instant a sync for `market` should be tagged with: the market's
+  // most recent regular close, so EOD data is associated with the trading
+  // session it reflects rather than an arbitrary calendar day. Falls back
+  // to the start of today (UTC) when the market is unresolved or its hours
+  // aren't configured yet.
+  closingSyncDate(
+    market: string | null,
+    marketHoursByCode: Map<string, MarketHours>,
+  ): Date {
+    if (market == null) {
+      return startOfToday();
+    }
+    const hours = marketHoursByCode.get(market);
+    return hours ? regularCloseAt(hours) : startOfToday();
   }
 
   async getMarketHoursByCode(): Promise<Map<string, MarketHours>> {

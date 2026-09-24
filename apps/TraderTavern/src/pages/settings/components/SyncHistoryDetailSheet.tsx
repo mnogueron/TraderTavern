@@ -109,6 +109,9 @@ const SyncHistoryDetailSheet = ({
                     : '—'}
                 </dd>
 
+                <dt className="text-muted-foreground">Sync date</dt>
+                <dd className="tabular-nums">{formatDateTime(data.syncDate)}</dd>
+
                 <dt className="text-muted-foreground">Started</dt>
                 <dd className="tabular-nums">{formatDateTime(data.startedAt)}</dd>
 

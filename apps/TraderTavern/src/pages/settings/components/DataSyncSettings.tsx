@@ -121,6 +121,7 @@ const DataSyncSettings = () => {
                 <TableHead>Kind</TableHead>
                 <TableHead>Market</TableHead>
                 <TableHead>Triggered by</TableHead>
+                <TableHead>Sync date</TableHead>
                 <TableHead>Started</TableHead>
                 <TableHead>Finished</TableHead>
                 <TableHead className="text-right">Elapsed</TableHead>
@@ -150,6 +151,9 @@ const DataSyncSettings = () => {
                     <Skeleton className="h-4 w-28" />
                   </TableCell>
                   <TableCell>
+                    <Skeleton className="h-4 w-28" />
+                  </TableCell>
+                  <TableCell>
                     <Skeleton className="ml-auto h-4 w-14" />
                   </TableCell>
                   <TableCell>
@@ -170,6 +174,7 @@ const DataSyncSettings = () => {
                 <TableHead>Kind</TableHead>
                 <TableHead>Market</TableHead>
                 <TableHead>Triggered by</TableHead>
+                <TableHead>Sync date</TableHead>
                 <TableHead>Started</TableHead>
                 <TableHead>Finished</TableHead>
                 <TableHead className="text-right">Elapsed</TableHead>
@@ -181,7 +186,7 @@ const DataSyncSettings = () => {
               {data.data.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={9}
+                    colSpan={10}
                     className="text-center text-sm text-muted-foreground"
                   >
                     No syncs recorded yet.
@@ -205,6 +210,9 @@ const DataSyncSettings = () => {
                     </TableCell>
                     <TableCell>
                       {formatSyncTrigger(item.type, item.triggeredByUsername)}
+                    </TableCell>
+                    <TableCell className="tabular-nums">
+                      {formatDateTime(item.syncDate)}
                     </TableCell>
                     <TableCell className="tabular-nums">
                       {formatDateTime(item.startedAt)}
