@@ -59,7 +59,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <div className="flex items-center justify-between gap-2 px-2 py-1">
+        <div className="flex items-center justify-between gap-2 px-2 py-1 group-data-[collapsible=icon]:flex-col">
           <div className="flex items-center gap-2">
             <Logo large={isMobile} />
             <span
@@ -71,7 +71,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               TraderTavern
             </span>
           </div>
-          {isMobile && (
+          {isMobile ? (
             <Button
               variant="ghost"
               size="icon-sm"
@@ -80,6 +80,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             >
               <RiCloseLine className="size-5" />
             </Button>
+          ) : (
+            <NavCollapse />
           )}
         </div>
       </SidebarHeader>
@@ -87,7 +89,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavMain items={navMain} />
       </SidebarContent>
       <SidebarFooter>
-        {!isMobile && <NavCollapse />}
         <NavUser />
       </SidebarFooter>
       <SidebarRail />
