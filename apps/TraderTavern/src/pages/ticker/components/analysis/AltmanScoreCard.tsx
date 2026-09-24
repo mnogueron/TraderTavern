@@ -177,6 +177,11 @@ const AltmanScoreCard = ({ history, isPending }: AltmanScoreCardProps) => {
                     onCreated={setSeries}
                     options={{
                       baseValue: { type: 'price', price: average ?? 0 },
+                      priceFormat: {
+                        type: 'price',
+                        precision: 2,
+                        minMove: 0.01,
+                      },
                       topLineColor: RISING_COLOR,
                       topFillColor1: `${RISING_COLOR}33`,
                       topFillColor2: `${RISING_COLOR}00`,
