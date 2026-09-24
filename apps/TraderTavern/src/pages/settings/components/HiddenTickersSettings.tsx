@@ -1,8 +1,7 @@
-import { useState, type MouseEvent } from 'react';
+import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useClientMutation, useClientQuery } from '@trader-tavern/api-client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -13,21 +12,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination';
-import { getPageNumbers } from '@/lib/pagination';
+import { AppPagination } from '@/components/AppPagination';
+import { Section } from '@/components/Section';
 import { formatDateTime } from '@/lib/format';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import CompanyCell from '@/components/CompanyCell';
 
-const LIMIT = 10;
+const LIMIT = 20;
+const VISIBLE_ROWS = 10;
 const HIDDEN_TICKERS_QUERY_KEY = ['get', '/api/finance/tickers/hidden'];
 
 const HiddenTickersSettings = () => {
@@ -51,21 +43,12 @@ const HiddenTickersSettings = () => {
     },
   );
 
-  const handlePageChange = (event: MouseEvent, targetPage: number) => {
-    event.preventDefault();
-    const totalPages = data?.meta.totalPages ?? 1;
-    if (targetPage < 1 || targetPage > totalPages || targetPage === page) {
-      return;
-    }
-    setPage(targetPage);
-  };
-
   const meta = data?.meta;
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center gap-4 space-y-0">
-        <CardTitle>Hidden tickers</CardTitle>
+    <Section
+      title="Hidden tickers"
+      actionElement={
         <Input
           value={search}
           onChange={(event) => {
@@ -75,16 +58,17 @@ const HiddenTickersSettings = () => {
           placeholder="Search isin or ticker..."
           className="h-7 w-56"
         />
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
+      }
+    >
+      <div className="flex flex-col gap-4">
         {isPending || !data ? (
           <div className="flex flex-col gap-2">
-            {Array.from({ length: LIMIT }).map((_, index) => (
+            {Array.from({ length: VISIBLE_ROWS }).map((_, index) => (
               <Skeleton key={index} className="h-9 w-full" />
             ))}
           </div>
         ) : (
-          <Table containerClassName="rounded-lg border border-input">
+          <Table containerClassName="max-h-[410px] rounded-lg border border-input">
             <TableHeader>
               <TableRow>
                 <TableHead>Company</TableHead>
@@ -156,49 +140,15 @@ const HiddenTickersSettings = () => {
           </Table>
         )}
 
-        {meta && meta.totalPages > 1 && (
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  href="#"
-                  aria-disabled={meta.page <= 1}
-                  className={
-                    meta.page <= 1 ? 'pointer-events-none opacity-50' : undefined
-                  }
-                  onClick={(event) => handlePageChange(event, meta.page - 1)}
-                />
-              </PaginationItem>
-              {getPageNumbers(meta.page, meta.totalPages).map(
-                (pageNumber, index) =>
-                  pageNumber === 'ellipsis' ? (
-                    <PaginationItem key={`ellipsis-${index}`}>
-                      <PaginationEllipsis />
-                    </PaginationItem>
-                  ) : (
-                    <PaginationItem key={pageNumber}>
-                      <PaginationLink
-                        href="#"
-                        isActive={pageNumber === meta.page}
-                        onClick={(event) => handlePageChange(event, pageNumber)}
-                      >
-                        {pageNumber}
-                      </PaginationLink>
-                    </PaginationItem>
-                  ),
-              )}
-              <PaginationItem>
-                <PaginationNext
-                  href="#"
-                  aria-disabled={meta.page >= meta.totalPages}
-                  onClick={(event) => handlePageChange(event, meta.page + 1)}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
+        {meta && (
+          <AppPagination
+            page={meta.page}
+            totalPages={meta.totalPages}
+            onPageChange={setPage}
+          />
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </Section>
   );
 };
 

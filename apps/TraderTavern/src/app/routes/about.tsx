@@ -1,7 +1,5 @@
+export const handle = { title: 'About' };
+
 export default function AboutComponent() {
-  return (
-    <div>
-      <h1>About!!!</h1>
-    </div>
-  );
+  return <div />;
 }

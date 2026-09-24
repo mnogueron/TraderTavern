@@ -1,4 +1,4 @@
-import type { ApiResponse } from '@trader-tavern/api-client';
+import { flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import {
   Table,
   TableBody,
@@ -7,27 +7,45 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { columns, type User } from '@/pages/users/components/columns';
 
 type UserListProps = {
-  users: ApiResponse<'get', '/api/user'>['data'];
+  users: User[];
 };
 
 const UserList = ({ users }: UserListProps) => {
+  const table = useReactTable({
+    data: users,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+  });
+
   return (
-    <Table>
+    <Table containerClassName="h-full">
       <TableHeader>
-        <TableRow>
-          <TableHead className="w-[100px]">Username</TableHead>
-          <TableHead>Email</TableHead>
-          <TableHead>Role</TableHead>
-        </TableRow>
+        {table.getHeaderGroups().map((headerGroup) => (
+          <TableRow key={headerGroup.id}>
+            {headerGroup.headers.map((header) => (
+              <TableHead key={header.id}>
+                {header.isPlaceholder
+                  ? null
+                  : flexRender(
+                      header.column.columnDef.header,
+                      header.getContext(),
+                    )}
+              </TableHead>
+            ))}
+          </TableRow>
+        ))}
       </TableHeader>
       <TableBody>
-        {users.map((user) => (
-          <TableRow key={user.id}>
-            <TableCell className="font-medium">{user.username}</TableCell>
-            <TableCell>{user.email}</TableCell>
-            <TableCell>{user.role}</TableCell>
+        {table.getRowModel().rows.map((row) => (
+          <TableRow key={row.id}>
+            {row.getVisibleCells().map((cell) => (
+              <TableCell key={cell.id}>
+                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+              </TableCell>
+            ))}
           </TableRow>
         ))}
       </TableBody>

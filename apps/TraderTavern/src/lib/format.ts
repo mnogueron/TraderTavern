@@ -1,4 +1,4 @@
-import { format, intervalToDuration } from 'date-fns';
+import { format, getYear, intervalToDuration } from 'date-fns';
 
 export const getCurrencySymbol = (currency: string | null) => {
   if (currency === null) {
@@ -69,6 +69,11 @@ export const formatMonthYear = (value: string | null) => {
   }
   return format(new Date(value), 'MMM yyyy');
 };
+
+export const formatMonthYearShort = (value: string) =>
+  format(new Date(value), 'MMM yy');
+
+export const formatYear = (value: string) => getYear(new Date(value));
 
 export const changePercentClassName = (value: number | null) => {
   if (value === null || value === 0) {

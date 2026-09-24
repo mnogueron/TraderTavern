@@ -1,6 +1,14 @@
-import { useMemo, useState, type MouseEvent } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from 'react';
 import { useSearchParams } from 'react-router';
 import { useClientQuery } from '@trader-tavern/api-client';
+import { cn } from '@/lib/utils';
 import type { SortingState, VisibilityState } from '@tanstack/react-table';
 import TickerTable from '@/pages/screener/components/TickerTable';
 import TickerTableSkeleton from '@/pages/screener/components/TickerTableSkeleton';
@@ -17,15 +25,8 @@ import type {
   ScreenerFilterValues,
 } from '@/components/screener-filters/types';
 import { buildScreenerFilterConfigs } from '@/pages/screener/screenerFilters';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination';
+import { AppPagination } from '@/components/AppPagination';
+import { PaginationSkeleton } from '@/components/PaginationSkeleton';
 import {
   Select,
   SelectContent,
@@ -33,10 +34,41 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { getPageNumbers } from '@/lib/pagination';
 
-const DEFAULT_LIMIT = 20;
-const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+const DEFAULT_LIMIT = 50;
+const PAGE_SIZE_OPTIONS = [50, 100, 200, 500];
+const MIN_ROWS_FOR_FILL_HEIGHT = 20;
+const COLUMN_ORDER_STORAGE_KEY = 'screener:column-order';
+const COLUMN_VISIBILITY_STORAGE_KEY = 'screener:column-visibility';
+
+const getDefaultColumnVisibility = (ids: string[]): VisibilityState =>
+  Object.fromEntries(ids.map((id) => [id, DEFAULT_VISIBLE_COLUMNS.includes(id)]));
+
+const loadStoredColumnOrder = (ids: string[]): string[] => {
+  try {
+    const raw = localStorage.getItem(COLUMN_ORDER_STORAGE_KEY);
+    if (!raw) return ids;
+    const stored = JSON.parse(raw) as string[];
+    const known = stored.filter((id) => ids.includes(id));
+    const missing = ids.filter((id) => !known.includes(id));
+    return [...known, ...missing];
+  } catch {
+    return ids;
+  }
+};
+
+const loadStoredColumnVisibility = (ids: string[]): VisibilityState => {
+  try {
+    const raw = localStorage.getItem(COLUMN_VISIBILITY_STORAGE_KEY);
+    if (!raw) return getDefaultColumnVisibility(ids);
+    const stored = JSON.parse(raw) as VisibilityState;
+    return Object.fromEntries(
+      ids.map((id) => [id, stored[id] ?? DEFAULT_VISIBLE_COLUMNS.includes(id)]),
+    );
+  } catch {
+    return getDefaultColumnVisibility(ids);
+  }
+};
 
 const ScreenerPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -87,20 +119,42 @@ const ScreenerPage = () => {
     },
   });
 
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
+  const columnIds = useMemo(
     () =>
-      Object.fromEntries(
-        columns
-          .map((column) =>
-            'accessorKey' in column ? String(column.accessorKey) : column.id,
-          )
-          .filter((id): id is string => Boolean(id))
-          .map((id) => [id, DEFAULT_VISIBLE_COLUMNS.includes(id)]),
-      ),
+      columns
+        .map((column) =>
+          'accessorKey' in column ? String(column.accessorKey) : column.id,
+        )
+        .filter((id): id is string => Boolean(id)),
+    [],
   );
+
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
+    () => loadStoredColumnVisibility(columnIds),
+  );
+
+  const [columnOrder, setColumnOrder] = useState<string[]>(() =>
+    loadStoredColumnOrder(columnIds),
+  );
+
+  useEffect(() => {
+    localStorage.setItem(
+      COLUMN_VISIBILITY_STORAGE_KEY,
+      JSON.stringify(columnVisibility),
+    );
+  }, [columnVisibility]);
+
+  useEffect(() => {
+    localStorage.setItem(COLUMN_ORDER_STORAGE_KEY, JSON.stringify(columnOrder));
+  }, [columnOrder]);
 
   const handleColumnVisibilityChange = (id: string, visible: boolean) => {
     setColumnVisibility((prev) => ({ ...prev, [id]: visible }));
+  };
+
+  const handleColumnsReset = () => {
+    setColumnVisibility(getDefaultColumnVisibility(columnIds));
+    setColumnOrder(columnIds);
   };
 
   const sorting: SortingState = [{ id: sortBy, desc: sortOrder === 'desc' }];
@@ -152,15 +206,11 @@ const ScreenerPage = () => {
     );
   };
 
-  const handlePageChange = (event: MouseEvent, targetPage: number) => {
-    event.preventDefault();
-    const totalPages = data?.meta.totalPages ?? 1;
-    if (targetPage < 1 || targetPage > totalPages || targetPage === page) {
-      return;
-    }
+  const handlePageChange: Dispatch<SetStateAction<number>> = (value) => {
     setSearchParams(
       (params) => {
-        params.set('page', String(targetPage));
+        const nextPage = typeof value === 'function' ? value(page) : value;
+        params.set('page', String(nextPage));
         return params;
       },
       { replace: true },
@@ -182,10 +232,17 @@ const ScreenerPage = () => {
   };
 
   const meta = data?.meta;
+  const rowCount = data?.data.length ?? limit;
+  const fillHeight = rowCount >= MIN_ROWS_FOR_FILL_HEIGHT;
+
+  const lastMetaRef = useRef<typeof meta>(undefined);
+  if (meta) {
+    lastMetaRef.current = meta;
+  }
+  const knownMeta = meta ?? lastMetaRef.current;
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
-      <h1 className="shrink-0 text-2xl font-semibold">Screener</h1>
       {filterOptions && (
         <ScreenerFilterBar
           configs={configs}
@@ -201,86 +258,58 @@ const ScreenerPage = () => {
         <ColumnVisibilityPopover
           columnVisibility={columnVisibility}
           onColumnVisibilityChange={handleColumnVisibilityChange}
+          columnOrder={columnOrder}
+          onColumnOrderChange={setColumnOrder}
+          onReset={handleColumnsReset}
         />
       </div>
-      <div className="min-h-[600px] flex-1 overflow-hidden rounded-md border">
+      <div
+        className={cn(
+          'overflow-hidden rounded-xl ring-1 ring-foreground/10',
+          fillHeight ? 'min-h-[780px] flex-1' : 'shrink-0',
+        )}
+      >
         {isPending || !data ? (
-          <TickerTableSkeleton rows={limit} />
+          <TickerTableSkeleton
+            rows={limit}
+            fillHeight={fillHeight}
+            columnOrder={columnOrder}
+            columnVisibility={columnVisibility}
+          />
         ) : (
           <TickerTable
             tickers={data.data}
             sorting={sorting}
             onSortingChange={handleSortingChange}
             columnVisibility={columnVisibility}
+            columnOrder={columnOrder}
+            fillHeight={fillHeight}
           />
         )}
       </div>
-      {meta && (
-        <div className="flex shrink-0 items-center justify-between gap-2">
-          <Select value={String(limit)} onValueChange={handleLimitChange}>
-            <SelectTrigger aria-label="Page size" size="sm">
-              <SelectValue placeholder="Page size" />
-            </SelectTrigger>
-            <SelectContent>
-              {PAGE_SIZE_OPTIONS.map((size) => (
-                <SelectItem key={size} value={String(size)}>
-                  {size} / page
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {meta.totalPages > 1 && (
-            <Pagination className="mx-0 w-auto justify-end">
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    aria-disabled={meta.page <= 1}
-                    className={
-                      meta.page <= 1
-                        ? 'pointer-events-none opacity-50'
-                        : undefined
-                    }
-                    onClick={(event) => handlePageChange(event, meta.page - 1)}
-                  />
-                </PaginationItem>
-                {getPageNumbers(meta.page, meta.totalPages).map(
-                  (pageNumber, index) =>
-                    pageNumber === 'ellipsis' ? (
-                      <PaginationItem key={`ellipsis-${index}`}>
-                        <PaginationEllipsis />
-                      </PaginationItem>
-                    ) : (
-                      <PaginationItem key={pageNumber}>
-                        <PaginationLink
-                          href="#"
-                          isActive={pageNumber === meta.page}
-                          onClick={(event) =>
-                            handlePageChange(event, pageNumber)
-                          }
-                        >
-                          {pageNumber}
-                        </PaginationLink>
-                      </PaginationItem>
-                    ),
-                )}
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    aria-disabled={meta.page >= meta.totalPages}
-                    className={
-                      meta.page >= meta.totalPages
-                        ? 'pointer-events-none opacity-50'
-                        : undefined
-                    }
-                    onClick={(event) => handlePageChange(event, meta.page + 1)}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          )}
-        </div>
-      )}
+      <div className="flex shrink-0 items-center justify-between gap-2">
+        <Select value={String(limit)} onValueChange={handleLimitChange}>
+          <SelectTrigger aria-label="Page size" size="sm">
+            <SelectValue placeholder="Page size" />
+          </SelectTrigger>
+          <SelectContent>
+            {PAGE_SIZE_OPTIONS.map((size) => (
+              <SelectItem key={size} value={String(size)}>
+                {size} / page
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {knownMeta ? (
+          <AppPagination
+            page={page}
+            totalPages={knownMeta.totalPages}
+            onPageChange={handlePageChange}
+          />
+        ) : (
+          <PaginationSkeleton />
+        )}
+      </div>
     </div>
   );
 };

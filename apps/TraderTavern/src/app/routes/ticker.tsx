@@ -1,6 +1,8 @@
 import { useParams } from 'react-router';
 import TickerDetailPage from '@/pages/ticker/TickerDetailPage';
 
+export const handle = { title: 'Ticker' };
+
 export default function TickerRoute() {
   const { ticker } = useParams<{ ticker: string }>();
 

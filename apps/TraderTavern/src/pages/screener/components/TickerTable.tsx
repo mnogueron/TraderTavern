@@ -3,6 +3,7 @@ import {
   flexRender,
   getCoreRowModel,
   useReactTable,
+  type ColumnOrderState,
   type OnChangeFn,
   type SortingState,
   type VisibilityState,
@@ -23,6 +24,8 @@ type TickerTableProps = {
   sorting: SortingState;
   onSortingChange: OnChangeFn<SortingState>;
   columnVisibility: VisibilityState;
+  columnOrder: ColumnOrderState;
+  fillHeight: boolean;
 };
 
 const StickyEdgeGradient = () => (
@@ -34,13 +37,15 @@ const TickerTable = ({
   sorting,
   onSortingChange,
   columnVisibility,
+  columnOrder,
+  fillHeight,
 }: TickerTableProps) => {
   const [isScrolled, setIsScrolled] = useState(false);
 
   const table = useReactTable({
     data: tickers,
     columns,
-    state: { sorting, columnVisibility },
+    state: { sorting, columnVisibility, columnOrder },
     onSortingChange,
     manualSorting: true,
     getCoreRowModel: getCoreRowModel(),
@@ -52,7 +57,7 @@ const TickerTable = ({
 
   return (
     <Table
-      containerClassName="h-full"
+      containerClassName={fillHeight ? 'h-full' : undefined}
       className="text-xs"
       onScroll={handleScroll}
     >
@@ -82,7 +87,7 @@ const TickerTable = ({
           </TableRow>
         ))}
       </TableHeader>
-      <TableBody>
+      <TableBody className="bg-card">
         {table.getRowModel().rows.map((row) => (
           <TableRow key={row.id}>
             {row.getVisibleCells().map((cell) => (
@@ -90,7 +95,7 @@ const TickerTable = ({
                 key={cell.id}
                 className={cn(
                   cell.column.columnDef.meta?.sticky &&
-                    'sticky left-0 z-10 bg-background',
+                    'sticky left-0 z-10 bg-card',
                 )}
               >
                 {flexRender(cell.column.columnDef.cell, cell.getContext())}

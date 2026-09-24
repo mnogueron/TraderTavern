@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ButtonGroup } from '@/components/ui/button-group';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatMarketCap, formatNumber } from '@/lib/format';
+import { formatMarketCap, formatMonthYearShort, formatNumber } from '@/lib/format';
 import type { EarningsHistory } from '@/pages/ticker/components/financials/types';
 
 type EarningsHistoryCardProps = {
@@ -45,11 +45,7 @@ type EpsBarShapeProps = {
   payload?: { classification: EpsClassification };
 };
 
-const formatQuarter = (value: string) =>
-  new Date(value).toLocaleDateString(undefined, {
-    month: 'short',
-    year: '2-digit',
-  });
+const formatQuarter = (value: string) => formatMonthYearShort(value);
 
 const classifyEps = (
   actual: number | null,

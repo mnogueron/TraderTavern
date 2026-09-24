@@ -13,7 +13,8 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
 
   const loginMutation = useClientMutation('post', '/api/auth/login', {
-    onSuccess: () => navigate('/users'),
+    // TODO: redirect to the dashboard once it's ready to be the default landing page
+    onSuccess: () => navigate('/screener'),
   });
 
   const handleSubmit = (event: SubmitEvent) => {

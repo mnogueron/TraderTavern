@@ -35,7 +35,7 @@ declare global {
 export async function loader() {
   return {
     ENV: {
-      apiUrl: process.env.API_DOMAIN ? `https://${process.env.API_DOMAIN}` : '',
+      apiUrl: process.env.API_DOMAIN || '',
     },
   };
 }
@@ -55,7 +55,7 @@ const THEME_INIT_SCRIPT = `
 
 export const meta: MetaFunction = () => [
   {
-    title: 'New Nx React Router App',
+    title: 'TraderTavern',
   },
 ];
 

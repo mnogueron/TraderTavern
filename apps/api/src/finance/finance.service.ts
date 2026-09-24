@@ -234,7 +234,7 @@ export class FinanceService {
     const sorted = sortScreenerTickers(filtered, query.sortBy, query.sortOrder);
 
     const page = query.page ?? 1;
-    const limit = query.limit ?? 20;
+    const limit = query.limit ?? 50;
     const total = sorted.length;
     const start = (page - 1) * limit;
     const data = sorted.slice(start, start + limit);
