@@ -3,7 +3,6 @@ import { RiEyeLine, RiEyeOffLine } from '@remixicon/react';
 import { useClientQuery } from '@trader-tavern/api-client';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Section, SectionContent, SectionFooter } from '@/components/Section';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -109,9 +108,10 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
         />
       </div>
 
-      <Card className="mt-4 h-[420px] shrink-0">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Candles</CardTitle>
+      <Section
+        title="Candles"
+        className="mt-4 h-[420px] shrink-0"
+        actionElement={
           <div className="flex items-center gap-2">
             <Button
               type="button"
@@ -136,8 +136,9 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
               ))}
             </ButtonGroup>
           </div>
-        </CardHeader>
-        <CardContent className="min-h-0 flex-1">
+        }
+      >
+        <SectionContent className="min-h-0 flex-1">
           {isChartPending || !chart ? (
             <Skeleton className="h-full w-full" />
           ) : (
@@ -149,20 +150,17 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
               currency={tickerData?.currency}
             />
           )}
-        </CardContent>
-      </Card>
+        </SectionContent>
+      </Section>
 
-      <Card className="mt-4 shrink-0">
-        <CardHeader>
-          <CardTitle>Performance</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <Section title="Performance" className="mt-4 shrink-0">
+        <SectionContent>
           <PerformanceRow
             ticker={tickerData ?? null}
             isPending={isTickerPending}
           />
-        </CardContent>
-      </Card>
+        </SectionContent>
+      </Section>
 
       <Tabs defaultValue="overview" className="min-h-0 flex-1 gap-4 pt-4">
         <TabsList variant="line" className="shrink-0">
