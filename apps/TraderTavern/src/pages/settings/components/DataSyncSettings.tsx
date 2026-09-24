@@ -12,7 +12,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { AppPagination } from '@/components/AppPagination';
-import { Section } from '@/components/Section';
 import {
   Select,
   SelectContent,
@@ -20,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 import { formatDateTime, formatDuration } from '@/lib/format';
 import SyncStatusBadge from '@/pages/settings/components/SyncStatusBadge';
 import SyncKindBadge from '@/pages/settings/components/SyncKindBadge';
@@ -31,8 +31,8 @@ import type { components } from '@trader-tavern/api-client';
 
 type SyncStatus = components['schemas']['SyncHistoryListItemDto']['status'];
 
-const LIMIT = 20;
-const VISIBLE_ROWS = 10;
+const LIMIT = 50;
+const SKELETON_ROWS = LIMIT;
 const STATUS_OPTIONS: SyncStatus[] = [
   'running',
   'success',
@@ -85,55 +85,36 @@ const DataSyncSettings = () => {
     { onSuccess: invalidateHistory },
   );
 
-  const handleStatusChange = (value: string) => {
-    setStatus(value as SyncStatus | 'all');
+  const handleStatusChange = (value: string | null) => {
+    setStatus((value ?? 'all') as SyncStatus | 'all');
     setPage(1);
   };
 
   const meta = data?.meta;
 
   return (
-    <Section
-      title="Sync History"
-      actionElement={
-        <>
-          <Select value={status} onValueChange={handleStatusChange}>
-            <SelectTrigger aria-label="Filter by status" size="sm" className="w-40">
-              <SelectValue placeholder="All statuses" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              {STATUS_OPTIONS.map((option) => (
-                <SelectItem key={option} value={option}>
-                  {SYNC_STATUS_LABEL[option]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <TriggerSyncMenu
-            isPending={fullSyncMutation.isPending}
-            onFullSync={() => fullSyncMutation.mutate({})}
-            onTickerSync={(isin) =>
-              tickerSyncMutation.mutate({ params: { path: { isin } } })
-            }
-            onMarketSync={(markets) =>
-              fullSyncMutation.mutate({
-                params: { query: { markets: markets.join(',') } },
-              })
-            }
-          />
-        </>
-      }
-    >
-      <div className="flex flex-col gap-4">
+    <>
+      <div className="flex shrink-0 items-center justify-between gap-2">
+        <span className="text-sm text-muted-foreground">
+          {meta ? `${meta.total.toLocaleString()} syncs` : '—'}
+        </span>
+        <TriggerSyncMenu
+          isPending={fullSyncMutation.isPending}
+          onFullSync={() => fullSyncMutation.mutate({})}
+          onTickerSync={(isin) =>
+            tickerSyncMutation.mutate({ params: { path: { isin } } })
+          }
+          onMarketSync={(markets) =>
+            fullSyncMutation.mutate({
+              params: { query: { markets: markets.join(',') } },
+            })
+          }
+        />
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-hidden rounded-xl ring-1 ring-foreground/10">
         {isPending || !data ? (
-          <div className="flex flex-col gap-2">
-            {Array.from({ length: VISIBLE_ROWS }).map((_, index) => (
-              <Skeleton key={index} className="h-9 w-full" />
-            ))}
-          </div>
-        ) : (
-          <Table containerClassName="max-h-[410px] rounded-lg border border-input">
+          <Table containerClassName="h-full" className="text-xs">
             <TableHeader>
               <TableRow>
                 <TableHead>Status</TableHead>
@@ -147,7 +128,56 @@ const DataSyncSettings = () => {
                 <TableHead className="text-right">Failed</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody className="bg-card">
+              {Array.from({ length: SKELETON_ROWS }, (_, index) => (
+                <TableRow key={index}>
+                  <TableCell>
+                    <Skeleton className="h-4 w-20" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-16" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-20" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-24" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-28" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-28" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="ml-auto h-4 w-14" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="ml-auto h-4 w-10" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="ml-auto h-4 w-10" />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <Table containerClassName="h-full" className="text-xs">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Status</TableHead>
+                <TableHead>Kind</TableHead>
+                <TableHead>Market</TableHead>
+                <TableHead>Triggered by</TableHead>
+                <TableHead>Started</TableHead>
+                <TableHead>Finished</TableHead>
+                <TableHead className="text-right">Elapsed</TableHead>
+                <TableHead className="text-right">Succeeded</TableHead>
+                <TableHead className="text-right">Failed</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="bg-card">
               {data.data.length === 0 ? (
                 <TableRow>
                   <TableCell
@@ -193,7 +223,12 @@ const DataSyncSettings = () => {
                       )}
                     </TableCell>
                     <TableCell
-                      className={`text-right tabular-nums ${item.failedCount > 0 ? 'text-red-600' : ''}`}
+                      className={cn(
+                        'text-right tabular-nums',
+                        item.status !== 'running' &&
+                          item.failedCount > 0 &&
+                          'text-red-600',
+                      )}
                     >
                       {item.status === 'running' ? (
                         <Spinner className="ml-auto" />
@@ -207,7 +242,22 @@ const DataSyncSettings = () => {
             </TableBody>
           </Table>
         )}
+      </div>
 
+      <div className="flex shrink-0 items-center justify-between gap-2">
+        <Select value={status} onValueChange={handleStatusChange}>
+          <SelectTrigger aria-label="Filter by status" size="sm" className="w-40">
+            <SelectValue placeholder="All statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            {STATUS_OPTIONS.map((option) => (
+              <SelectItem key={option} value={option}>
+                {SYNC_STATUS_LABEL[option]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         {meta && (
           <AppPagination
             page={meta.page}
@@ -215,13 +265,13 @@ const DataSyncSettings = () => {
             onPageChange={setPage}
           />
         )}
-
-        <SyncHistoryDetailSheet
-          syncId={selectedSyncId}
-          onOpenChange={(open) => !open && setSelectedSyncId(null)}
-        />
       </div>
-    </Section>
+
+      <SyncHistoryDetailSheet
+        syncId={selectedSyncId}
+        onOpenChange={(open) => !open && setSelectedSyncId(null)}
+      />
+    </>
   );
 };
 

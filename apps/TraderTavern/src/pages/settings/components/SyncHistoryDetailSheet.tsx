@@ -48,11 +48,18 @@ const SyncHistoryDetailSheet = ({
       new Date(data.startedAt).getTime()
     : 0;
 
+  const isRunning = data?.status === 'running';
+
   const succeededTickers = data?.tickers.filter(
     (ticker) => ticker.status === 'success',
   );
-  const failedTickers = data?.tickers.filter(
-    (ticker) => ticker.status !== 'success',
+  const pendingTickers = isRunning
+    ? data?.tickers.filter((ticker) => ticker.status === 'did_not_run')
+    : undefined;
+  const failedTickers = data?.tickers.filter((ticker) =>
+    isRunning
+      ? ticker.status === 'failed'
+      : ticker.status !== 'success',
   );
 
   return (
@@ -142,6 +149,46 @@ const SyncHistoryDetailSheet = ({
                               companyName={ticker.companyName}
                               logoUrl={ticker.logoUrl}
                             />
+                          </TableCell>
+                          <TableCell className="font-mono text-xs">
+                            {ticker.ticker ?? '—'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+
+              {pendingTickers && pendingTickers.length > 0 && (
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Pending
+                  </span>
+                  <Table containerClassName="max-h-64 rounded-lg border border-input">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>ISIN</TableHead>
+                        <TableHead>Company</TableHead>
+                        <TableHead>Ticker</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pendingTickers.map((ticker) => (
+                        <TableRow key={ticker.isin}>
+                          <TableCell className="font-mono text-xs">
+                            {ticker.isin}
+                          </TableCell>
+                          <TableCell>
+                            {ticker.companyName || ticker.ticker ? (
+                              <CompanyCell
+                                ticker={ticker.ticker}
+                                companyName={ticker.companyName}
+                                logoUrl={ticker.logoUrl}
+                              />
+                            ) : (
+                              <EmptyCell />
+                            )}
                           </TableCell>
                           <TableCell className="font-mono text-xs">
                             {ticker.ticker ?? '—'}

@@ -1,12 +1,7 @@
 import { useState } from 'react';
 import { RiPlayLine, RiGlobalLine, RiStockLine } from '@remixicon/react';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { ButtonGroup } from '@/components/ui/button-group';
 import TriggerTickerSyncDialog from '@/pages/settings/components/TriggerTickerSyncDialog';
 import TriggerMarketSyncDialog from '@/pages/settings/components/TriggerMarketSyncDialog';
 
@@ -28,29 +23,36 @@ const TriggerSyncMenu = ({
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          render={
-            <Button type="button" size="icon-sm" variant="outline" aria-label="Sync" />
-          }
+      <ButtonGroup>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={isPending}
+          onClick={onFullSync}
         >
           <RiPlayLine />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
-          <DropdownMenuItem disabled={isPending} onClick={onFullSync}>
-            <RiPlayLine />
-            Full sync
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setTickerDialogOpen(true)}>
-            <RiStockLine />
-            Sync by ticker
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setMarketDialogOpen(true)}>
-            <RiGlobalLine />
-            Sync by market
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+          Full sync
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setTickerDialogOpen(true)}
+        >
+          <RiStockLine />
+          By ticker
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setMarketDialogOpen(true)}
+        >
+          <RiGlobalLine />
+          By market
+        </Button>
+      </ButtonGroup>
 
       <TriggerTickerSyncDialog
         open={tickerDialogOpen}

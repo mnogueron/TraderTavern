@@ -70,16 +70,19 @@ const SortableHeader = ({
   </div>
 );
 
-const ChangeBadge = ({ value }: { value: number | null }) => (
-  <div className="flex justify-end">
-    <Badge
-      variant="outline"
-      className={`tabular-nums ${changePercentClassName(value)}`}
-    >
-      {formatChangePercent(value)}
-    </Badge>
-  </div>
-);
+const ChangeBadge = ({ value }: { value: number | null }) => {
+  const rounded = value === null ? null : Math.round(value * 100) / 100;
+  return (
+    <div className="flex justify-end">
+      <Badge
+        variant="outline"
+        className={`tabular-nums ${changePercentClassName(rounded)}`}
+      >
+        {formatChangePercent(rounded)}
+      </Badge>
+    </div>
+  );
+};
 
 const RightAligned = ({ children }: { children: React.ReactNode }) => (
   <div className="text-right tabular-nums">{children}</div>
