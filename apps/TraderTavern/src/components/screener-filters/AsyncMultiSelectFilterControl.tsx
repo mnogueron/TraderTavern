@@ -23,6 +23,7 @@ import {
   getCachedTickerLabel,
 } from '@/components/screener-filters/tickerLabelCache';
 import { RiArrowDownSLine } from '@remixicon/react';
+import { Spinner } from '@/components/ui/spinner';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 
 type AsyncMultiSelectFilterControlProps = {
@@ -135,7 +136,11 @@ const AsyncMultiSelectFilterControl = ({
             ref={scrollParentRef}
             className="max-h-72 overflow-y-auto pt-1.5"
           >
-            {!isPending && options.length === 0 ? (
+            {isPending ? (
+              <div className="flex items-center justify-center py-6">
+                <Spinner />
+              </div>
+            ) : options.length === 0 ? (
               <CommandEmpty>No results found.</CommandEmpty>
             ) : (
               <div
