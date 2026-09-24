@@ -3,6 +3,7 @@ import { RiCloseLine, RiArrowDownSLine } from '@remixicon/react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { CardSurface } from '@/components/CardSurface';
+import { SectionContent, SectionFooter } from '@/components/Section';
 import {
   Collapsible,
   CollapsibleContent,
@@ -238,9 +239,9 @@ const ScreenerFilterBar = ({
   };
 
   return (
-    <CardSurface className="flex flex-col gap-2 p-2">
+    <CardSurface className="flex flex-col">
       <Collapsible open={open} onOpenChange={setOpen}>
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 p-2">
           <div className="flex flex-wrap items-center gap-2">
             <Tabs value={tab} onValueChange={handleTabChange}>
               <TabsList variant="line" className="h-6">
@@ -291,7 +292,8 @@ const ScreenerFilterBar = ({
           </div>
         </div>
 
-        <CollapsibleContent className="flex flex-col gap-2 pt-2">
+        <CollapsibleContent>
+        <SectionContent className="flex flex-col gap-2 p-2">
         {visibleCategories.map((category) => {
           const categoryConfigs = configs.filter(
             (config) => config.category === category,
@@ -343,11 +345,12 @@ const ScreenerFilterBar = ({
             </div>
           );
         })}
+        </SectionContent>
         </CollapsibleContent>
       </Collapsible>
 
       {activeConfigs.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 border-t pt-2">
+        <SectionFooter className="flex flex-wrap items-center gap-1.5 p-2">
           {activeConfigs.map((config) => (
             <span
               key={config.key}
@@ -368,7 +371,7 @@ const ScreenerFilterBar = ({
           <Button variant="ghost" size="xs" onClick={onReset}>
             Clear all
           </Button>
-        </div>
+        </SectionFooter>
       )}
     </CardSurface>
   );

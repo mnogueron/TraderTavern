@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/table';
 import { AppPagination } from '@/components/AppPagination';
 import { TableFooter } from '@/components/TableFooter';
-import { Section } from '@/components/Section';
+import { Section, SectionContent } from '@/components/Section';
 import CompanyCell from '@/components/CompanyCell';
 import MarketBadge from '@/pages/settings/components/MarketBadge';
 import { formatDateTime } from '@/lib/format';
@@ -32,7 +32,7 @@ const ActiveTickersSettings = () => {
 
   return (
     <Section title="Active tickers">
-      <div className="flex flex-col gap-4">
+      <SectionContent className="flex flex-col gap-4">
         {isPending || !data ? (
           <div className="flex flex-col gap-2">
             {Array.from({ length: VISIBLE_ROWS }).map((_, index) => (
@@ -95,7 +95,7 @@ const ActiveTickersSettings = () => {
             )}
           </div>
         )}
-      </div>
+      </SectionContent>
     </Section>
   );
 };

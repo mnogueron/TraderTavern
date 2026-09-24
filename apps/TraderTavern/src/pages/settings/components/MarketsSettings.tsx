@@ -8,7 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Section } from '@/components/Section';
+import { Section, SectionContent } from '@/components/Section';
 import EmptyCell from '@/components/EmptyCell';
 import { formatDateTime } from '@/lib/format';
 
@@ -72,38 +72,40 @@ const MarketsSettings = () => {
 
   return (
     <Section title="Markets">
-      {isPending ? (
-        <div className="flex flex-col gap-2">
-          {Array.from({ length: 5 }).map((_, index) => (
-            <Skeleton key={index} className="h-9 w-full" />
-          ))}
-        </div>
-      ) : (
-        <Table containerClassName="rounded-lg border border-input">
-          <TableHeader>
-            <TableRow>
-              <TableHead>Market</TableHead>
-              <TableHead>Last complete sync</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {markets.length === 0 ? (
+      <SectionContent>
+        {isPending ? (
+          <div className="flex flex-col gap-2">
+            {Array.from({ length: 5 }).map((_, index) => (
+              <Skeleton key={index} className="h-9 w-full" />
+            ))}
+          </div>
+        ) : (
+          <Table containerClassName="rounded-lg border border-input">
+            <TableHeader>
               <TableRow>
-                <TableCell
-                  colSpan={2}
-                  className="text-center text-sm text-muted-foreground"
-                >
-                  No markets available.
-                </TableCell>
+                <TableHead>Market</TableHead>
+                <TableHead>Last complete sync</TableHead>
               </TableRow>
-            ) : (
-              markets.map((market) => (
-                <MarketSyncRow key={market} market={market} />
-              ))
-            )}
-          </TableBody>
-        </Table>
-      )}
+            </TableHeader>
+            <TableBody>
+              {markets.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={2}
+                    className="text-center text-sm text-muted-foreground"
+                  >
+                    No markets available.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                markets.map((market) => (
+                  <MarketSyncRow key={market} market={market} />
+                ))
+              )}
+            </TableBody>
+          </Table>
+        )}
+      </SectionContent>
     </Section>
   );
 };
