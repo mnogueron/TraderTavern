@@ -27,6 +27,7 @@ import type {
 import { buildScreenerFilterConfigs } from '@/pages/screener/screenerFilters';
 import { AppPagination } from '@/components/AppPagination';
 import { PaginationSkeleton } from '@/components/PaginationSkeleton';
+import { TableFooter } from '@/components/TableFooter';
 import {
   Select,
   SelectContent,
@@ -265,7 +266,7 @@ const ScreenerPage = () => {
       </div>
       <div
         className={cn(
-          'overflow-hidden rounded-xl ring-1 ring-foreground/10',
+          'flex flex-col overflow-hidden rounded-xl ring-1 ring-foreground/10',
           fillHeight ? 'min-h-[780px] flex-1' : 'shrink-0',
         )}
       >
@@ -286,29 +287,29 @@ const ScreenerPage = () => {
             fillHeight={fillHeight}
           />
         )}
-      </div>
-      <div className="flex shrink-0 items-center justify-between gap-2">
-        <Select value={String(limit)} onValueChange={handleLimitChange}>
-          <SelectTrigger aria-label="Page size" size="sm">
-            <SelectValue placeholder="Page size" />
-          </SelectTrigger>
-          <SelectContent>
-            {PAGE_SIZE_OPTIONS.map((size) => (
-              <SelectItem key={size} value={String(size)}>
-                {size} / page
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {knownMeta ? (
-          <AppPagination
-            page={page}
-            totalPages={knownMeta.totalPages}
-            onPageChange={handlePageChange}
-          />
-        ) : (
-          <PaginationSkeleton />
-        )}
+        <TableFooter>
+          <Select value={String(limit)} onValueChange={handleLimitChange}>
+            <SelectTrigger aria-label="Page size" size="sm">
+              <SelectValue placeholder="Page size" />
+            </SelectTrigger>
+            <SelectContent>
+              {PAGE_SIZE_OPTIONS.map((size) => (
+                <SelectItem key={size} value={String(size)}>
+                  {size} / page
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {knownMeta ? (
+            <AppPagination
+              page={page}
+              totalPages={knownMeta.totalPages}
+              onPageChange={handlePageChange}
+            />
+          ) : (
+            <PaginationSkeleton />
+          )}
+        </TableFooter>
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import UserList from '@/pages/users/components/UserList';
 import UserListSkeleton from '@/pages/users/components/UserListSkeleton';
 import { useClientQuery } from '@trader-tavern/api-client';
 import { AppPagination } from '@/components/AppPagination';
+import { TableFooter } from '@/components/TableFooter';
 import {
   Select,
   SelectContent,
@@ -46,34 +47,34 @@ const UsersPage = () => {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
-      <div className="min-h-[600px] flex-1 overflow-hidden rounded-md border">
+      <div className="flex min-h-[600px] flex-1 flex-col overflow-hidden rounded-md border">
         {isPending || !data ? (
           <UserListSkeleton rows={limit} />
         ) : (
           <UserList users={data.data} />
         )}
+        {meta && (
+          <TableFooter>
+            <Select value={String(limit)} onValueChange={handleLimitChange}>
+              <SelectTrigger aria-label="Page size" size="sm">
+                <SelectValue placeholder="Page size" />
+              </SelectTrigger>
+              <SelectContent>
+                {PAGE_SIZE_OPTIONS.map((size) => (
+                  <SelectItem key={size} value={String(size)}>
+                    {size} / page
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <AppPagination
+              page={meta.page}
+              totalPages={meta.totalPages}
+              onPageChange={handlePageChange}
+            />
+          </TableFooter>
+        )}
       </div>
-      {meta && (
-        <div className="flex shrink-0 items-center justify-between gap-2">
-          <Select value={String(limit)} onValueChange={handleLimitChange}>
-            <SelectTrigger aria-label="Page size" size="sm">
-              <SelectValue placeholder="Page size" />
-            </SelectTrigger>
-            <SelectContent>
-              {PAGE_SIZE_OPTIONS.map((size) => (
-                <SelectItem key={size} value={String(size)}>
-                  {size} / page
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <AppPagination
-            page={meta.page}
-            totalPages={meta.totalPages}
-            onPageChange={handlePageChange}
-          />
-        </div>
-      )}
     </div>
   );
 };
