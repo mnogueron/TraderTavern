@@ -13,6 +13,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
+import { Spinner } from '@/components/ui/spinner';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 
 type TriggerTickerSyncDialogProps = {
@@ -67,7 +68,11 @@ const TriggerTickerSyncDialog = ({
             placeholder="Search tickers..."
           />
           <CommandList>
-            {!isPending && options.length === 0 ? (
+            {isPending ? (
+              <div className="flex items-center justify-center py-6">
+                <Spinner />
+              </div>
+            ) : options.length === 0 ? (
               <CommandEmpty>No results found.</CommandEmpty>
             ) : (
               options.map((option) => (
