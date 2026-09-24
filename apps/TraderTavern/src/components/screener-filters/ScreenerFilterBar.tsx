@@ -243,22 +243,7 @@ const ScreenerFilterBar = ({
       <Collapsible open={open} onOpenChange={setOpen}>
         <div className="flex flex-wrap items-center justify-between gap-2 p-2">
           <div className="flex flex-wrap items-center gap-2">
-            <Tabs value={tab} onValueChange={handleTabChange}>
-              <TabsList variant="line" className="h-6">
-                <TabsTrigger value="descriptive" className="text-xs">
-                  Descriptive
-                </TabsTrigger>
-                <TabsTrigger value="fundamental" className="text-xs">
-                  Fundamental
-                </TabsTrigger>
-                <TabsTrigger value="technical" className="text-xs">
-                  Technical
-                </TabsTrigger>
-                <TabsTrigger value="all" className="text-xs">
-                  All
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <h2 className="text-sm font-semibold">Filters</h2>
             {activeConfigs.length > 0 && (
               <Tooltip>
                 <TooltipTrigger
@@ -274,11 +259,6 @@ const ScreenerFilterBar = ({
             )}
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            {activeConfigs.length > 0 && (
-              <Button variant="ghost" size="xs" onClick={onReset}>
-                Reset
-              </Button>
-            )}
             <ScreenerFilterSearch configs={configs} onSelect={handleFilterSearchSelect} />
             <CollapsibleTrigger
               render={
@@ -293,7 +273,23 @@ const ScreenerFilterBar = ({
         </div>
 
         <CollapsibleContent>
-        <SectionContent className="flex flex-col gap-2 p-2">
+        <SectionContent className="flex flex-col gap-3 p-4">
+        <Tabs value={tab} onValueChange={handleTabChange}>
+          <TabsList variant="line" className="h-6">
+            <TabsTrigger value="descriptive" className="text-xs">
+              Descriptive
+            </TabsTrigger>
+            <TabsTrigger value="fundamental" className="text-xs">
+              Fundamental
+            </TabsTrigger>
+            <TabsTrigger value="technical" className="text-xs">
+              Technical
+            </TabsTrigger>
+            <TabsTrigger value="all" className="text-xs">
+              All
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
         {visibleCategories.map((category) => {
           const categoryConfigs = configs.filter(
             (config) => config.category === category,
