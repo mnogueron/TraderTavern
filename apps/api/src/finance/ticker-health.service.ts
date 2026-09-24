@@ -35,11 +35,22 @@ export class TickerHealthService {
     private readonly tickerSyncHealthModel: Model<TickerSyncHealthDocument>,
   ) {}
 
-  async recordSuccess(ref: TickerRef): Promise<void> {
+  // `isFullSync` distinguishes a full ticker sync (static + compound +
+  // financial history + fundamental + earnings + technical, see
+  // TickerSyncService.syncTicker) from a partial sync of a single data kind
+  // (e.g. compound-only): only a full sync actually refreshes all the
+  // EOD-relevant data, so only it advances `lastFullSyncedAt`.
+  async recordSuccess(ref: TickerRef, isFullSync: boolean): Promise<void> {
     await this.tickerSyncHealthModel.updateOne(
       { isin: ref.isin },
       {
-        $set: { isin: ref.isin, ticker: ref.ticker, errorCount: 0, hidden: false },
+        $set: {
+          isin: ref.isin,
+          ticker: ref.ticker,
+          errorCount: 0,
+          hidden: false,
+          ...(isFullSync ? { lastFullSyncedAt: new Date() } : {}),
+        },
         $unset: { lastError: '', lastErrorAt: '', hiddenAt: '' },
       },
       { upsert: true },
@@ -83,6 +94,17 @@ export class TickerHealthService {
       hidden: true,
     });
     return new Set(isins);
+  }
+
+  // Used by the sync health monitor to tell whether each ticker's EOD data
+  // has been refreshed since its market closed (see
+  // FinanceService.computeTickerHealthEntries). Tickers with no health
+  // record yet (never synced at all) are simply absent from the map.
+  async getLastFullSyncedByIsin(): Promise<Map<string, Date | undefined>> {
+    const docs = await this.tickerSyncHealthModel
+      .find({}, 'isin lastFullSyncedAt')
+      .lean();
+    return new Map(docs.map((doc) => [doc.isin, doc.lastFullSyncedAt]));
   }
 
   async listHidden(): Promise<TickerSyncHealth[]> {

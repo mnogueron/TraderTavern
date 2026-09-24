@@ -91,3 +91,14 @@ export const SYNC_CHUNK_SIZE_ENV_VAR = 'SYNC_CHUNK_SIZE';
 // EVERY_10_MINUTES cron tick spreads a full day's sync out over several
 // hours instead of one long run that would trip Yahoo's rate limiting.
 export const DEFAULT_SYNC_CHUNK_SIZE = 200;
+
+// Env var holding how many minutes a ticker may go unsynced past its
+// market's regular close before the sync health monitor flags it as
+// unhealthy (see FinanceService.computeTickerHealthEntries).
+export const TICKER_STALE_THRESHOLD_MINUTES_ENV_VAR =
+  'TICKER_STALE_THRESHOLD_MINUTES';
+
+// Grace period after close to allow for the chunked sync's own cadence
+// (chunks run every 10 minutes, spread across markets) before treating a
+// ticker as genuinely overdue rather than just not-yet-reached.
+export const DEFAULT_TICKER_STALE_THRESHOLD_MINUTES = 60;

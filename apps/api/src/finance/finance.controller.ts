@@ -22,6 +22,9 @@ import { MarketHoursDto } from './dto/MarketHours.dto';
 import { SyncStatusDto } from './dto/SyncStatus.dto';
 import { GetHiddenTickersDto } from './dto/GetHiddenTickers.dto';
 import { PaginatedHiddenTickerDto } from './dto/PaginatedHiddenTicker.dto';
+import { GetSyncHealthDto } from './dto/GetSyncHealth.dto';
+import { PaginatedTickerSyncHealthDto } from './dto/PaginatedTickerSyncHealth.dto';
+import { SyncHealthSummaryDto } from './dto/SyncHealthSummary.dto';
 import { TriggerSyncDto } from './dto/TriggerSync.dto';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -268,5 +271,21 @@ export class FinanceController {
   @Auth(Role.Admin)
   unhideTicker(@Param('id') id: string): Promise<void> {
     return this.financeService.unhideTicker(id.toUpperCase());
+  }
+
+  @Get('tickers/health/summary')
+  @Auth(Role.Admin)
+  @ApiOkResponse({ type: SyncHealthSummaryDto })
+  getSyncHealthSummary(): Promise<SyncHealthSummaryDto> {
+    return this.financeService.getSyncHealthSummary();
+  }
+
+  @Get('tickers/health')
+  @Auth(Role.Admin)
+  @ApiOkResponse({ type: PaginatedTickerSyncHealthDto })
+  getSyncHealthList(
+    @Query() query: GetSyncHealthDto,
+  ): Promise<PaginatedTickerSyncHealthDto> {
+    return this.financeService.getSyncHealthList(query);
   }
 }

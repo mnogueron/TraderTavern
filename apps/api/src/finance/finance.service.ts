@@ -15,9 +15,22 @@ import { SyncType } from './enums/sync-type.enum';
 import { CandleWindow } from './enums/candle-window.enum';
 import { TickerSyncService } from './ticker-sync.service';
 import { TickerHealthService } from './ticker-health.service';
+import { MarketService } from './market.service';
+import { AppConfigService } from '../shared/app-config.service';
 import { HiddenTickerDto } from './dto/HiddenTicker.dto';
 import { GetHiddenTickersDto } from './dto/GetHiddenTickers.dto';
 import { PaginatedHiddenTickerDto } from './dto/PaginatedHiddenTicker.dto';
+import { GetSyncHealthDto } from './dto/GetSyncHealth.dto';
+import { TickerSyncHealthDto } from './dto/TickerSyncHealth.dto';
+import { PaginatedTickerSyncHealthDto } from './dto/PaginatedTickerSyncHealth.dto';
+import { SyncHealthSummaryDto } from './dto/SyncHealthSummary.dto';
+import { SyncHealthStatus } from './enums/sync-health-status.enum';
+import { SyncHealthReason } from './enums/sync-health-reason.enum';
+import {
+  TICKER_STALE_THRESHOLD_MINUTES_ENV_VAR,
+  DEFAULT_TICKER_STALE_THRESHOLD_MINUTES,
+} from './constants/candle-windows';
+import { calendarDateKey, minutesPastRegularClose } from './helpers/date-time';
 import {
   TickerStaticData,
   TickerStaticDataDocument,
@@ -85,11 +98,26 @@ import {
 type WithUpdatedAt = { updatedAt: Date };
 type WithTimestamps = { createdAt: Date; updatedAt: Date };
 
+type TickerHealthEntry = {
+  isin: string;
+  ticker: string;
+  companyName: string | null;
+  logoUrl: string | null;
+  market: string | null;
+  marketLabel: string | null;
+  lastFullSyncedAt: Date | null;
+  minutesPastClose: number | null;
+  status: SyncHealthStatus;
+  reason: SyncHealthReason | null;
+};
+
 @Injectable()
 export class FinanceService {
   constructor(
     private readonly tickerSyncService: TickerSyncService,
     private readonly tickerHealthService: TickerHealthService,
+    private readonly marketService: MarketService,
+    private readonly configService: AppConfigService,
     private readonly userService: UserService,
     @InjectModel(TickerSource.name)
     private readonly tickerSourceModel: Model<TickerSourceDocument>,
@@ -414,6 +442,136 @@ export class FinanceService {
 
   async unhideTicker(ticker: string): Promise<void> {
     await this.tickerHealthService.unhideByTicker(ticker);
+  }
+
+  // Every non-hidden ticker with a resolved market, annotated with whether
+  // its EOD data is currently healthy (synced since its market's last
+  // regular close, within TICKER_STALE_THRESHOLD_MINUTES) or not. Tickers
+  // whose market hasn't been resolved yet (pending their first static sync)
+  // or whose market has no configured hours are excluded — there's no close
+  // to gate staleness against yet.
+  private async computeTickerHealthEntries(): Promise<TickerHealthEntry[]> {
+    const [staticData, hiddenIsins, marketHoursByCode, lastFullSyncedByIsin, marketLabelByCode] =
+      await Promise.all([
+        this.tickerStaticDataModel
+          .find({ market: { $ne: null } })
+          .select('isin ticker companyName logoUrl market')
+          .lean(),
+        this.tickerHealthService.getHiddenIsins(),
+        this.marketService.getMarketHoursByCode(),
+        this.tickerHealthService.getLastFullSyncedByIsin(),
+        this.getMarketLabelsByCode(),
+      ]);
+
+    const thresholdMinutes = this.configService.getNumber(
+      TICKER_STALE_THRESHOLD_MINUTES_ENV_VAR,
+      DEFAULT_TICKER_STALE_THRESHOLD_MINUTES,
+    );
+    const now = new Date();
+
+    const entries: TickerHealthEntry[] = [];
+    for (const ticker of staticData) {
+      if (!ticker.market || hiddenIsins.has(ticker.isin)) {
+        continue;
+      }
+      const hours = marketHoursByCode.get(ticker.market);
+      if (!hours) {
+        continue;
+      }
+
+      const lastFullSyncedAt = lastFullSyncedByIsin.get(ticker.isin) ?? null;
+      const minutesPastClose = minutesPastRegularClose(hours);
+
+      let status = SyncHealthStatus.Healthy;
+      let reason: SyncHealthReason | null = null;
+      if (minutesPastClose != null && minutesPastClose >= thresholdMinutes) {
+        if (!lastFullSyncedAt) {
+          status = SyncHealthStatus.Unhealthy;
+          reason = SyncHealthReason.NeverSynced;
+        } else if (
+          calendarDateKey(lastFullSyncedAt, hours.timezone) !==
+          calendarDateKey(now, hours.timezone)
+        ) {
+          status = SyncHealthStatus.Unhealthy;
+          reason = SyncHealthReason.StaleSinceClose;
+        }
+      }
+
+      entries.push({
+        isin: ticker.isin,
+        ticker: ticker.ticker,
+        companyName: ticker.companyName ?? null,
+        logoUrl: ticker.logoUrl ?? null,
+        market: ticker.market,
+        marketLabel: marketLabelByCode.get(ticker.market) ?? null,
+        lastFullSyncedAt,
+        minutesPastClose,
+        status,
+        reason,
+      });
+    }
+
+    return entries;
+  }
+
+  async getSyncHealthSummary(): Promise<SyncHealthSummaryDto> {
+    const entries = await this.computeTickerHealthEntries();
+    const unhealthyCount = entries.filter(
+      (entry) => entry.status === SyncHealthStatus.Unhealthy,
+    ).length;
+
+    return new SyncHealthSummaryDto(
+      entries.length,
+      entries.length - unhealthyCount,
+      unhealthyCount,
+    );
+  }
+
+  async getSyncHealthList(
+    query: GetSyncHealthDto,
+  ): Promise<PaginatedTickerSyncHealthDto> {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const search = query.search?.trim();
+
+    const entries = await this.computeTickerHealthEntries();
+    const filtered = entries.filter((entry) => entry.status === query.status);
+    const rows = search ? this.rankByIsinOrTicker(filtered, search) : filtered;
+
+    // Unhealthy: most overdue first, so the worst offenders surface
+    // immediately. Healthy has no meaningful staleness ordering (most are
+    // simply not due yet), so it falls back to ticker alphabetical order.
+    rows.sort((a, b) =>
+      query.status === SyncHealthStatus.Unhealthy
+        ? (b.minutesPastClose ?? -1) - (a.minutesPastClose ?? -1)
+        : a.ticker.localeCompare(b.ticker),
+    );
+
+    const total = rows.length;
+    const skip = (page - 1) * limit;
+    const data = rows.slice(skip, skip + limit).map(
+      (entry) =>
+        new TickerSyncHealthDto(
+          entry.isin,
+          entry.ticker,
+          entry.companyName,
+          entry.logoUrl,
+          entry.market,
+          entry.marketLabel,
+          entry.lastFullSyncedAt,
+          entry.minutesPastClose,
+          entry.status,
+          entry.reason,
+        ),
+    );
+
+    return new PaginatedTickerSyncHealthDto(
+      data,
+      page,
+      limit,
+      total,
+      Math.max(Math.ceil(total / limit), 1),
+    );
   }
 
   private uniqueSorted(values: (string | null | undefined)[]): string[] {

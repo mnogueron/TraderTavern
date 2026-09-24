@@ -447,7 +447,10 @@ export class TickerSyncService {
         ),
         async (ref) => {
           await syncTicker(ref);
-          await this.tickerHealthService.recordSuccess(ref);
+          await this.tickerHealthService.recordSuccess(
+            ref,
+            kind === SyncKind.Ticker,
+          );
           synced += 1;
           if (synced % 25 === 0 || synced === refs.length) {
             this.logger.log(
@@ -590,7 +593,7 @@ export class TickerSyncService {
 
     try {
       await this.syncTicker(ref, syncDate);
-      await this.tickerHealthService.recordSuccess(ref);
+      await this.tickerHealthService.recordSuccess(ref, true);
       await this.syncHistoryRepository.finalize(lock._id, 1, {}, {
         [ref.isin]: ref.ticker,
       });

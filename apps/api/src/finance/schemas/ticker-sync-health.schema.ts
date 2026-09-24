@@ -33,6 +33,15 @@ export class TickerSyncHealth {
 
   @Prop()
   hiddenAt?: Date;
+
+  // Set only when a *full* ticker sync (static + compound + financial
+  // history + fundamental + earnings + technical, see
+  // TickerSyncService.syncTicker) succeeds, as opposed to a partial sync of
+  // a single data kind (e.g. compound-only). Used by the sync health
+  // monitor to tell whether a ticker's EOD data has actually been refreshed
+  // since its market closed.
+  @Prop()
+  lastFullSyncedAt?: Date;
 }
 
 export const TickerSyncHealthSchema =

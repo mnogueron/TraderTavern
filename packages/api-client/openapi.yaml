@@ -683,6 +683,64 @@ paths:
         - cookie: []
       tags:
         - Finance
+  /api/finance/tickers/health/summary:
+    get:
+      operationId: getSyncHealthSummary
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncHealthSummaryDto'
+      security:
+        - cookie: []
+      tags:
+        - Finance
+  /api/finance/tickers/health:
+    get:
+      operationId: getSyncHealthList
+      parameters:
+        - name: status
+          required: true
+          in: query
+          schema:
+            enum:
+              - healthy
+              - unhealthy
+            type: string
+        - name: page
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            default: 1
+            type: number
+        - name: limit
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            default: 20
+            type: number
+        - name: search
+          required: false
+          in: query
+          description: Fuzzy search on isin or ticker
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTickerSyncHealthDto'
+      security:
+        - cookie: []
+      tags:
+        - Finance
   /api/ticker-source/{source}/sync/status:
     get:
       operationId: getTickerSourceSyncStatus
@@ -2251,6 +2309,82 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/HiddenTickerDto'
+        meta:
+          $ref: '#/components/schemas/PaginationMetaDto'
+      required:
+        - data
+        - meta
+    SyncHealthSummaryDto:
+      type: object
+      properties:
+        total:
+          type: number
+        healthyCount:
+          type: number
+        unhealthyCount:
+          type: number
+        healthyPercentage:
+          type: number
+      required:
+        - total
+        - healthyCount
+        - unhealthyCount
+        - healthyPercentage
+    TickerSyncHealthDto:
+      type: object
+      properties:
+        isin:
+          type: string
+        ticker:
+          type: string
+        companyName:
+          type: string
+          nullable: true
+        logoUrl:
+          type: string
+          nullable: true
+        market:
+          type: string
+          nullable: true
+        marketLabel:
+          type: string
+          nullable: true
+        lastFullSyncedAt:
+          format: date-time
+          type: string
+          nullable: true
+        minutesPastClose:
+          type: number
+          nullable: true
+        status:
+          type: string
+          enum:
+            - healthy
+            - unhealthy
+        reason:
+          type: string
+          nullable: true
+          enum:
+            - never_synced
+            - stale_since_close
+      required:
+        - isin
+        - ticker
+        - companyName
+        - logoUrl
+        - market
+        - marketLabel
+        - lastFullSyncedAt
+        - minutesPastClose
+        - status
+        - reason
+    PaginatedTickerSyncHealthDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/TickerSyncHealthDto'
         meta:
           $ref: '#/components/schemas/PaginationMetaDto'
       required:
