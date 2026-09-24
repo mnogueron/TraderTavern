@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Section, SectionContent, SectionFooter } from '@/components/Section';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatMarketCap } from '@/lib/format';
 import type { Fundamental } from '@/pages/ticker/components/financials/types';
@@ -24,14 +24,11 @@ const CapitalAllocationCard = ({
 }: CapitalAllocationCardProps) => {
   if (isPending || !fundamental) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Capital Allocation</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <Section title="Capital Allocation">
+        <SectionContent>
           <Skeleton className="h-24" />
-        </CardContent>
-      </Card>
+        </SectionContent>
+      </Section>
     );
   }
 
@@ -42,11 +39,8 @@ const CapitalAllocationCard = ({
   );
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Capital Allocation</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">
+    <Section title="Capital Allocation">
+      <SectionContent className="flex flex-col gap-3">
         <div className="flex h-3 w-full overflow-hidden rounded-full bg-muted">
           {SEGMENTS.map((segment, index) => {
             const value = values[index];
@@ -74,15 +68,15 @@ const CapitalAllocationCard = ({
             </div>
           ))}
         </div>
+      </SectionContent>
 
-        <div className="flex items-center justify-between border-t pt-3 text-sm">
-          <span className="text-muted-foreground">Net Debt</span>
-          <span className="tabular-nums">
-            {formatMarketCap(fundamental.netDebt, currency)}
-          </span>
-        </div>
-      </CardContent>
-    </Card>
+      <SectionFooter className="flex items-center justify-between text-sm">
+        <span className="text-muted-foreground">Net Debt</span>
+        <span className="tabular-nums">
+          {formatMarketCap(fundamental.netDebt, currency)}
+        </span>
+      </SectionFooter>
+    </Section>
   );
 };
 
