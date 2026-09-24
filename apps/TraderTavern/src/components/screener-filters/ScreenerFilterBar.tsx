@@ -33,6 +33,7 @@ import {
 } from '@/components/screener-filters/types';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 const DEFAULT_VALUE_BY_TYPE: Record<
   ScreenerFilterConfig['type'],
@@ -241,7 +242,6 @@ const ScreenerFilterBar = ({
       <Collapsible open={open} onOpenChange={setOpen}>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
-            <ScreenerFilterSearch configs={configs} onSelect={handleFilterSearchSelect} />
             <Tabs value={tab} onValueChange={handleTabChange}>
               <TabsList variant="line" className="h-6">
                 <TabsTrigger value="descriptive" className="text-xs">
@@ -258,14 +258,27 @@ const ScreenerFilterBar = ({
                 </TabsTrigger>
               </TabsList>
             </Tabs>
+            {activeConfigs.length > 0 && (
+              <Tooltip>
+                <TooltipTrigger
+                  render={<Badge variant="secondary" className="text-[10px]" />}
+                >
+                  {activeConfigs.length}
+                </TooltipTrigger>
+                <TooltipContent>
+                  {activeConfigs.length} active filter
+                  {activeConfigs.length > 1 ? 's' : ''}
+                </TooltipContent>
+              </Tooltip>
+            )}
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>{activeConfigs.length} filters active</span>
             {activeConfigs.length > 0 && (
               <Button variant="ghost" size="xs" onClick={onReset}>
                 Reset
               </Button>
             )}
+            <ScreenerFilterSearch configs={configs} onSelect={handleFilterSearchSelect} />
             <CollapsibleTrigger
               render={
                 <Button variant="ghost" size="icon-xs" aria-label="Toggle filters" />
