@@ -39,8 +39,16 @@ export class SyncHistoryRepository {
         syncDate,
         kind,
         chunkHash,
+        // Cancelled is deliberately included here (unlike Failed/Timeout):
+        // an admin cancel is an explicit stop, not a transient failure, so
+        // it must not be silently resumed by the next cron tick.
         status: {
-          $in: [SyncStatus.Running, SyncStatus.Success, SyncStatus.PartialSuccess],
+          $in: [
+            SyncStatus.Running,
+            SyncStatus.Success,
+            SyncStatus.PartialSuccess,
+            SyncStatus.Cancelled,
+          ],
         },
       }),
     );
@@ -52,11 +60,15 @@ export class SyncHistoryRepository {
   // permanently stuck) and via the { kind, status: 'running' } partial
   // unique index (no other chunk of this kind is in flight). The caller is
   // expected to have already checked isChunkDone, so any existing doc for
-  // this chunk is guaranteed not to be Running/Success/PartialSuccess.
-  // Reusing (rather than replacing) the doc preserves its `resolvedTickers`/
-  // `tickerErrors` so the caller can skip tickers already synced
-  // successfully in an earlier attempt. Returns null if the kind-wide lock
-  // is held by another chunk.
+  // this chunk is guaranteed not to be Running/Success/PartialSuccess/
+  // Cancelled — but the status is re-checked here too (excluding Running)
+  // to close the race where a chunk is still genuinely in flight when this
+  // is called: without it, the upsert would match the in-flight doc and
+  // hand out a second lock on it, causing two concurrent runs against the
+  // same chunk. Reusing (rather than replacing) the doc preserves its
+  // `resolvedTickers`/`tickerErrors` so the caller can skip tickers already
+  // synced successfully in an earlier attempt. Returns null if the chunk is
+  // already running or the kind-wide lock is held by another chunk.
   async claimLock(
     trigger: SyncTrigger,
     kind: SyncKind,
@@ -68,7 +80,7 @@ export class SyncHistoryRepository {
   ): Promise<SyncHistoryDocument | null> {
     try {
       return await this.syncHistoryModel.findOneAndUpdate(
-        { syncDate, kind, chunkHash },
+        { syncDate, kind, chunkHash, status: { $ne: SyncStatus.Running } },
         {
           $set: {
             type: trigger.type,
