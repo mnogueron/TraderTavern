@@ -84,7 +84,9 @@ export const DEFAULT_SYNC_CONCURRENCY = 5;
 // broken/delisted ticker for too long.
 export const TICKER_SYNC_ERROR_THRESHOLD = 5;
 
-// Env var holding how many tickers make up one sync_history chunk.
+// Env var holding how many tickers make up one sync_history chunk. A value
+// of -1 disables chunking entirely: every market becomes exactly one chunk,
+// however large (see TickerSyncService.getChunkSize).
 export const SYNC_CHUNK_SIZE_ENV_VAR = 'SYNC_CHUNK_SIZE';
 
 // With ~8000 tickers across all configured sources, one chunk per

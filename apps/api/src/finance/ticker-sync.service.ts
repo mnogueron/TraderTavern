@@ -118,6 +118,21 @@ export class TickerSyncService {
     return this.tickerSourceService.getIsinsForSources(sources);
   }
 
+  // Reads SYNC_CHUNK_SIZE, treating -1 as "unbounded" so buildMarketChunks
+  // puts every market's whole ISIN group into a single chunk. Read directly
+  // rather than via configService.getNumber, since that helper falls back to
+  // the default for any value <= 0.
+  private getChunkSize(): number {
+    const raw = this.configService.get<string>(SYNC_CHUNK_SIZE_ENV_VAR);
+    if (raw === '-1') {
+      return Number.POSITIVE_INFINITY;
+    }
+    return this.configService.getNumber(
+      SYNC_CHUNK_SIZE_ENV_VAR,
+      DEFAULT_SYNC_CHUNK_SIZE,
+    );
+  }
+
   // Groups the ISIN universe by ticker_static_data.market, then caps each
   // market's group at the configured chunk size (so a large market like
   // NASDAQ still splits into multiple chunks). Grouping by market lets each
@@ -148,10 +163,7 @@ export class TickerSyncService {
       }
     }
 
-    const chunkSize = this.configService.getNumber(
-      SYNC_CHUNK_SIZE_ENV_VAR,
-      DEFAULT_SYNC_CHUNK_SIZE,
-    );
+    const chunkSize = this.getChunkSize();
     const chunks: { market: string | null; isins: string[] }[] = [];
     for (const [market, isinsForMarket] of [...isinsByMarket.entries()].sort(
       ([a], [b]) => a.localeCompare(b),
