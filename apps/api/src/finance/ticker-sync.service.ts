@@ -1,14 +1,21 @@
-import { ConflictException, Injectable, Logger } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  OnModuleInit,
+} from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import {
   DEFAULT_SYNC_CHUNK_SIZE,
   DEFAULT_SYNC_CONCURRENCY,
   DEFAULT_SYNC_SMALL_MARKET_LIMIT,
+  DEFAULT_SYNC_TIMEOUT_COOLDOWN_MINUTES,
   DEFAULT_TICKER_SYNC_ERROR_THRESHOLD,
   SYNC_CHUNK_SIZE_ENV_VAR,
   SYNC_CONCURRENCY_ENV_VAR,
   SYNC_SMALL_MARKET_LIMIT_ENV_VAR,
+  SYNC_TIMEOUT_COOLDOWN_MINUTES_ENV_VAR,
   TICKER_SYNC_ERROR_THRESHOLD_ENV_VAR,
 } from './constants/candle-windows';
 import { SyncType } from './enums/sync-type.enum';
@@ -58,7 +65,7 @@ import { SyncHistoryRepository } from './repositories/sync-history.repository';
 import { SyncHistoryDocument } from './schemas/sync-history.schema';
 
 @Injectable()
-export class TickerSyncService {
+export class TickerSyncService implements OnModuleInit {
   private readonly logger = new Logger(TickerSyncService.name);
 
   constructor(
@@ -77,6 +84,23 @@ export class TickerSyncService {
     private readonly fundamentalSyncService: FundamentalSyncService,
     private readonly staticSyncService: StaticSyncService,
   ) {}
+
+  // Any sync_history doc still "running" at startup can only be a lock left
+  // behind by a previous process that died mid-sync (this process holds no
+  // in-memory record of it), so it's cleared unconditionally rather than
+  // waiting out reclaimStaleLocks' 30-minute age gate — otherwise a restart
+  // right after a chunk was claimed would leave that kind's
+  // { kind, status: 'running' } lock stuck for up to 30 minutes, blocking
+  // any new sync of that kind in the meantime.
+  async onModuleInit(): Promise<void> {
+    const reclaimed =
+      await this.syncHistoryRepository.cancelAllRunningOnStartup();
+    if (reclaimed > 0) {
+      this.logger.warn(
+        `Reclaimed ${reclaimed} running sync lock(s) left over from a prior server process`,
+      );
+    }
+  }
 
   // Drives the day's full ticker sync one chunk at a time: each tick either
   // claims and processes the next not-yet-done chunk for today, or is a
@@ -245,6 +269,7 @@ export class TickerSyncService {
     isins: string[];
     syncDate: Date;
     syncDateByIsin: Map<string, Date>;
+    marketByIsin: Map<string, string>;
   }[] {
     const chunkSize = this.getChunkSize();
     const smallMarketLimit = this.configService.getNumber(
@@ -258,6 +283,7 @@ export class TickerSyncService {
       isins: string[];
       syncDate: Date;
       syncDateByIsin: Map<string, Date>;
+      marketByIsin: Map<string, string>;
     }[] = [];
 
     const smallMarketEntries: {
@@ -291,6 +317,7 @@ export class TickerSyncService {
             syncDateByIsin: new Map(
               isinChunk.map((isin) => [isin, closingDate]),
             ),
+            marketByIsin: new Map(isinChunk.map((isin) => [isin, market])),
           });
         }
       } else {
@@ -318,6 +345,7 @@ export class TickerSyncService {
         markets: string[];
         isins: string[];
         syncDateByIsin: Map<string, Date>;
+        marketByIsin: Map<string, string>;
         maxClosingDate: Date;
       } | null = null;
 
@@ -328,6 +356,7 @@ export class TickerSyncService {
             isins: current.isins,
             syncDate: current.maxClosingDate,
             syncDateByIsin: current.syncDateByIsin,
+            marketByIsin: current.marketByIsin,
           });
         }
         current = null;
@@ -342,6 +371,7 @@ export class TickerSyncService {
             markets: [],
             isins: [],
             syncDateByIsin: new Map(),
+            marketByIsin: new Map(),
             maxClosingDate: entry.closingDate,
           };
         }
@@ -349,6 +379,7 @@ export class TickerSyncService {
         current.isins.push(...entry.isins);
         for (const isin of entry.isins) {
           current.syncDateByIsin.set(isin, entry.closingDate);
+          current.marketByIsin.set(isin, entry.market);
         }
         if (entry.closingDate > current.maxClosingDate) {
           current.maxClosingDate = entry.closingDate;
@@ -369,6 +400,7 @@ export class TickerSyncService {
         syncDateByIsin: new Map(
           isinChunk.map((isin) => [isin, unresolvedClosingDate]),
         ),
+        marketByIsin: new Map(),
       });
     }
 
@@ -454,6 +486,18 @@ export class TickerSyncService {
           `Failed to record sync health for ${ref.ticker}: ${recordError}`,
         );
       });
+  }
+
+  // Records that this ISIN just timed out, purely to gate the short retry
+  // cooldown (see SYNC_TIMEOUT_COOLDOWN_MINUTES_ENV_VAR) — deliberately kept
+  // separate from recordTickerHealthFailure so timeouts never count towards
+  // TICKER_SYNC_ERROR_THRESHOLD_ENV_VAR.
+  private recordTickerTimeout(ref: TickerRef): void {
+    void this.tickerHealthService.recordTimeout(ref).catch((recordError) => {
+      this.logger.warn(
+        `Failed to record sync timeout for ${ref.ticker}: ${recordError}`,
+      );
+    });
   }
 
   private async finalizeSyncLock(
@@ -572,12 +616,77 @@ export class TickerSyncService {
       return;
     }
 
+    // A full ticker sync (see syncTicker) is the only kind that stamps
+    // lastFullSyncedAt on success, so it's the only one where "already
+    // succeeded for this closing" can be told apart from "never attempted"
+    // without touching a prior, never-reused sync_history doc (see
+    // claimLock). Used below to narrow a retried chunk down to just the
+    // ISINs that failed or were never reached last time, instead of
+    // redoing ISINs that already have fresh EOD data.
+    const lastFullSyncedByIsin =
+      kind === SyncKind.Ticker
+        ? await this.tickerHealthService.getLastFullSyncedByIsin()
+        : new Map<string, Date | undefined>();
+
+    // Keeps a persistently slow/hanging ticker from being retried on every
+    // single EVERY_MINUTE cron tick (which would just abort the same chunk
+    // again and again) — see recordTickerTimeout.
+    const timeoutCooldownMs =
+      this.configService.getNumber(
+        SYNC_TIMEOUT_COOLDOWN_MINUTES_ENV_VAR,
+        DEFAULT_SYNC_TIMEOUT_COOLDOWN_MINUTES,
+      ) * 60_000;
+    const lastTimeoutByIsin = await this.tickerHealthService.getLastTimeoutByIsin();
+
     for (const {
-      markets: chunkMarkets,
-      isins: isinChunk,
+      markets: fullChunkMarkets,
+      isins: fullIsinChunk,
       syncDate,
       syncDateByIsin,
+      marketByIsin,
     } of chunks) {
+      const fullMarketLabel =
+        fullChunkMarkets.length > 0 ? fullChunkMarkets.join('+') : 'unknown';
+
+      const isinChunk = fullIsinChunk.filter((isin) => {
+        if (kind === SyncKind.Ticker) {
+          const lastSynced = lastFullSyncedByIsin.get(isin);
+          const dueDate = syncDateByIsin.get(isin);
+          if (lastSynced && dueDate && lastSynced >= dueDate) {
+            return false;
+          }
+        }
+
+        const lastTimeout = lastTimeoutByIsin.get(isin);
+        if (lastTimeout && Date.now() - lastTimeout.getTime() < timeoutCooldownMs) {
+          return false;
+        }
+
+        return true;
+      });
+      if (isinChunk.length === 0) {
+        if (markets?.length) {
+          this.logger.warn(
+            `${kind} sync: ${fullMarketLabel} already synced for ${syncDate.toISOString()}`,
+          );
+        }
+        continue;
+      }
+      if (isinChunk.length < fullIsinChunk.length) {
+        this.logger.log(
+          `${kind} chunk sync: skipping ${fullIsinChunk.length - isinChunk.length} ISIN(s) already synced or cooling down after a recent timeout for market ${fullMarketLabel}`,
+        );
+      }
+
+      // Narrowed down to only the markets that actually still have a
+      // surviving ISIN in this chunk after the filter above — otherwise an
+      // aggregated small-market chunk would keep reporting every market it
+      // was originally bundled with (e.g. 16 markets) even after 15 of them
+      // had every ISIN filtered out, leaving a single-ticker chunk falsely
+      // tagged with all 16.
+      const chunkMarkets = fullChunkMarkets.filter((market) =>
+        isinChunk.some((isin) => marketByIsin.get(isin) === market),
+      );
       const marketLabel =
         chunkMarkets.length > 0 ? chunkMarkets.join('+') : 'unknown';
 
@@ -651,20 +760,23 @@ export class TickerSyncService {
             resolutionAbortStatus = SyncStatus.Failed;
             generalError = error.message;
             break;
-          }
-          if (error instanceof YahooTimeoutError) {
+          } else if (error instanceof YahooTimeoutError) {
+            // A single ISIN's request timing out doesn't mean the rest of
+            // the chunk will too (in practice it's an isolated Yahoo/network
+            // hiccup on that one symbol, not a jammed shared queue) — so
+            // only this ISIN is skipped, recorded for its own cooldown (see
+            // recordTickerTimeout), and resolution continues with the rest
+            // of the chunk instead of aborting it entirely.
             this.logger.warn(
-              `Aborting ${kind} chunk sync during ISIN resolution after a request timeout on ${isin}: ${error.message}`,
+              `Failed to resolve Yahoo ticker for ${isin} after a request timeout: ${error.message}`,
             );
-            resolutionAbortStatus = SyncStatus.Timeout;
-            generalError = error.message;
-            break;
+            this.recordTickerTimeout({ isin, ticker: isin });
+          } else {
+            this.logger.warn(
+              `Failed to resolve Yahoo ticker for ${isin}: ${error}`,
+            );
+            this.recordTickerHealthFailure({ isin, ticker: isin }, error);
           }
-
-          this.logger.warn(
-            `Failed to resolve Yahoo ticker for ${isin}: ${error}`,
-          );
-          this.recordTickerHealthFailure({ isin, ticker: isin }, error);
         }
 
         resolved += 1;
@@ -702,14 +814,16 @@ export class TickerSyncService {
 
       let synced = 0;
       const syncStartedAt = Date.now();
-      // A rate-limit cooldown or request timeout is treated as fatal for
-      // the whole chunk rather than just the current ticker: burning
-      // through the rest of the chunk at the same failure mode either
-      // keeps hammering an already-rate-limited Yahoo, or (per the timeout
-      // investigation) individually times out on every remaining request
-      // because the client-side request queue is still jammed behind a
-      // hung call. Either way, stopping immediately and letting the chunk
-      // cool down until the next sync attempt is cheaper and safer.
+      // A rate-limit cooldown is treated as fatal for the whole chunk:
+      // burning through the rest of it at the same failure mode just keeps
+      // hammering an already-rate-limited Yahoo, so stopping immediately and
+      // letting the chunk cool down until the next sync attempt is cheaper
+      // and safer. A single ticker's request timeout, by contrast, is not
+      // chunk-fatal — investigation of real sync_history data showed
+      // timeouts land on isolated, unrelated ISINs rather than a jammed
+      // shared request queue, so only that one ticker is skipped (and put on
+      // its own cooldown, see recordTickerTimeout) while the rest of the
+      // chunk keeps going.
       let abortStatus: SyncStatus | null = null;
       let syncGeneralError: string | null = null;
       const successCount = await runWithConcurrency(
@@ -752,10 +866,9 @@ export class TickerSyncService {
           }
           if (error instanceof YahooTimeoutError) {
             this.logger.warn(
-              `Aborting ${kind} chunk sync after a request timeout on ${ref.ticker}: ${error.message}`,
+              `Failed to sync ${kind} for ${ref.ticker} after a request timeout: ${error.message}`,
             );
-            abortStatus = SyncStatus.Timeout;
-            syncGeneralError = error.message;
+            this.recordTickerTimeout(ref);
             return;
           }
 

@@ -56,8 +56,21 @@ export class TickerHealthService {
           hidden: false,
           ...(isFullSync ? { lastFullSyncedAt: new Date() } : {}),
         },
-        $unset: { lastError: '', lastErrorAt: '', hiddenAt: '' },
+        $unset: { lastError: '', lastErrorAt: '', hiddenAt: '', lastTimeoutAt: '' },
       },
+      { upsert: true },
+    );
+  }
+
+  // Records that a Yahoo request for this ISIN timed out, purely to gate the
+  // short retry cooldown (see getTimeoutCooldownUntil) — deliberately
+  // separate from recordFailure/errorCount so a run of transient timeouts
+  // never counts towards TICKER_SYNC_ERROR_THRESHOLD_ENV_VAR or hides the
+  // ticker.
+  async recordTimeout(ref: TickerRef): Promise<void> {
+    await this.tickerSyncHealthModel.updateOne(
+      { isin: ref.isin },
+      { $set: { isin: ref.isin, ticker: ref.ticker, lastTimeoutAt: new Date() } },
       { upsert: true },
     );
   }
@@ -113,6 +126,17 @@ export class TickerHealthService {
       .find({}, 'isin lastFullSyncedAt')
       .lean();
     return new Map(docs.map((doc) => [doc.isin, doc.lastFullSyncedAt]));
+  }
+
+  // Used by the sync job to skip retrying an ISIN whose last Yahoo request
+  // timed out until the configured cooldown has elapsed (see
+  // TickerSyncService.runChunkedSync). ISINs that never timed out (or
+  // succeeded since) are simply absent from the map.
+  async getLastTimeoutByIsin(): Promise<Map<string, Date | undefined>> {
+    const docs = await this.tickerSyncHealthModel
+      .find({ lastTimeoutAt: { $exists: true } }, 'isin lastTimeoutAt')
+      .lean();
+    return new Map(docs.map((doc) => [doc.isin, doc.lastTimeoutAt]));
   }
 
   async listHidden(): Promise<TickerSyncHealth[]> {

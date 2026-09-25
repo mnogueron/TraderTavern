@@ -111,6 +111,28 @@ export class SyncHistoryRepository {
     return result.modifiedCount;
   }
 
+  // Marks every still-"running" lock (any kind) as failed, unconditionally
+  // (no STALE_LOCK_MS age gate). Called once on server startup: a "running"
+  // doc left over from before this process started can only mean the
+  // previous process died mid-sync, so it's already orphaned regardless of
+  // age — waiting out reclaimStale's 30-minute grace period would otherwise
+  // leave that kind's { kind, status: 'running' } lock stuck and block any
+  // new sync of that kind until the next cron tick clears it. Returns the
+  // number of locks reclaimed.
+  async cancelAllRunningOnStartup(): Promise<number> {
+    const result = await this.syncHistoryModel.updateMany(
+      { status: SyncStatus.Running },
+      {
+        $set: {
+          status: SyncStatus.Failed,
+          generalError:
+            'Reclaimed: running lock left over from a prior server process',
+        },
+      },
+    );
+    return result.modifiedCount;
+  }
+
   // Immediately marks this lock as cancelled if (and only if) it's still
   // "running", freeing its { kind, status: 'running' } slot. Used by the
   // admin "cancel" action on a specific sync's detail page, as opposed to

@@ -87,6 +87,18 @@ export const TICKER_SYNC_ERROR_THRESHOLD_ENV_VAR = 'TICKER_SYNC_ERROR_THRESHOLD'
 // too long.
 export const DEFAULT_TICKER_SYNC_ERROR_THRESHOLD = 5;
 
+// Env var holding how many minutes an ISIN must wait after a Yahoo request
+// timeout before it's eligible to be retried again (see
+// TickerSyncService.runChunkedSync). Without this, a single persistently
+// slow/hanging ticker gets retried on every single EVERY_MINUTE cron tick,
+// aborting that whole chunk's sync again and again.
+export const SYNC_TIMEOUT_COOLDOWN_MINUTES_ENV_VAR =
+  'SYNC_TIMEOUT_COOLDOWN_MINUTES';
+
+// Long enough to let a transient Yahoo/network hiccup clear, short enough
+// that a real, resolvable ticker isn't left out of the day's sync for long.
+export const DEFAULT_SYNC_TIMEOUT_COOLDOWN_MINUTES = 5;
+
 // Env var holding how many tickers make up one sync_history chunk. A value
 // of -1 disables chunking entirely: every market becomes exactly one chunk,
 // however large (see TickerSyncService.getChunkSize).
