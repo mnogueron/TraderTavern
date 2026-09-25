@@ -39,7 +39,7 @@ const StatGroup = ({
   title: string;
   children: React.ReactNode;
 }) => (
-  <div>
+  <div className="break-inside-avoid-column">
     <h3 className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
       {title}
     </h3>
@@ -204,7 +204,7 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
                 {isFundamentalPending || !fundamental || !tickerData ? (
                   <Skeleton className="h-24 w-full" />
                 ) : (
-                  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="columns-1 gap-6 sm:columns-2 lg:columns-3 [column-rule:1px_solid_var(--border)]">
                     <StatGroup title="Company">
                       <StatRow
                         label="Market Cap"
@@ -251,6 +251,8 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
                       />
                     </StatGroup>
 
+                    <hr className="break-inside-avoid-column my-6 border-border" />
+
                     <StatGroup title="Valuation">
                       <StatRow
                         label="P/E (Trailing)"
@@ -290,6 +292,8 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
                       />
                     </StatGroup>
 
+                    <hr className="break-inside-avoid-column my-6 border-border" />
+
                     <StatGroup title="52W Range">
                       <StatRow
                         label="52W High"
@@ -308,6 +312,8 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
                         )}
                       />
                     </StatGroup>
+
+                    <hr className="break-inside-avoid-column my-6 border-border" />
 
                     <StatGroup title="Profitability">
                       <StatRow
@@ -354,6 +360,8 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
                       />
                     </StatGroup>
 
+                    <hr className="break-inside-avoid-column my-6 border-border" />
+
                     <StatGroup title="Growth">
                       <StatRow
                         label="Revenue Growth"
@@ -370,6 +378,8 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
                         )}
                       />
                     </StatGroup>
+
+                    <hr className="break-inside-avoid-column my-6 border-border" />
 
                     <StatGroup title="Cash Flow & Leverage">
                       <StatRow
@@ -416,6 +426,8 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
                       />
                     </StatGroup>
 
+                    <hr className="break-inside-avoid-column my-6 border-border" />
+
                     <StatGroup title="Balance Sheet">
                       <StatRow
                         label="Debt/Equity"
@@ -446,6 +458,8 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
                         )}
                       />
                     </StatGroup>
+
+                    <hr className="break-inside-avoid-column my-6 border-border" />
 
                     <StatGroup title="Dividends">
                       <StatRow
@@ -483,6 +497,8 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
                         value={formatDate(fundamental.exDividendDate)}
                       />
                     </StatGroup>
+
+                    <hr className="break-inside-avoid-column my-6 border-border" />
 
                     <StatGroup title="Analyst Consensus">
                       <StatRow
@@ -528,6 +544,8 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
                       />
                     </StatGroup>
 
+                    <hr className="break-inside-avoid-column my-6 border-border" />
+
                     <StatGroup title="Ownership">
                       <StatRow
                         label="Shares Out."
@@ -549,6 +567,8 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
                         value={formatPercent(fundamental.institutionsPercent)}
                       />
                     </StatGroup>
+
+                    <hr className="break-inside-avoid-column my-6 border-border" />
 
                     <StatGroup title="Technical">
                       <StatRow
@@ -608,6 +628,8 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
                         value={formatMarketCap(fundamental.avgVolume10d, null)}
                       />
                     </StatGroup>
+
+                    <hr className="break-inside-avoid-column my-6 border-border" />
 
                     <StatGroup title="Technical Indicators">
                       <StatRow
