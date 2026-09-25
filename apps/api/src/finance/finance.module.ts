@@ -6,6 +6,7 @@ import { FinanceService } from './finance.service';
 import { TickerSyncService } from './ticker-sync.service';
 import { TickerHealthService } from './ticker-health.service';
 import { MarketService } from './market.service';
+import { MarketHoursSyncService } from './market-hours-sync.service';
 import { CompoundSyncService } from './compound-sync.service';
 import { FundamentalSyncService } from './fundamental-sync.service';
 import { StaticSyncService } from './static-sync.service';
@@ -94,6 +95,7 @@ import { SyncHistoryRepository } from './repositories/sync-history.repository';
     TickerSyncService,
     TickerHealthService,
     MarketService,
+    MarketHoursSyncService,
     CompoundSyncService,
     FundamentalSyncService,
     StaticSyncService,

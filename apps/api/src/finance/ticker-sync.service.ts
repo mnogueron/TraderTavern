@@ -26,6 +26,7 @@ import {
   fetchCandleChart,
   fetchDailyChart,
   fetchFinancialHistory,
+  fetchMarketMeta,
   fetchQuarterlyRevenueHistory,
   fetchQuoteSummary,
 } from './helpers/sync-fetchers';
@@ -38,6 +39,8 @@ import {
 } from './helpers/sync-utils';
 import { TickerHealthService } from './ticker-health.service';
 import { MarketService } from './market.service';
+import { MarketHoursSyncService } from './market-hours-sync.service';
+import { MarketHours } from './schemas/market-hours.schema';
 import { CompoundSyncService } from './compound-sync.service';
 import { FundamentalSyncService } from './fundamental-sync.service';
 import { StaticSyncService } from './static-sync.service';
@@ -62,6 +65,7 @@ export class TickerSyncService {
     private readonly yahooRateLimiter: YahooRateLimiterService,
     private readonly tickerHealthService: TickerHealthService,
     private readonly marketService: MarketService,
+    private readonly marketHoursSyncService: MarketHoursSyncService,
     private readonly compoundSyncService: CompoundSyncService,
     private readonly fundamentalSyncService: FundamentalSyncService,
     private readonly staticSyncService: StaticSyncService,
@@ -177,6 +181,58 @@ export class TickerSyncService {
     }
 
     return chunks;
+  }
+
+  // Backfills market_hours for any market present in this run's chunks that
+  // doesn't have one yet, so a newly-seen exchange code doesn't sit
+  // permanently "unconfigured" (see MarketService.isMarketDueForSync/
+  // closingSyncDate falling back to "always due"/startOfToday for it). Runs
+  // once per runChunkedSync call, before any chunk is processed, using a
+  // single representative ticker per missing market rather than fetching
+  // this for every ticker. Mutates `marketHoursByCode` in place so a market
+  // discovered this run is immediately gated/dated correctly for the rest of
+  // this same call. Best-effort: a market that can't be resolved yet (e.g.
+  // ISIN resolution or the Yahoo request fails) is simply left unconfigured
+  // and retried on the next sync.
+  private async discoverMissingMarketHours(
+    marketChunks: { market: string | null; isins: string[] }[],
+    marketHoursByCode: Map<string, MarketHours>,
+  ): Promise<void> {
+    const attempted = new Set<string>();
+
+    for (const { market, isins } of marketChunks) {
+      if (
+        !market ||
+        marketHoursByCode.has(market) ||
+        attempted.has(market) ||
+        isins.length === 0
+      ) {
+        continue;
+      }
+      attempted.add(market);
+
+      try {
+        const ticker = await this.tickerSourceService.resolveYahooTicker(
+          isins[0],
+        );
+        if (!ticker) {
+          continue;
+        }
+        const meta = await fetchMarketMeta(this.yahooRateLimiter, ticker);
+        const hours = await this.marketHoursSyncService.upsertFromChartMeta(
+          market,
+          meta,
+        );
+        marketHoursByCode.set(market, hours);
+        this.logger.log(
+          `Discovered market hours for ${market} (${hours.label}) from Yahoo`,
+        );
+      } catch (error) {
+        this.logger.warn(
+          `Failed to discover market hours for ${market}: ${error}`,
+        );
+      }
+    }
   }
 
   // Atomically claims a chunk's "running" slot in sync_history, both via the
@@ -319,6 +375,7 @@ export class TickerSyncService {
 
     const closeGated = this.marketService.isMarketCloseGated(kind);
     const marketHoursByCode = await this.marketService.getMarketHoursByCode();
+    await this.discoverMissingMarketHours(marketChunks, marketHoursByCode);
 
     for (const { market, isins: isinChunk } of marketChunks) {
       if (

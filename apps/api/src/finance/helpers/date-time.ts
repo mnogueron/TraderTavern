@@ -1,13 +1,18 @@
 import { MarketHours } from '../schemas/market-hours.schema';
 
-// "HH:mm" (24h) for the current moment in `timezone`.
-function localHHmm(timezone: string): string {
+// "HH:mm" (24h) for `date` in `timezone`.
+export function formatLocalTime(date: Date, timezone: string): string {
   return new Intl.DateTimeFormat('en-GB', {
     timeZone: timezone,
     hour: '2-digit',
     minute: '2-digit',
     hourCycle: 'h23',
-  }).format(new Date());
+  }).format(date);
+}
+
+// "HH:mm" (24h) for the current moment in `timezone`.
+function localHHmm(timezone: string): string {
+  return formatLocalTime(new Date(), timezone);
 }
 
 // `timezone`'s UTC offset in minutes (e.g. -240 for UTC-4) at `at`.
