@@ -69,10 +69,14 @@ export class TickerSyncService {
 
   // Drives the day's full ticker sync one chunk at a time: each tick either
   // claims and processes the next not-yet-done chunk for today, or is a
-  // cheap no-op once all of today's chunks are done. Spreads ~8000 tickers
-  // out over many hours instead of one long run that would trip Yahoo's
-  // rate limiting.
-  @Cron(CronExpression.EVERY_10_MINUTES)
+  // cheap no-op once all of today's chunks are done. Actual Yahoo request
+  // pacing (not this interval) is what protects against rate limiting, and a
+  // 200-ticker chunk only takes a few minutes against that shared limiter
+  // (see YahooRateLimiterService), so this ticks far more often than a chunk
+  // takes to run: the { kind, status: 'running' } lock makes the no-op ticks
+  // cheap, and a full day's sync now approaches the rate limiter's own
+  // throughput ceiling instead of being bottlenecked by this interval.
+  @Cron(CronExpression.EVERY_MINUTE)
   async handleChunkedTickerSync(): Promise<void> {
     await this.runChunkedSync(
       { type: SyncType.Auto },
