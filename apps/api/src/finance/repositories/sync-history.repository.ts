@@ -54,21 +54,16 @@ export class SyncHistoryRepository {
     );
   }
 
-  // Atomically claims this chunk's "running" slot, both re-claiming a prior
-  // attempt of the exact same { syncDate, kind, chunkHash } if one exists
-  // (e.g. a previous Failed/Timeout run, so it can be resumed rather than
-  // permanently stuck) and via the { kind, status: 'running' } partial
-  // unique index (no other chunk of this kind is in flight). The caller is
-  // expected to have already checked isChunkDone, so any existing doc for
-  // this chunk is guaranteed not to be Running/Success/PartialSuccess/
-  // Cancelled — but the status is re-checked here too (excluding Running)
-  // to close the race where a chunk is still genuinely in flight when this
-  // is called: without it, the upsert would match the in-flight doc and
-  // hand out a second lock on it, causing two concurrent runs against the
-  // same chunk. Reusing (rather than replacing) the doc preserves its
-  // `resolvedTickers`/`tickerErrors` so the caller can skip tickers already
-  // synced successfully in an earlier attempt. Returns null if the chunk is
-  // already running or the kind-wide lock is held by another chunk.
+  // Atomically claims this chunk's "running" slot by always inserting a
+  // brand new document — a prior Failed/Timeout attempt of the exact same
+  // { syncDate, kind, chunkHash } is never reused/resumed, so its own
+  // counters/timestamps stay untouched as a permanent record of that failed
+  // run, and this run starts the whole chunk fresh. The caller is expected
+  // to have already checked isChunkDone; the { kind, status: 'running' }
+  // partial unique index is what actually enforces "no other chunk of this
+  // kind is in flight" (and closes the race where one raced ahead between
+  // that check and this call) — an insert that violates it throws a
+  // duplicate-key error, which is caught and turned into a null return.
   async claimLock(
     trigger: SyncTrigger,
     kind: SyncKind,
@@ -79,20 +74,17 @@ export class SyncHistoryRepository {
     isins: string[],
   ): Promise<SyncHistoryDocument | null> {
     try {
-      return await this.syncHistoryModel.findOneAndUpdate(
-        { syncDate, kind, chunkHash, status: { $ne: SyncStatus.Running } },
-        {
-          $set: {
-            type: trigger.type,
-            status: SyncStatus.Running,
-            tickerCount,
-            triggeredByUserId: trigger.userId,
-            markets,
-            isins,
-          },
-        },
-        { new: true, upsert: true, setDefaultsOnInsert: true },
-      );
+      return await this.syncHistoryModel.create({
+        type: trigger.type,
+        kind,
+        status: SyncStatus.Running,
+        syncDate,
+        chunkHash,
+        tickerCount,
+        triggeredByUserId: trigger.userId,
+        markets,
+        isins,
+      });
     } catch (error) {
       if (isDuplicateKeyError(error)) {
         return null;

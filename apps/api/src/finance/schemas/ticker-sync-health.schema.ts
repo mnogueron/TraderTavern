@@ -6,7 +6,7 @@ export type TickerSyncHealthDocument = HydratedDocument<TickerSyncHealth>;
 // Tracks consecutive Yahoo sync failures per ISIN so a persistently broken
 // ticker (delisted, wrong symbol, Yahoo-specific quirk) can be automatically
 // excluded from future sync attempts instead of being retried forever. See
-// TICKER_SYNC_ERROR_THRESHOLD for the cutoff and TickerHealthService for the
+// TICKER_SYNC_ERROR_THRESHOLD_ENV_VAR for the cutoff and TickerHealthService for the
 // read/write logic.
 @Schema({ collection: 'ticker_sync_health', timestamps: true })
 export class TickerSyncHealth {

@@ -5,10 +5,11 @@ import {
   DEFAULT_SYNC_CHUNK_SIZE,
   DEFAULT_SYNC_CONCURRENCY,
   DEFAULT_SYNC_SMALL_MARKET_LIMIT,
+  DEFAULT_TICKER_SYNC_ERROR_THRESHOLD,
   SYNC_CHUNK_SIZE_ENV_VAR,
   SYNC_CONCURRENCY_ENV_VAR,
   SYNC_SMALL_MARKET_LIMIT_ENV_VAR,
-  TICKER_SYNC_ERROR_THRESHOLD,
+  TICKER_SYNC_ERROR_THRESHOLD_ENV_VAR,
 } from './constants/candle-windows';
 import { SyncType } from './enums/sync-type.enum';
 import { SyncKind } from './enums/sync-kind.enum';
@@ -430,17 +431,21 @@ export class TickerSyncService {
   }
 
   // Records a non-fatal per-ticker sync failure against ticker_sync_health
-  // so it counts towards TICKER_SYNC_ERROR_THRESHOLD and shows up in the
-  // hidden-tickers admin view, regardless of whether the failure happened
-  // during ISIN->ticker resolution (no `ticker` yet, so the ISIN itself is
-  // used as a placeholder) or during the actual per-ticker sync.
+  // so it counts towards TICKER_SYNC_ERROR_THRESHOLD_ENV_VAR and shows up in
+  // the hidden-tickers admin view, regardless of whether the failure
+  // happened during ISIN->ticker resolution (no `ticker` yet, so the ISIN
+  // itself is used as a placeholder) or during the actual per-ticker sync.
   private recordTickerHealthFailure(ref: TickerRef, error: unknown): void {
     void this.tickerHealthService
       .recordFailure(ref, error)
       .then((justHidden) => {
         if (justHidden) {
+          const threshold = this.configService.getNumber(
+            TICKER_SYNC_ERROR_THRESHOLD_ENV_VAR,
+            DEFAULT_TICKER_SYNC_ERROR_THRESHOLD,
+          );
           this.logger.warn(
-            `Hiding ${ref.ticker} (${ref.isin}) after ${TICKER_SYNC_ERROR_THRESHOLD} consecutive sync failures`,
+            `Hiding ${ref.ticker} (${ref.isin}) after ${threshold} consecutive sync failures`,
           );
         }
       })
@@ -501,15 +506,25 @@ export class TickerSyncService {
       return;
     }
 
-    const hiddenIsins = await this.tickerHealthService.getHiddenIsins();
-    const isinUniverse = fullIsinUniverse.filter(
-      (isin) => !hiddenIsins.has(isin),
-    );
-    if (hiddenIsins.size > 0) {
-      this.logger.log(
-        `${kind} sync: skipping ${fullIsinUniverse.length - isinUniverse.length} hidden ISIN(s) ` +
-          `(${TICKER_SYNC_ERROR_THRESHOLD}+ consecutive failures)`,
-      );
+    // A manual trigger scoped to specific markets is an explicit admin
+    // request to (re)sync exactly those markets, so it also retries tickers
+    // that auto-hid themselves after repeated failures (the same override a
+    // per-ticker "sync now" already gets, see syncSingleTicker) instead of
+    // silently excluding them like the unscoped automatic sync does.
+    let isinUniverse = fullIsinUniverse;
+    if (!markets?.length) {
+      const hiddenIsins = await this.tickerHealthService.getHiddenIsins();
+      isinUniverse = fullIsinUniverse.filter((isin) => !hiddenIsins.has(isin));
+      if (hiddenIsins.size > 0) {
+        const threshold = this.configService.getNumber(
+          TICKER_SYNC_ERROR_THRESHOLD_ENV_VAR,
+          DEFAULT_TICKER_SYNC_ERROR_THRESHOLD,
+        );
+        this.logger.log(
+          `${kind} sync: skipping ${fullIsinUniverse.length - isinUniverse.length} hidden ISIN(s) ` +
+            `(${threshold}+ consecutive failures)`,
+        );
+      }
     }
     if (isinUniverse.length === 0) {
       return;
@@ -530,6 +545,11 @@ export class TickerSyncService {
       : allIsinsByMarket;
     const unresolvedIsins = markets?.length ? [] : allUnresolvedIsins;
     if (isinsByMarket.size === 0 && unresolvedIsins.length === 0) {
+      if (markets?.length) {
+        this.logger.warn(
+          `${kind} sync: no tickers found for requested market(s) ${markets.join(', ')}`,
+        );
+      }
       return;
     }
 
@@ -544,6 +564,11 @@ export class TickerSyncService {
       closeGated,
     );
     if (chunks.length === 0) {
+      if (markets?.length) {
+        this.logger.warn(
+          `${kind} sync: ${markets.join(', ')} not due for sync yet (market still in its regular session)`,
+        );
+      }
       return;
     }
 
@@ -563,6 +588,11 @@ export class TickerSyncService {
         chunkHash,
       );
       if (alreadyDone) {
+        if (markets?.length) {
+          this.logger.warn(
+            `${kind} sync: ${marketLabel} already synced for ${syncDate.toISOString()}`,
+          );
+        }
         continue;
       }
 
@@ -587,37 +617,12 @@ export class TickerSyncService {
         `Starting ${kind} chunk sync for market ${marketLabel}: ${isinChunk.length} ISIN(s) (lock ${lock._id})`,
       );
 
-      // Resuming a chunk that previously aborted (e.g. on a Yahoo timeout)
-      // must not resync tickers that already succeeded in an earlier
-      // attempt of this exact chunk — claimLock reuses the prior doc rather
-      // than replacing it specifically so its resolvedTickers/tickerErrors
-      // survive here to tell the two apart.
-      const priorErrorsByIsin: Record<string, string> = lock.tickerErrors
-        ? (JSON.parse(lock.tickerErrors) as Record<string, string>)
-        : {};
-      const priorSucceededRefs: TickerRef[] = Object.entries(
-        lock.resolvedTickers ?? {},
-      )
-        .filter(([isin]) => !priorErrorsByIsin[isin])
-        .map(([isin, ticker]) => ({ isin, ticker }));
-      const priorSucceededIsins = new Set(
-        priorSucceededRefs.map((ref) => ref.isin),
-      );
-      const pendingIsins = isinChunk.filter(
-        (isin) => !priorSucceededIsins.has(isin),
-      );
-      if (priorSucceededRefs.length > 0) {
-        this.logger.log(
-          `${kind} chunk sync: resuming lock ${lock._id}, skipping ${priorSucceededRefs.length} already-synced ticker(s)`,
-        );
-      }
-
-      const refs: TickerRef[] = [...priorSucceededRefs];
+      const refs: TickerRef[] = [];
       const errors: Record<string, string> = {};
       let resolutionAbortStatus: SyncStatus | null = null;
       let generalError: string | null = null;
       let resolved = 0;
-      for (const isin of pendingIsins) {
+      for (const isin of isinChunk) {
         try {
           const ticker =
             await this.tickerSourceService.resolveYahooTicker(isin);
@@ -629,7 +634,7 @@ export class TickerSyncService {
             // No resolved Yahoo ticker exists yet for this ISIN, so there's
             // no real `ticker` value to key the health record on; the ISIN
             // itself is used as a placeholder so this still counts towards
-            // TICKER_SYNC_ERROR_THRESHOLD and surfaces in the hidden-tickers
+            // TICKER_SYNC_ERROR_THRESHOLD_ENV_VAR and surfaces in the hidden-tickers
             // admin view instead of being retried forever, invisibly.
             this.recordTickerHealthFailure(
               { isin, ticker: isin },
@@ -663,9 +668,9 @@ export class TickerSyncService {
         }
 
         resolved += 1;
-        if (resolved % 25 === 0 || resolved === pendingIsins.length) {
+        if (resolved % 25 === 0 || resolved === isinChunk.length) {
           this.logger.log(
-            `${kind} chunk sync: resolved ${resolved}/${pendingIsins.length} ISIN(s) ` +
+            `${kind} chunk sync: resolved ${resolved}/${isinChunk.length} ISIN(s) ` +
               `(${Date.now() - chunkStartedAt}ms elapsed)`,
           );
         }
@@ -674,7 +679,7 @@ export class TickerSyncService {
       if (resolutionAbortStatus) {
         await this.finalizeSyncLock(
           lock,
-          priorSucceededRefs.length,
+          0,
           errors,
           refs,
           resolutionAbortStatus,
@@ -690,15 +695,9 @@ export class TickerSyncService {
         continue;
       }
 
-      // Only the tickers newly resolved this run need syncing — the
-      // already-succeeded ones carried over from a resumed attempt were
-      // seeded at the front of `refs` (see priorSucceededRefs above) and
-      // must not be redone.
-      const refsToSync = refs.slice(priorSucceededRefs.length);
-
       this.logger.log(
         `${kind} chunk sync: ISIN resolution done in ${Date.now() - chunkStartedAt}ms, ` +
-          `syncing ${refsToSync.length} ticker(s)`,
+          `syncing ${refs.length} ticker(s)`,
       );
 
       let synced = 0;
@@ -713,8 +712,8 @@ export class TickerSyncService {
       // cool down until the next sync attempt is cheaper and safer.
       let abortStatus: SyncStatus | null = null;
       let syncGeneralError: string | null = null;
-      const newSuccessCount = await runWithConcurrency(
-        refsToSync,
+      const successCount = await runWithConcurrency(
+        refs,
         this.configService.getNumber(
           SYNC_CONCURRENCY_ENV_VAR,
           DEFAULT_SYNC_CONCURRENCY,
@@ -732,9 +731,9 @@ export class TickerSyncService {
             kind === SyncKind.Ticker,
           );
           synced += 1;
-          if (synced % 25 === 0 || synced === refsToSync.length) {
+          if (synced % 25 === 0 || synced === refs.length) {
             this.logger.log(
-              `${kind} chunk sync: synced ${synced}/${refsToSync.length} ticker(s) ` +
+              `${kind} chunk sync: synced ${synced}/${refs.length} ticker(s) ` +
                 `(${Date.now() - syncStartedAt}ms elapsed)`,
             );
           }
@@ -767,7 +766,6 @@ export class TickerSyncService {
         },
         () => abortStatus !== null,
       );
-      const successCount = priorSucceededRefs.length + newSuccessCount;
 
       await this.finalizeSyncLock(
         lock,
