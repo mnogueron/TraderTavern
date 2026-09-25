@@ -260,6 +260,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/finance/sync/history/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["cancelSyncJob"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/finance/sync": {
         parameters: {
             query?: never;
@@ -946,7 +962,7 @@ export interface components {
             /** @enum {string} */
             kind: "ticker" | "static" | "fundamental" | "compound" | "technical" | "single_ticker";
             /** @enum {string} */
-            status: "running" | "success" | "partial_success" | "failed" | "timeout";
+            status: "running" | "success" | "partial_success" | "failed" | "timeout" | "cancelled";
             /** Format: date-time */
             syncDate: string;
             market: string | null;
@@ -981,7 +997,7 @@ export interface components {
             /** @enum {string} */
             kind: "ticker" | "static" | "fundamental" | "compound" | "technical" | "single_ticker";
             /** @enum {string} */
-            status: "running" | "success" | "partial_success" | "failed" | "timeout";
+            status: "running" | "success" | "partial_success" | "failed" | "timeout" | "cancelled";
             /** Format: date-time */
             syncDate: string;
             market: string | null;
@@ -1558,7 +1574,7 @@ export interface operations {
             query?: {
                 limit?: number;
                 page?: number;
-                status?: "running" | "success" | "partial_success" | "failed" | "timeout";
+                status?: "running" | "success" | "partial_success" | "failed" | "timeout" | "cancelled";
             };
             header?: never;
             path?: never;
@@ -1594,6 +1610,25 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SyncHistoryDetailDto"];
                 };
+            };
+        };
+    };
+    cancelSyncJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

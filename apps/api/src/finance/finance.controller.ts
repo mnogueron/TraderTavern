@@ -105,6 +105,13 @@ export class FinanceController {
     return this.financeService.getSyncHistoryDetail(id);
   }
 
+  @Post('sync/history/:id/cancel')
+  @HttpCode(204)
+  @Auth(Role.Admin)
+  async cancelSyncJob(@Param('id') id: string): Promise<void> {
+    await this.tickerSyncService.cancelJob(id);
+  }
+
   @Post('sync')
   @HttpCode(204)
   @Auth(Role.Admin)

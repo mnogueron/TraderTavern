@@ -98,6 +98,24 @@ export class SyncHistoryRepository {
     return result.modifiedCount;
   }
 
+  // Immediately marks this lock as cancelled if (and only if) it's still
+  // "running", freeing its { kind, status: 'running' } slot. Used by the
+  // admin "cancel" action on a specific sync's detail page, as opposed to
+  // reclaimStale's passive, age-gated, kind-wide cleanup. Returns whether a
+  // running job was actually found and cancelled.
+  async cancelIfRunning(id: string): Promise<boolean> {
+    const result = await this.syncHistoryModel.updateOne(
+      { _id: id, status: SyncStatus.Running },
+      {
+        $set: {
+          status: SyncStatus.Cancelled,
+          generalError: 'Cancelled by admin',
+        },
+      },
+    );
+    return result.modifiedCount > 0;
+  }
+
   async finalize(
     lockId: SyncHistoryDocument['_id'],
     successCount: number,

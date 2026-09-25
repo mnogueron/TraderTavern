@@ -40,6 +40,7 @@ const STATUS_OPTIONS: SyncStatus[] = [
   'partial_success',
   'failed',
   'timeout',
+  'cancelled',
 ];
 const SYNC_HISTORY_QUERY_KEY = ['get', '/api/finance/sync/history'];
 

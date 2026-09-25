@@ -325,6 +325,7 @@ paths:
               - partial_success
               - failed
               - timeout
+              - cancelled
       responses:
         '200':
           description: ''
@@ -352,6 +353,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SyncHistoryDetailDto'
+      security:
+        - cookie: []
+      tags:
+        - Finance
+  /api/finance/sync/history/{id}/cancel:
+    post:
+      operationId: cancelSyncJob
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '204':
+          description: ''
       security:
         - cookie: []
       tags:
@@ -1645,6 +1662,7 @@ components:
             - partial_success
             - failed
             - timeout
+            - cancelled
         syncDate:
           format: date-time
           type: string
@@ -1757,6 +1775,7 @@ components:
             - partial_success
             - failed
             - timeout
+            - cancelled
         syncDate:
           format: date-time
           type: string

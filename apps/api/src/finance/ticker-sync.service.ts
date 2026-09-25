@@ -277,6 +277,19 @@ export class TickerSyncService {
     }
   }
 
+  // Immediately cancels the given sync job if it's still "running", freeing
+  // its lock. Mainly useful for a job orphaned by a server restart or
+  // crashed process, but works on any running job — unlike
+  // reclaimStaleLocks, this is triggered on-demand by an admin, targeting
+  // one specific job, rather than gated behind STALE_LOCK_MS.
+  async cancelJob(id: string): Promise<boolean> {
+    const cancelled = await this.syncHistoryRepository.cancelIfRunning(id);
+    if (cancelled) {
+      this.logger.warn(`Cancelled sync job ${id} on admin request`);
+    }
+    return cancelled;
+  }
+
   // Records a non-fatal per-ticker sync failure against ticker_sync_health
   // so it counts towards TICKER_SYNC_ERROR_THRESHOLD and shows up in the
   // hidden-tickers admin view, regardless of whether the failure happened

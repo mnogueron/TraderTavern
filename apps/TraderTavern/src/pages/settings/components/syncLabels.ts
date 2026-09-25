@@ -17,6 +17,7 @@ export const SYNC_STATUS_LABEL: Record<SyncHistoryItem['status'], string> = {
   partial_success: 'Partial success',
   failed: 'Failed',
   timeout: 'Timeout',
+  cancelled: 'Cancelled',
 };
 
 export const formatSyncTrigger = (
