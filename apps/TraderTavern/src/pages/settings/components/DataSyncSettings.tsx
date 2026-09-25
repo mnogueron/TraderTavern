@@ -121,12 +121,12 @@ const DataSyncSettings = () => {
               <TableRow>
                 <TableHead>Status</TableHead>
                 <TableHead>Kind</TableHead>
-                <TableHead>Market</TableHead>
+                <TableHead className="min-w-[170px]">Market</TableHead>
                 <TableHead>Triggered by</TableHead>
                 <TableHead>Sync date</TableHead>
                 <TableHead>Started</TableHead>
-                <TableHead>Finished</TableHead>
                 <TableHead className="text-right">Elapsed</TableHead>
+                <TableHead className="text-right">Total</TableHead>
                 <TableHead className="text-right">Succeeded</TableHead>
                 <TableHead className="text-right">Failed</TableHead>
               </TableRow>
@@ -153,10 +153,10 @@ const DataSyncSettings = () => {
                     <Skeleton className="h-4 w-28" />
                   </TableCell>
                   <TableCell>
-                    <Skeleton className="h-4 w-28" />
+                    <Skeleton className="ml-auto h-4 w-14" />
                   </TableCell>
                   <TableCell>
-                    <Skeleton className="ml-auto h-4 w-14" />
+                    <Skeleton className="ml-auto h-4 w-10" />
                   </TableCell>
                   <TableCell>
                     <Skeleton className="ml-auto h-4 w-10" />
@@ -174,12 +174,12 @@ const DataSyncSettings = () => {
               <TableRow>
                 <TableHead>Status</TableHead>
                 <TableHead>Kind</TableHead>
-                <TableHead>Market</TableHead>
+                <TableHead className="min-w-[170px]">Market</TableHead>
                 <TableHead>Triggered by</TableHead>
                 <TableHead>Sync date</TableHead>
                 <TableHead>Started</TableHead>
-                <TableHead>Finished</TableHead>
                 <TableHead className="text-right">Elapsed</TableHead>
+                <TableHead className="text-right">Total</TableHead>
                 <TableHead className="text-right">Succeeded</TableHead>
                 <TableHead className="text-right">Failed</TableHead>
               </TableRow>
@@ -219,11 +219,11 @@ const DataSyncSettings = () => {
                     <TableCell className="tabular-nums">
                       {formatDateTime(item.startedAt)}
                     </TableCell>
-                    <TableCell className="tabular-nums">
-                      {item.finishedAt ? formatDateTime(item.finishedAt) : '—'}
-                    </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {formatDuration(getElapsedMs(item.startedAt, item.finishedAt))}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {item.tickerCount}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {item.status === 'running' ? (
