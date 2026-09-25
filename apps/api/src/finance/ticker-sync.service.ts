@@ -436,12 +436,37 @@ export class TickerSyncService {
         `Starting ${kind} chunk sync for market ${market ?? 'unknown'}: ${isinChunk.length} ISIN(s) (lock ${lock._id})`,
       );
 
-      const refs: TickerRef[] = [];
+      // Resuming a chunk that previously aborted (e.g. on a Yahoo timeout)
+      // must not resync tickers that already succeeded in an earlier
+      // attempt of this exact chunk — claimLock reuses the prior doc rather
+      // than replacing it specifically so its resolvedTickers/tickerErrors
+      // survive here to tell the two apart.
+      const priorErrorsByIsin: Record<string, string> = lock.tickerErrors
+        ? (JSON.parse(lock.tickerErrors) as Record<string, string>)
+        : {};
+      const priorSucceededRefs: TickerRef[] = Object.entries(
+        lock.resolvedTickers ?? {},
+      )
+        .filter(([isin]) => !priorErrorsByIsin[isin])
+        .map(([isin, ticker]) => ({ isin, ticker }));
+      const priorSucceededIsins = new Set(
+        priorSucceededRefs.map((ref) => ref.isin),
+      );
+      const pendingIsins = isinChunk.filter(
+        (isin) => !priorSucceededIsins.has(isin),
+      );
+      if (priorSucceededRefs.length > 0) {
+        this.logger.log(
+          `${kind} chunk sync: resuming lock ${lock._id}, skipping ${priorSucceededRefs.length} already-synced ticker(s)`,
+        );
+      }
+
+      const refs: TickerRef[] = [...priorSucceededRefs];
       const errors: Record<string, string> = {};
       let resolutionAbortStatus: SyncStatus | null = null;
       let generalError: string | null = null;
       let resolved = 0;
-      for (const isin of isinChunk) {
+      for (const isin of pendingIsins) {
         try {
           const ticker =
             await this.tickerSourceService.resolveYahooTicker(isin);
@@ -487,9 +512,9 @@ export class TickerSyncService {
         }
 
         resolved += 1;
-        if (resolved % 25 === 0 || resolved === isinChunk.length) {
+        if (resolved % 25 === 0 || resolved === pendingIsins.length) {
           this.logger.log(
-            `${kind} chunk sync: resolved ${resolved}/${isinChunk.length} ISIN(s) ` +
+            `${kind} chunk sync: resolved ${resolved}/${pendingIsins.length} ISIN(s) ` +
               `(${Date.now() - chunkStartedAt}ms elapsed)`,
           );
         }
@@ -498,7 +523,7 @@ export class TickerSyncService {
       if (resolutionAbortStatus) {
         await this.finalizeSyncLock(
           lock,
-          0,
+          priorSucceededRefs.length,
           errors,
           refs,
           resolutionAbortStatus,
@@ -514,9 +539,15 @@ export class TickerSyncService {
         continue;
       }
 
+      // Only the tickers newly resolved this run need syncing — the
+      // already-succeeded ones carried over from a resumed attempt were
+      // seeded at the front of `refs` (see priorSucceededRefs above) and
+      // must not be redone.
+      const refsToSync = refs.slice(priorSucceededRefs.length);
+
       this.logger.log(
         `${kind} chunk sync: ISIN resolution done in ${Date.now() - chunkStartedAt}ms, ` +
-          `syncing ${refs.length} ticker(s)`,
+          `syncing ${refsToSync.length} ticker(s)`,
       );
 
       let synced = 0;
@@ -531,8 +562,8 @@ export class TickerSyncService {
       // cool down until the next sync attempt is cheaper and safer.
       let abortStatus: SyncStatus | null = null;
       let syncGeneralError: string | null = null;
-      const successCount = await runWithConcurrency(
-        refs,
+      const newSuccessCount = await runWithConcurrency(
+        refsToSync,
         this.configService.getNumber(
           SYNC_CONCURRENCY_ENV_VAR,
           DEFAULT_SYNC_CONCURRENCY,
@@ -544,9 +575,9 @@ export class TickerSyncService {
             kind === SyncKind.Ticker,
           );
           synced += 1;
-          if (synced % 25 === 0 || synced === refs.length) {
+          if (synced % 25 === 0 || synced === refsToSync.length) {
             this.logger.log(
-              `${kind} chunk sync: synced ${synced}/${refs.length} ticker(s) ` +
+              `${kind} chunk sync: synced ${synced}/${refsToSync.length} ticker(s) ` +
                 `(${Date.now() - syncStartedAt}ms elapsed)`,
             );
           }
@@ -579,6 +610,7 @@ export class TickerSyncService {
         },
         () => abortStatus !== null,
       );
+      const successCount = priorSucceededRefs.length + newSuccessCount;
 
       await this.finalizeSyncLock(
         lock,

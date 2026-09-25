@@ -46,11 +46,17 @@ export class SyncHistoryRepository {
     );
   }
 
-  // Attempts to atomically claim this chunk's "running" slot, both via the
-  // { syncDate, kind, chunkHash } unique index (this exact chunk hasn't been
-  // processed today) and the { kind, status: 'running' } partial unique
-  // index (no other chunk of this kind is in flight). Returns null if either
-  // lock is already held.
+  // Atomically claims this chunk's "running" slot, both re-claiming a prior
+  // attempt of the exact same { syncDate, kind, chunkHash } if one exists
+  // (e.g. a previous Failed/Timeout run, so it can be resumed rather than
+  // permanently stuck) and via the { kind, status: 'running' } partial
+  // unique index (no other chunk of this kind is in flight). The caller is
+  // expected to have already checked isChunkDone, so any existing doc for
+  // this chunk is guaranteed not to be Running/Success/PartialSuccess.
+  // Reusing (rather than replacing) the doc preserves its `resolvedTickers`/
+  // `tickerErrors` so the caller can skip tickers already synced
+  // successfully in an earlier attempt. Returns null if the kind-wide lock
+  // is held by another chunk.
   async claimLock(
     trigger: SyncTrigger,
     kind: SyncKind,
@@ -61,17 +67,20 @@ export class SyncHistoryRepository {
     isins: string[],
   ): Promise<SyncHistoryDocument | null> {
     try {
-      return await this.syncHistoryModel.create({
-        type: trigger.type,
-        kind,
-        status: SyncStatus.Running,
-        syncDate,
-        chunkHash,
-        tickerCount,
-        triggeredByUserId: trigger.userId,
-        market,
-        isins,
-      });
+      return await this.syncHistoryModel.findOneAndUpdate(
+        { syncDate, kind, chunkHash },
+        {
+          $set: {
+            type: trigger.type,
+            status: SyncStatus.Running,
+            tickerCount,
+            triggeredByUserId: trigger.userId,
+            market,
+            isins,
+          },
+        },
+        { new: true, upsert: true, setDefaultsOnInsert: true },
+      );
     } catch (error) {
       if (isDuplicateKeyError(error)) {
         return null;
