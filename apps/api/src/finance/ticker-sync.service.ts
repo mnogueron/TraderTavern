@@ -4,8 +4,10 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import {
   DEFAULT_SYNC_CHUNK_SIZE,
   DEFAULT_SYNC_CONCURRENCY,
+  DEFAULT_SYNC_SMALL_MARKET_LIMIT,
   SYNC_CHUNK_SIZE_ENV_VAR,
   SYNC_CONCURRENCY_ENV_VAR,
+  SYNC_SMALL_MARKET_LIMIT_ENV_VAR,
   TICKER_SYNC_ERROR_THRESHOLD,
 } from './constants/candle-windows';
 import { SyncType } from './enums/sync-type.enum';
@@ -20,7 +22,11 @@ import {
 import { AppConfigService } from '../shared/app-config.service';
 import { TickerSourceService } from '../ticker-source/ticker-source.service';
 import { UserService } from '../user/user.service';
-import { startOfToday, startOfTomorrow } from './helpers/date-time';
+import {
+  calendarDateKey,
+  startOfToday,
+  startOfTomorrow,
+} from './helpers/date-time';
 import {
   DailyChartResult,
   fetchCandleChart,
@@ -122,8 +128,8 @@ export class TickerSyncService {
     return this.tickerSourceService.getIsinsForSources(sources);
   }
 
-  // Reads SYNC_CHUNK_SIZE, treating -1 as "unbounded" so buildMarketChunks
-  // puts every market's whole ISIN group into a single chunk. Read directly
+  // Reads SYNC_CHUNK_SIZE, treating -1 as "unbounded" so buildChunks puts
+  // every market's whole ISIN group into a single chunk. Read directly
   // rather than via configService.getNumber, since that helper falls back to
   // the default for any value <= 0.
   private getChunkSize(): number {
@@ -137,18 +143,15 @@ export class TickerSyncService {
     );
   }
 
-  // Groups the ISIN universe by ticker_static_data.market, then caps each
-  // market's group at the configured chunk size (so a large market like
-  // NASDAQ still splits into multiple chunks). Grouping by market lets each
-  // chunk be gated on that specific market's own session state instead of
-  // mixing tickers from unrelated sessions into one arbitrary batch, and
-  // makes it easy to see which markets are still outstanding at a glance.
+  // Groups the ISIN universe by ticker_static_data.market (no chunk-size
+  // splitting yet, no market-hours dependency — see buildChunks for that).
   // ISINs whose market hasn't been resolved yet (e.g. pending their first
-  // static sync) fall into a single ungated group so they're never blocked
-  // on market hours they don't have yet.
-  private async buildMarketChunks(
-    isinUniverse: string[],
-  ): Promise<{ market: string | null; isins: string[] }[]> {
+  // static sync) are returned separately so they can fall into a single
+  // ungated group that's never blocked on market hours they don't have yet.
+  private async groupIsinsByMarket(isinUniverse: string[]): Promise<{
+    isinsByMarket: Map<string, string[]>;
+    unresolvedIsins: string[];
+  }> {
     const marketByIsin = await this.marketService.getMarketByIsin();
 
     const isinsByMarket = new Map<string, string[]>();
@@ -167,49 +170,28 @@ export class TickerSyncService {
       }
     }
 
-    const chunkSize = this.getChunkSize();
-    const chunks: { market: string | null; isins: string[] }[] = [];
-    for (const [market, isinsForMarket] of [...isinsByMarket.entries()].sort(
-      ([a], [b]) => a.localeCompare(b),
-    )) {
-      for (const isins of chunkArray(isinsForMarket, chunkSize)) {
-        chunks.push({ market, isins });
-      }
-    }
-    for (const isins of chunkArray(unresolvedIsins, chunkSize)) {
-      chunks.push({ market: null, isins });
-    }
-
-    return chunks;
+    return { isinsByMarket, unresolvedIsins };
   }
 
-  // Backfills market_hours for any market present in this run's chunks that
+  // Backfills market_hours for any market in this run's universe that
   // doesn't have one yet, so a newly-seen exchange code doesn't sit
   // permanently "unconfigured" (see MarketService.isMarketDueForSync/
   // closingSyncDate falling back to "always due"/startOfToday for it). Runs
-  // once per runChunkedSync call, before any chunk is processed, using a
-  // single representative ticker per missing market rather than fetching
-  // this for every ticker. Mutates `marketHoursByCode` in place so a market
+  // once per runChunkedSync call, before chunks are built, using a single
+  // representative ticker per missing market rather than fetching this for
+  // every ticker. Mutates `marketHoursByCode` in place so a market
   // discovered this run is immediately gated/dated correctly for the rest of
   // this same call. Best-effort: a market that can't be resolved yet (e.g.
   // ISIN resolution or the Yahoo request fails) is simply left unconfigured
   // and retried on the next sync.
   private async discoverMissingMarketHours(
-    marketChunks: { market: string | null; isins: string[] }[],
+    isinsByMarket: Map<string, string[]>,
     marketHoursByCode: Map<string, MarketHours>,
   ): Promise<void> {
-    const attempted = new Set<string>();
-
-    for (const { market, isins } of marketChunks) {
-      if (
-        !market ||
-        marketHoursByCode.has(market) ||
-        attempted.has(market) ||
-        isins.length === 0
-      ) {
+    for (const [market, isins] of isinsByMarket) {
+      if (marketHoursByCode.has(market) || isins.length === 0) {
         continue;
       }
-      attempted.add(market);
 
       try {
         const ticker = await this.tickerSourceService.resolveYahooTicker(
@@ -235,6 +217,163 @@ export class TickerSyncService {
     }
   }
 
+  // Splits the (already market-grouped, market-hours-aware) ISIN universe
+  // into the actual sync_history chunks for this run. Markets not currently
+  // due (when `closeGated`) produce no chunk this run. Markets at or above
+  // the small-market threshold are chunked individually via chunkArray,
+  // exactly like before this feature existed. Markets below the threshold
+  // are instead greedily packed (sorted by market code for determinism, and
+  // grouped by their close instant's UTC calendar day so different-day
+  // closes are never combined) into chunks capped at the configured chunk
+  // size, each tagged with every constituent market and the *max* of their
+  // closing instants (see the aggregated-syncDate rationale in
+  // helpers/date-time.ts's regularCloseAt and the feature's design notes —
+  // markets close in tight clusters, so the latest real close instant stays
+  // meaningful rather than a synthetic rounded value). `syncDateByIsin`
+  // preserves each ISIN's own market's real close instant regardless of how
+  // its chunk was formed, so per-ticker EOD data is never tagged with
+  // another market's date. Unresolved-market ISINs always get their own
+  // always-due, ungated, never-aggregated chunk(s).
+  private buildChunks(
+    isinsByMarket: Map<string, string[]>,
+    unresolvedIsins: string[],
+    marketHoursByCode: Map<string, MarketHours>,
+    closeGated: boolean,
+  ): {
+    markets: string[];
+    isins: string[];
+    syncDate: Date;
+    syncDateByIsin: Map<string, Date>;
+  }[] {
+    const chunkSize = this.getChunkSize();
+    const smallMarketLimit = this.configService.getNumber(
+      SYNC_SMALL_MARKET_LIMIT_ENV_VAR,
+      DEFAULT_SYNC_SMALL_MARKET_LIMIT,
+    );
+    const smallMarketThreshold = Math.min(smallMarketLimit, chunkSize);
+
+    const chunks: {
+      markets: string[];
+      isins: string[];
+      syncDate: Date;
+      syncDateByIsin: Map<string, Date>;
+    }[] = [];
+
+    const smallMarketEntries: {
+      market: string;
+      isins: string[];
+      closingDate: Date;
+      dayKey: string;
+    }[] = [];
+
+    for (const [market, isins] of [...isinsByMarket.entries()].sort(
+      ([a], [b]) => a.localeCompare(b),
+    )) {
+      if (
+        closeGated &&
+        !this.marketService.isMarketDueForSync(market, marketHoursByCode)
+      ) {
+        continue;
+      }
+
+      const closingDate = this.marketService.closingSyncDate(
+        market,
+        marketHoursByCode,
+      );
+
+      if (isins.length >= smallMarketThreshold) {
+        for (const isinChunk of chunkArray(isins, chunkSize)) {
+          chunks.push({
+            markets: [market],
+            isins: isinChunk,
+            syncDate: closingDate,
+            syncDateByIsin: new Map(
+              isinChunk.map((isin) => [isin, closingDate]),
+            ),
+          });
+        }
+      } else {
+        smallMarketEntries.push({
+          market,
+          isins,
+          closingDate,
+          dayKey: calendarDateKey(closingDate),
+        });
+      }
+    }
+
+    const smallMarketEntriesByDay = new Map<string, typeof smallMarketEntries>();
+    for (const entry of smallMarketEntries) {
+      const entries = smallMarketEntriesByDay.get(entry.dayKey);
+      if (entries) {
+        entries.push(entry);
+      } else {
+        smallMarketEntriesByDay.set(entry.dayKey, [entry]);
+      }
+    }
+
+    for (const entries of smallMarketEntriesByDay.values()) {
+      let current: {
+        markets: string[];
+        isins: string[];
+        syncDateByIsin: Map<string, Date>;
+        maxClosingDate: Date;
+      } | null = null;
+
+      const flush = () => {
+        if (current) {
+          chunks.push({
+            markets: current.markets,
+            isins: current.isins,
+            syncDate: current.maxClosingDate,
+            syncDateByIsin: current.syncDateByIsin,
+          });
+        }
+        current = null;
+      };
+
+      for (const entry of entries) {
+        if (current && current.isins.length + entry.isins.length > chunkSize) {
+          flush();
+        }
+        if (!current) {
+          current = {
+            markets: [],
+            isins: [],
+            syncDateByIsin: new Map(),
+            maxClosingDate: entry.closingDate,
+          };
+        }
+        current.markets.push(entry.market);
+        current.isins.push(...entry.isins);
+        for (const isin of entry.isins) {
+          current.syncDateByIsin.set(isin, entry.closingDate);
+        }
+        if (entry.closingDate > current.maxClosingDate) {
+          current.maxClosingDate = entry.closingDate;
+        }
+      }
+      flush();
+    }
+
+    const unresolvedClosingDate = this.marketService.closingSyncDate(
+      null,
+      marketHoursByCode,
+    );
+    for (const isinChunk of chunkArray(unresolvedIsins, chunkSize)) {
+      chunks.push({
+        markets: [],
+        isins: isinChunk,
+        syncDate: unresolvedClosingDate,
+        syncDateByIsin: new Map(
+          isinChunk.map((isin) => [isin, unresolvedClosingDate]),
+        ),
+      });
+    }
+
+    return chunks;
+  }
+
   // Atomically claims a chunk's "running" slot in sync_history, both via the
   // { syncDate, kind, chunkHash } unique index (this exact chunk hasn't been
   // processed today) and the { kind, status: 'running' } partial unique
@@ -246,7 +385,7 @@ export class TickerSyncService {
     syncDate: Date,
     chunkHash: string,
     tickerCount: number,
-    market: string | null,
+    markets: string[],
     isins: string[],
   ): Promise<SyncHistoryDocument | null> {
     const lock = await this.syncHistoryRepository.claimLock(
@@ -255,7 +394,7 @@ export class TickerSyncService {
       syncDate,
       chunkHash,
       tickerCount,
-      market,
+      markets,
       isins,
     );
     if (!lock) {
@@ -335,7 +474,7 @@ export class TickerSyncService {
 
   // Shared driver for every "sync all tickers" operation. Builds the ISIN
   // universe, groups it by market and splits each market's group into
-  // size-capped chunks (see buildMarketChunks), skips any chunk whose
+  // size-capped chunks (see buildChunks), skips any chunk whose
   // market hasn't closed yet (for kinds where that matters, see
   // isMarketCloseGated), and for each remaining chunk not already done
   // today: resolves each ISIN to its Yahoo ticker (cached in
@@ -376,35 +515,47 @@ export class TickerSyncService {
       return;
     }
 
-    const allMarketChunks = await this.buildMarketChunks(isinUniverse);
-    const marketChunks = markets?.length
-      ? allMarketChunks.filter(
-          (chunk) => chunk.market && markets.includes(chunk.market),
+    const { isinsByMarket: allIsinsByMarket, unresolvedIsins: allUnresolvedIsins } =
+      await this.groupIsinsByMarket(isinUniverse);
+
+    // A manual admin trigger restricted to specific markets drops unresolved
+    // ISINs entirely (there's no market to match against), matching the
+    // previous per-chunk filter's behavior.
+    const isinsByMarket = markets?.length
+      ? new Map(
+          [...allIsinsByMarket.entries()].filter(([market]) =>
+            markets.includes(market),
+          ),
         )
-      : allMarketChunks;
-    if (marketChunks.length === 0) {
+      : allIsinsByMarket;
+    const unresolvedIsins = markets?.length ? [] : allUnresolvedIsins;
+    if (isinsByMarket.size === 0 && unresolvedIsins.length === 0) {
       return;
     }
 
     const closeGated = this.marketService.isMarketCloseGated(kind);
     const marketHoursByCode = await this.marketService.getMarketHoursByCode();
-    await this.discoverMissingMarketHours(marketChunks, marketHoursByCode);
+    await this.discoverMissingMarketHours(isinsByMarket, marketHoursByCode);
 
-    for (const { market, isins: isinChunk } of marketChunks) {
-      if (
-        closeGated &&
-        !this.marketService.isMarketDueForSync(market, marketHoursByCode)
-      ) {
-        continue;
-      }
+    const chunks = this.buildChunks(
+      isinsByMarket,
+      unresolvedIsins,
+      marketHoursByCode,
+      closeGated,
+    );
+    if (chunks.length === 0) {
+      return;
+    }
 
-      // Tag this chunk (and the EOD data it produces) with the market's own
-      // closing instant rather than a shared calendar day, so different
-      // markets' sessions never get conflated under one arbitrary syncDate.
-      const syncDate = this.marketService.closingSyncDate(
-        market,
-        marketHoursByCode,
-      );
+    for (const {
+      markets: chunkMarkets,
+      isins: isinChunk,
+      syncDate,
+      syncDateByIsin,
+    } of chunks) {
+      const marketLabel =
+        chunkMarkets.length > 0 ? chunkMarkets.join('+') : 'unknown';
+
       const chunkHash = hashIsinChunk(isinChunk);
       const alreadyDone = await this.syncHistoryRepository.isChunkDone(
         syncDate,
@@ -421,7 +572,7 @@ export class TickerSyncService {
         syncDate,
         chunkHash,
         isinChunk.length,
-        market,
+        chunkMarkets,
         isinChunk,
       );
       if (!lock) {
@@ -433,7 +584,7 @@ export class TickerSyncService {
 
       const chunkStartedAt = Date.now();
       this.logger.log(
-        `Starting ${kind} chunk sync for market ${market ?? 'unknown'}: ${isinChunk.length} ISIN(s) (lock ${lock._id})`,
+        `Starting ${kind} chunk sync for market ${marketLabel}: ${isinChunk.length} ISIN(s) (lock ${lock._id})`,
       );
 
       // Resuming a chunk that previously aborted (e.g. on a Yahoo timeout)
@@ -530,7 +681,7 @@ export class TickerSyncService {
           generalError ?? undefined,
         );
         this.logger.log(
-          `Finished ${kind} chunk sync for market ${market ?? 'unknown'} in ${Date.now() - chunkStartedAt}ms: ` +
+          `Finished ${kind} chunk sync for market ${marketLabel} in ${Date.now() - chunkStartedAt}ms: ` +
             `aborted during ISIN resolution (status=${resolutionAbortStatus})`,
         );
         if (!processAllChunks) {
@@ -569,7 +720,13 @@ export class TickerSyncService {
           DEFAULT_SYNC_CONCURRENCY,
         ),
         async (ref) => {
-          await syncTicker(ref, syncDate);
+          const isinSyncDate = syncDateByIsin.get(ref.isin);
+          if (!isinSyncDate) {
+            throw new Error(
+              `No syncDate found for ${ref.isin} in chunk ${lock._id} — this indicates a bug in buildChunks`,
+            );
+          }
+          await syncTicker(ref, isinSyncDate);
           await this.tickerHealthService.recordSuccess(
             ref,
             kind === SyncKind.Ticker,
@@ -622,7 +779,7 @@ export class TickerSyncService {
       );
 
       this.logger.log(
-        `Finished ${kind} chunk sync for market ${market ?? 'unknown'} in ${Date.now() - chunkStartedAt}ms: ` +
+        `Finished ${kind} chunk sync for market ${marketLabel} in ${Date.now() - chunkStartedAt}ms: ` +
           `${successCount}/${refs.length} succeeded, ${Object.keys(errors).length} error(s)` +
           (abortStatus ? `, aborted early (status=${abortStatus})` : ''),
       );
@@ -727,7 +884,7 @@ export class TickerSyncService {
       syncDate,
       hashIsinChunk([ref.isin, randomUUID()]),
       1,
-      market,
+      market ? [market] : [],
       [ref.isin],
     );
     if (!lock) {

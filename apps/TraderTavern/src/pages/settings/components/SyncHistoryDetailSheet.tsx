@@ -25,6 +25,7 @@ import {
 import CompanyCell from '@/components/CompanyCell';
 import EmptyCell from '@/components/EmptyCell';
 import SyncStatusBadge from '@/pages/settings/components/SyncStatusBadge';
+import MarketBadgeList from '@/pages/settings/components/MarketBadgeList';
 import { SYNC_KIND_LABEL, formatSyncTrigger } from '@/pages/settings/components/syncLabels';
 import { formatDateTime, formatDuration } from '@/lib/format';
 
@@ -133,11 +134,9 @@ const SyncHistoryDetailSheet = ({
                 <dt className="text-muted-foreground">Triggered by</dt>
                 <dd>{formatSyncTrigger(data.type, data.triggeredByUsername)}</dd>
 
-                <dt className="text-muted-foreground">Market</dt>
+                <dt className="text-muted-foreground">Markets</dt>
                 <dd>
-                  {data.market
-                    ? `${data.market}${data.marketLabel ? ` — ${data.marketLabel}` : ''}`
-                    : '—'}
+                  <MarketBadgeList markets={data.markets} marketLabels={data.marketLabels} />
                 </dd>
 
                 <dt className="text-muted-foreground">Sync date</dt>

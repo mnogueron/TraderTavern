@@ -75,7 +75,7 @@ export class SyncHistoryRepository {
     syncDate: Date,
     chunkHash: string,
     tickerCount: number,
-    market: string | null,
+    markets: string[],
     isins: string[],
   ): Promise<SyncHistoryDocument | null> {
     try {
@@ -87,7 +87,7 @@ export class SyncHistoryRepository {
             status: SyncStatus.Running,
             tickerCount,
             triggeredByUserId: trigger.userId,
-            market,
+            markets,
             isins,
           },
         },

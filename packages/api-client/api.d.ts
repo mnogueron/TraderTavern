@@ -965,8 +965,8 @@ export interface components {
             status: "running" | "success" | "partial_success" | "failed" | "timeout" | "cancelled";
             /** Format: date-time */
             syncDate: string;
-            market: string | null;
-            marketLabel: string | null;
+            markets: string[];
+            marketLabels: (string | null)[];
             tickerCount: number;
             succeededCount: number;
             failedCount: number;
@@ -1000,8 +1000,8 @@ export interface components {
             status: "running" | "success" | "partial_success" | "failed" | "timeout" | "cancelled";
             /** Format: date-time */
             syncDate: string;
-            market: string | null;
-            marketLabel: string | null;
+            markets: string[];
+            marketLabels: (string | null)[];
             tickerCount: number;
             succeededCount: number;
             failedCount: number;

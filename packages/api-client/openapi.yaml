@@ -1666,12 +1666,15 @@ components:
         syncDate:
           format: date-time
           type: string
-        market:
-          type: string
-          nullable: true
-        marketLabel:
-          type: string
-          nullable: true
+        markets:
+          type: array
+          items:
+            type: string
+        marketLabels:
+          type: array
+          items:
+            type: string
+            nullable: true
         tickerCount:
           type: number
         succeededCount:
@@ -1697,8 +1700,8 @@ components:
         - kind
         - status
         - syncDate
-        - market
-        - marketLabel
+        - markets
+        - marketLabels
         - tickerCount
         - succeededCount
         - failedCount
@@ -1779,12 +1782,15 @@ components:
         syncDate:
           format: date-time
           type: string
-        market:
-          type: string
-          nullable: true
-        marketLabel:
-          type: string
-          nullable: true
+        markets:
+          type: array
+          items:
+            type: string
+        marketLabels:
+          type: array
+          items:
+            type: string
+            nullable: true
         tickerCount:
           type: number
         succeededCount:
@@ -1817,8 +1823,8 @@ components:
         - kind
         - status
         - syncDate
-        - market
-        - marketLabel
+        - markets
+        - marketLabels
         - tickerCount
         - succeededCount
         - failedCount

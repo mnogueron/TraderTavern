@@ -24,7 +24,7 @@ import { cn } from '@/lib/utils';
 import { formatDateTime, formatDuration } from '@/lib/format';
 import SyncStatusBadge from '@/pages/settings/components/SyncStatusBadge';
 import SyncKindBadge from '@/pages/settings/components/SyncKindBadge';
-import MarketBadge from '@/pages/settings/components/MarketBadge';
+import MarketBadgeList from '@/pages/settings/components/MarketBadgeList';
 import { SYNC_STATUS_LABEL, formatSyncTrigger } from '@/pages/settings/components/syncLabels';
 import SyncHistoryDetailSheet from '@/pages/settings/components/SyncHistoryDetailSheet';
 import TriggerSyncMenu from '@/pages/settings/components/TriggerSyncMenu';
@@ -208,7 +208,7 @@ const DataSyncSettings = () => {
                       <SyncKindBadge kind={item.kind} />
                     </TableCell>
                     <TableCell>
-                      <MarketBadge market={item.market} marketLabel={item.marketLabel} />
+                      <MarketBadgeList markets={item.markets} marketLabels={item.marketLabels} />
                     </TableCell>
                     <TableCell>
                       {formatSyncTrigger(item.type, item.triggeredByUsername)}

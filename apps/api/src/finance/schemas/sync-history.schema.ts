@@ -41,11 +41,13 @@ export class SyncHistory {
   @Prop()
   generalError?: string;
 
-  // The single Yahoo exchange code every ISIN in this chunk belongs to
-  // (chunks are grouped by market, see buildMarketChunks), or null for the
-  // ungated group of ISINs whose market hasn't been resolved yet.
-  @Prop({ type: String, default: null })
-  market!: string | null;
+  // Every Yahoo exchange code this chunk's ISINs belong to (chunks are
+  // grouped by market, see TickerSyncService.buildChunks) — usually one, but
+  // more than one when small markets closing the same day were bulk
+  // aggregated into a single chunk. Empty for the ungated group of ISINs
+  // whose market hasn't been resolved yet.
+  @Prop({ type: [String], default: [] })
+  markets!: string[];
 
   // The full set of ISINs this chunk covers, regardless of whether each one
   // was successfully resolved/synced, so the admin sync log can show what

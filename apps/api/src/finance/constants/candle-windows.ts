@@ -94,6 +94,18 @@ export const SYNC_CHUNK_SIZE_ENV_VAR = 'SYNC_CHUNK_SIZE';
 // hours instead of one long run that would trip Yahoo's rate limiting.
 export const DEFAULT_SYNC_CHUNK_SIZE = 200;
 
+// Env var holding the max ticker count for a market to be considered
+// "small" and eligible to be bulk-aggregated with other small markets
+// closing on the same day into a single chunk (see
+// TickerSyncService.buildChunks), instead of each waiting its own turn one
+// cron tick at a time.
+export const SYNC_SMALL_MARKET_LIMIT_ENV_VAR = 'SYNC_SMALL_MARKET_TICKER_LIMIT';
+
+// Markets with only a handful to a few dozen tickers each would otherwise
+// consume a full EVERY_MINUTE cron tick to sync ~1s of actual work; below
+// this size they're grouped together instead.
+export const DEFAULT_SYNC_SMALL_MARKET_LIMIT = 50;
+
 // Env var holding how many minutes a ticker may go unsynced past its
 // market's regular close before the sync health monitor flags it as
 // unhealthy (see FinanceService.computeTickerHealthEntries).
