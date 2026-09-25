@@ -9,7 +9,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Section, SectionContent } from '@/components/Section';
 import { ButtonGroup } from '@/components/ui/button-group';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -150,9 +150,9 @@ const FinancialHistoryCard = ({
   const data: ChartRow[] = (financialHistory?.annual ?? []).map(toChartRow);
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Financial History</CardTitle>
+    <Section
+      title="Financial History"
+      actionElement={
         <ButtonGroup>
           {SERIES_SET_OPTIONS.map((option) => (
             <Button
@@ -165,8 +165,9 @@ const FinancialHistoryCard = ({
             </Button>
           ))}
         </ButtonGroup>
-      </CardHeader>
-      <CardContent className="h-72">
+      }
+    >
+      <SectionContent className="h-72">
         {isPending || !financialHistory ? (
           <Skeleton className="h-full" />
         ) : data.length === 0 ? (
@@ -214,8 +215,8 @@ const FinancialHistoryCard = ({
             </ComposedChart>
           </ResponsiveContainer>
         )}
-      </CardContent>
-    </Card>
+      </SectionContent>
+    </Section>
   );
 };
 

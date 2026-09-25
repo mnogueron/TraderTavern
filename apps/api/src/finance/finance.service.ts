@@ -52,6 +52,7 @@ import {
   MarketHoursDocument,
 } from './schemas/market-hours.schema';
 import { MarketHoursDto } from './dto/MarketHours.dto';
+import { MarketSummaryDto } from './dto/MarketSummary.dto';
 import { TickerOptionDto } from './dto/TickerOption.dto';
 import {
   AnnualFinancialPeriodDto,
@@ -729,6 +730,67 @@ export class FinanceService {
   private async getMarketLabelsByCode(): Promise<Map<string, string>> {
     const marketHours = await this.marketHoursModel.find().lean();
     return new Map(marketHours.map((doc) => [doc.market, doc.label]));
+  }
+
+  // Every raw exchange code actually present on a non-hidden ticker (what
+  // sync scheduling groups chunks by, see MarketService.getMarketByIsin),
+  // not just the ones with configured market_hours. A market with no
+  // market_hours entry still gets synced (see MarketService.isMarketDueForSync)
+  // but has a null label here so the admin UI can surface it as unconfigured
+  // rather than silently dropping it, as the market_hours-derived label in
+  // ScreenerFilterOptionsDto.markets does.
+  async getMarketSummaries(): Promise<MarketSummaryDto[]> {
+    const [staticData, hiddenIsins, marketLabelByCode, technicalData] =
+      await Promise.all([
+        this.tickerStaticDataModel
+          .find({ market: { $ne: null } })
+          .select('isin market')
+          .lean(),
+        this.tickerHealthService.getHiddenIsins(),
+        this.getMarketLabelsByCode(),
+        this.latestPerTicker<CompoundTechnicalTickerData & WithUpdatedAt>(
+          this.compoundTechnicalTickerDataModel,
+        ),
+      ]);
+
+    const updatedAtByIsin = new Map(
+      technicalData.map((doc) => [doc.isin, doc.updatedAt]),
+    );
+
+    const isinsByMarket = new Map<string, string[]>();
+    for (const ticker of staticData) {
+      if (!ticker.market || hiddenIsins.has(ticker.isin)) {
+        continue;
+      }
+      const group = isinsByMarket.get(ticker.market);
+      if (group) {
+        group.push(ticker.isin);
+      } else {
+        isinsByMarket.set(ticker.market, [ticker.isin]);
+      }
+    }
+
+    return [...isinsByMarket.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([market, isins]) => {
+        // Approximates "last complete sync" the same way the previous
+        // frontend-side computation did: least-recent refresh across the
+        // market's tickers, since we only have a per-ticker last-sync date.
+        const updatedDates = isins
+          .map((isin) => updatedAtByIsin.get(isin))
+          .filter((date): date is Date => Boolean(date));
+        const lastCompleteSync = updatedDates.length
+          ? updatedDates.reduce((earliest, current) =>
+              current < earliest ? current : earliest,
+            )
+          : null;
+
+        return new MarketSummaryDto(
+          market,
+          marketLabelByCode.get(market) ?? null,
+          lastCompleteSync?.toISOString() ?? null,
+        );
+      });
   }
 
   private async getUsernamesByIds(

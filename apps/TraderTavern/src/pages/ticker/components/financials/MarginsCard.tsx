@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Section, SectionContent } from '@/components/Section';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatPercent } from '@/lib/format';
 import type { Fundamental } from '@/pages/ticker/components/financials/types';
@@ -39,11 +39,8 @@ const MarginBar = ({ label, value }: { label: string; value: number | null }) =>
 
 const MarginsCard = ({ fundamental, isPending }: MarginsCardProps) => {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Margins</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">
+    <Section title="Margins">
+      <SectionContent className="flex flex-col gap-3">
         {isPending || !fundamental
           ? MARGIN_DEFINITIONS.map((margin) => (
               <Skeleton key={margin.label} className="h-9" />
@@ -55,8 +52,8 @@ const MarginsCard = ({ fundamental, isPending }: MarginsCardProps) => {
                 value={fundamental[margin.key]}
               />
             ))}
-      </CardContent>
-    </Card>
+      </SectionContent>
+    </Section>
   );
 };
 

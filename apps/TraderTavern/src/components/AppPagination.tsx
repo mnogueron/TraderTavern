@@ -3,7 +3,9 @@ import {
   Pagination,
   PaginationContent,
   PaginationEllipsis,
+  PaginationFirst,
   PaginationItem,
+  PaginationLast,
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
@@ -35,6 +37,14 @@ export function AppPagination({
   return (
     <Pagination className={cn('mx-0 w-auto justify-end', className)}>
       <PaginationContent>
+        <PaginationItem>
+          <PaginationFirst
+            href="#"
+            aria-disabled={page <= 1}
+            className={page <= 1 ? 'pointer-events-none opacity-50' : undefined}
+            onClick={(event) => goToPage(event, 1)}
+          />
+        </PaginationItem>
         <PaginationItem>
           <PaginationPrevious
             href="#"
@@ -68,6 +78,16 @@ export function AppPagination({
               page >= totalPages ? 'pointer-events-none opacity-50' : undefined
             }
             onClick={(event) => goToPage(event, page + 1)}
+          />
+        </PaginationItem>
+        <PaginationItem>
+          <PaginationLast
+            href="#"
+            aria-disabled={page >= totalPages}
+            className={
+              page >= totalPages ? 'pointer-events-none opacity-50' : undefined
+            }
+            onClick={(event) => goToPage(event, totalPages)}
           />
         </PaginationItem>
       </PaginationContent>

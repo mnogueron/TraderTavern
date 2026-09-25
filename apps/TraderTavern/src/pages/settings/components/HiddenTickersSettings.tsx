@@ -13,7 +13,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { AppPagination } from '@/components/AppPagination';
-import { Section } from '@/components/Section';
+import { TableFooter } from '@/components/TableFooter';
+import { Section, SectionContent } from '@/components/Section';
 import { formatDateTime } from '@/lib/format';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import CompanyCell from '@/components/CompanyCell';
@@ -60,7 +61,7 @@ const HiddenTickersSettings = () => {
         />
       }
     >
-      <div className="flex flex-col gap-4">
+      <SectionContent className="flex flex-col gap-4">
         {isPending || !data ? (
           <div className="flex flex-col gap-2">
             {Array.from({ length: VISIBLE_ROWS }).map((_, index) => (
@@ -68,86 +69,89 @@ const HiddenTickersSettings = () => {
             ))}
           </div>
         ) : (
-          <Table containerClassName="max-h-[410px] rounded-lg border border-input">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Company</TableHead>
-                <TableHead>ISIN</TableHead>
-                <TableHead className="text-right">Errors</TableHead>
-                <TableHead>Last error</TableHead>
-                <TableHead>Hidden since</TableHead>
-                <TableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data.data.length === 0 ? (
+          <div className="flex flex-col overflow-hidden rounded-lg border border-input">
+            <Table containerClassName="max-h-[410px]">
+              <TableHeader>
                 <TableRow>
-                  <TableCell
-                    colSpan={6}
-                    className="text-center text-sm text-muted-foreground"
-                  >
-                    No tickers are currently hidden.
-                  </TableCell>
+                  <TableHead>Company</TableHead>
+                  <TableHead>ISIN</TableHead>
+                  <TableHead className="text-right">Errors</TableHead>
+                  <TableHead>Last error</TableHead>
+                  <TableHead>Hidden since</TableHead>
+                  <TableHead />
                 </TableRow>
-              ) : (
-                data.data.map((ticker) => (
-                  <TableRow key={ticker.isin}>
-                    <TableCell>
-                      <CompanyCell
-                        ticker={ticker.ticker}
-                        companyName={ticker.companyName}
-                        logoUrl={ticker.logoUrl}
-                      />
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">
-                      {ticker.isin}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {ticker.errorCount}
-                    </TableCell>
+              </TableHeader>
+              <TableBody>
+                {data.data.length === 0 ? (
+                  <TableRow>
                     <TableCell
-                      className="max-w-xs truncate whitespace-nowrap text-xs text-muted-foreground"
-                      title={ticker.lastError ?? undefined}
+                      colSpan={6}
+                      className="text-center text-sm text-muted-foreground"
                     >
-                      {ticker.lastError ?? '—'}
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {formatDateTime(ticker.hiddenAt)}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        disabled={
-                          unhideMutation.isPending &&
-                          unhideMutation.variables?.params.path.id ===
-                            ticker.ticker
-                        }
-                        onClick={() =>
-                          unhideMutation.mutate({
-                            params: { path: { id: ticker.ticker } },
-                          })
-                        }
-                      >
-                        Unhide
-                      </Button>
+                      No tickers are currently hidden.
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  data.data.map((ticker) => (
+                    <TableRow key={ticker.isin}>
+                      <TableCell>
+                        <CompanyCell
+                          ticker={ticker.ticker}
+                          companyName={ticker.companyName}
+                          logoUrl={ticker.logoUrl}
+                        />
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {ticker.isin}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {ticker.errorCount}
+                      </TableCell>
+                      <TableCell
+                        className="max-w-xs truncate whitespace-nowrap text-xs text-muted-foreground"
+                        title={ticker.lastError ?? undefined}
+                      >
+                        {ticker.lastError ?? '—'}
+                      </TableCell>
+                      <TableCell className="tabular-nums">
+                        {formatDateTime(ticker.hiddenAt)}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={
+                            unhideMutation.isPending &&
+                            unhideMutation.variables?.params.path.id ===
+                              ticker.ticker
+                          }
+                          onClick={() =>
+                            unhideMutation.mutate({
+                              params: { path: { id: ticker.ticker } },
+                            })
+                          }
+                        >
+                          Unhide
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+            {meta && (
+              <TableFooter>
+                <AppPagination
+                  page={meta.page}
+                  totalPages={meta.totalPages}
+                  onPageChange={setPage}
+                />
+              </TableFooter>
+            )}
+          </div>
         )}
-
-        {meta && (
-          <AppPagination
-            page={meta.page}
-            totalPages={meta.totalPages}
-            onPageChange={setPage}
-          />
-        )}
-      </div>
+      </SectionContent>
     </Section>
   );
 };

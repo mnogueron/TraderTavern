@@ -2,7 +2,13 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { RiArrowLeftSLine, RiArrowRightSLine, RiMoreLine } from "@remixicon/react"
+import {
+  RiArrowLeftDoubleLine,
+  RiArrowLeftSLine,
+  RiArrowRightDoubleLine,
+  RiArrowRightSLine,
+  RiMoreLine,
+} from "@remixicon/react"
 
 function Pagination({ className, ...props }: React.ComponentProps<"nav">) {
   return (
@@ -62,38 +68,66 @@ function PaginationLink({
   )
 }
 
+function PaginationFirst({
+  className,
+  ...props
+}: React.ComponentProps<typeof PaginationLink>) {
+  return (
+    <PaginationLink
+      aria-label="Go to first page"
+      size="icon"
+      className={cn(className)}
+      {...props}
+    >
+      <RiArrowLeftDoubleLine />
+    </PaginationLink>
+  )
+}
+
 function PaginationPrevious({
   className,
-  text = "Previous",
   ...props
-}: React.ComponentProps<typeof PaginationLink> & { text?: string }) {
+}: React.ComponentProps<typeof PaginationLink>) {
   return (
     <PaginationLink
       aria-label="Go to previous page"
-      size="default"
-      className={cn("pl-1.5!", className)}
+      size="icon"
+      className={cn(className)}
       {...props}
     >
-      <RiArrowLeftSLine data-icon="inline-start" />
-      <span className="hidden sm:block">{text}</span>
+      <RiArrowLeftSLine />
     </PaginationLink>
   )
 }
 
 function PaginationNext({
   className,
-  text = "Next",
   ...props
-}: React.ComponentProps<typeof PaginationLink> & { text?: string }) {
+}: React.ComponentProps<typeof PaginationLink>) {
   return (
     <PaginationLink
       aria-label="Go to next page"
-      size="default"
-      className={cn("pr-1.5!", className)}
+      size="icon"
+      className={cn(className)}
       {...props}
     >
-      <span className="hidden sm:block">{text}</span>
-      <RiArrowRightSLine data-icon="inline-end" />
+      <RiArrowRightSLine />
+    </PaginationLink>
+  )
+}
+
+function PaginationLast({
+  className,
+  ...props
+}: React.ComponentProps<typeof PaginationLink>) {
+  return (
+    <PaginationLink
+      aria-label="Go to last page"
+      size="icon"
+      className={cn(className)}
+      {...props}
+    >
+      <RiArrowRightDoubleLine />
     </PaginationLink>
   )
 }
@@ -123,7 +157,9 @@ export {
   Pagination,
   PaginationContent,
   PaginationEllipsis,
+  PaginationFirst,
   PaginationItem,
+  PaginationLast,
   PaginationLink,
   PaginationNext,
   PaginationPrevious,

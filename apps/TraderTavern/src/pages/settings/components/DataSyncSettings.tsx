@@ -12,6 +12,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { AppPagination } from '@/components/AppPagination';
+import { TableFooter } from '@/components/TableFooter';
 import {
   Select,
   SelectContent,
@@ -112,9 +113,9 @@ const DataSyncSettings = () => {
         />
       </div>
 
-      <div className="min-h-0 flex-1 overflow-hidden rounded-xl ring-1 ring-foreground/10">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl ring-1 ring-foreground/10">
         {isPending || !data ? (
-          <Table containerClassName="h-full" className="text-xs">
+          <Table containerClassName="min-h-0 flex-1" className="text-xs">
             <TableHeader>
               <TableRow>
                 <TableHead>Status</TableHead>
@@ -167,7 +168,7 @@ const DataSyncSettings = () => {
             </TableBody>
           </Table>
         ) : (
-          <Table containerClassName="h-full" className="text-xs">
+          <Table containerClassName="min-h-0 flex-1" className="text-xs">
             <TableHeader>
               <TableRow>
                 <TableHead>Status</TableHead>
@@ -250,29 +251,28 @@ const DataSyncSettings = () => {
             </TableBody>
           </Table>
         )}
-      </div>
-
-      <div className="flex shrink-0 items-center justify-between gap-2">
-        <Select value={status} onValueChange={handleStatusChange}>
-          <SelectTrigger aria-label="Filter by status" size="sm" className="w-40">
-            <SelectValue placeholder="All statuses" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            {STATUS_OPTIONS.map((option) => (
-              <SelectItem key={option} value={option}>
-                {SYNC_STATUS_LABEL[option]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {meta && (
-          <AppPagination
-            page={meta.page}
-            totalPages={meta.totalPages}
-            onPageChange={setPage}
-          />
-        )}
+        <TableFooter>
+          <Select value={status} onValueChange={handleStatusChange}>
+            <SelectTrigger aria-label="Filter by status" size="sm" className="w-40">
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              {STATUS_OPTIONS.map((option) => (
+                <SelectItem key={option} value={option}>
+                  {SYNC_STATUS_LABEL[option]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {meta && (
+            <AppPagination
+              page={meta.page}
+              totalPages={meta.totalPages}
+              onPageChange={setPage}
+            />
+          )}
+        </TableFooter>
       </div>
 
       <SyncHistoryDetailSheet

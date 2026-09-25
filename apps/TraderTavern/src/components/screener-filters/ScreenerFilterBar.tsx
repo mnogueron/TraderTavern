@@ -3,6 +3,7 @@ import { RiCloseLine, RiArrowDownSLine } from '@remixicon/react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { CardSurface } from '@/components/CardSurface';
+import { SectionContent, SectionFooter } from '@/components/Section';
 import {
   Collapsible,
   CollapsibleContent,
@@ -33,6 +34,7 @@ import {
 } from '@/components/screener-filters/types';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 const DEFAULT_VALUE_BY_TYPE: Record<
   ScreenerFilterConfig['type'],
@@ -237,35 +239,27 @@ const ScreenerFilterBar = ({
   };
 
   return (
-    <CardSurface className="flex flex-col gap-2 p-2">
+    <CardSurface className="flex flex-col">
       <Collapsible open={open} onOpenChange={setOpen}>
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 p-2">
           <div className="flex flex-wrap items-center gap-2">
-            <ScreenerFilterSearch configs={configs} onSelect={handleFilterSearchSelect} />
-            <Tabs value={tab} onValueChange={handleTabChange}>
-              <TabsList variant="line" className="h-6">
-                <TabsTrigger value="descriptive" className="text-xs">
-                  Descriptive
-                </TabsTrigger>
-                <TabsTrigger value="fundamental" className="text-xs">
-                  Fundamental
-                </TabsTrigger>
-                <TabsTrigger value="technical" className="text-xs">
-                  Technical
-                </TabsTrigger>
-                <TabsTrigger value="all" className="text-xs">
-                  All
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <h2 className="text-sm font-semibold">Filters</h2>
+            {activeConfigs.length > 0 && (
+              <Tooltip>
+                <TooltipTrigger
+                  render={<Badge variant="secondary" className="text-[10px]" />}
+                >
+                  {activeConfigs.length}
+                </TooltipTrigger>
+                <TooltipContent>
+                  {activeConfigs.length} active filter
+                  {activeConfigs.length > 1 ? 's' : ''}
+                </TooltipContent>
+              </Tooltip>
+            )}
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>{activeConfigs.length} filters active</span>
-            {activeConfigs.length > 0 && (
-              <Button variant="ghost" size="xs" onClick={onReset}>
-                Reset
-              </Button>
-            )}
+            <ScreenerFilterSearch configs={configs} onSelect={handleFilterSearchSelect} />
             <CollapsibleTrigger
               render={
                 <Button variant="ghost" size="icon-xs" aria-label="Toggle filters" />
@@ -278,7 +272,24 @@ const ScreenerFilterBar = ({
           </div>
         </div>
 
-        <CollapsibleContent className="flex flex-col gap-2 pt-2">
+        <CollapsibleContent>
+        <SectionContent className="flex flex-col gap-3 p-4">
+        <Tabs value={tab} onValueChange={handleTabChange}>
+          <TabsList variant="line" className="h-6">
+            <TabsTrigger value="descriptive" className="text-xs">
+              Descriptive
+            </TabsTrigger>
+            <TabsTrigger value="fundamental" className="text-xs">
+              Fundamental
+            </TabsTrigger>
+            <TabsTrigger value="technical" className="text-xs">
+              Technical
+            </TabsTrigger>
+            <TabsTrigger value="all" className="text-xs">
+              All
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
         {visibleCategories.map((category) => {
           const categoryConfigs = configs.filter(
             (config) => config.category === category,
@@ -330,11 +341,12 @@ const ScreenerFilterBar = ({
             </div>
           );
         })}
+        </SectionContent>
         </CollapsibleContent>
       </Collapsible>
 
       {activeConfigs.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 border-t pt-2">
+        <SectionFooter className="flex flex-wrap items-center gap-1.5 p-2">
           {activeConfigs.map((config) => (
             <span
               key={config.key}
@@ -355,7 +367,7 @@ const ScreenerFilterBar = ({
           <Button variant="ghost" size="xs" onClick={onReset}>
             Clear all
           </Button>
-        </div>
+        </SectionFooter>
       )}
     </CardSurface>
   );

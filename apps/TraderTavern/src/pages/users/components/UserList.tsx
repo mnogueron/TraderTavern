@@ -21,7 +21,7 @@ const UserList = ({ users }: UserListProps) => {
   });
 
   return (
-    <Table containerClassName="h-full">
+    <Table containerClassName="min-h-0 flex-1">
       <TableHeader>
         {table.getHeaderGroups().map((headerGroup) => (
           <TableRow key={headerGroup.id}>

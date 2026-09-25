@@ -3,7 +3,7 @@ import { RiEyeLine, RiEyeOffLine } from '@remixicon/react';
 import { useClientQuery } from '@trader-tavern/api-client';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Section, SectionContent, SectionFooter } from '@/components/Section';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CandlestickChart from '@/pages/ticker/components/CandlestickChart';
@@ -108,9 +108,10 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
         />
       </div>
 
-      <Card className="mt-4 h-[420px] shrink-0">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Candles</CardTitle>
+      <Section
+        title="Candles"
+        className="mt-4 h-[420px] shrink-0"
+        actionElement={
           <div className="flex items-center gap-2">
             <Button
               type="button"
@@ -135,8 +136,9 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
               ))}
             </ButtonGroup>
           </div>
-        </CardHeader>
-        <CardContent className="min-h-0 flex-1">
+        }
+      >
+        <SectionContent className="min-h-0 flex-1">
           {isChartPending || !chart ? (
             <Skeleton className="h-full w-full" />
           ) : (
@@ -148,20 +150,17 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
               currency={tickerData?.currency}
             />
           )}
-        </CardContent>
-      </Card>
+        </SectionContent>
+      </Section>
 
-      <Card className="mt-4 shrink-0">
-        <CardHeader>
-          <CardTitle>Performance</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <Section title="Performance" className="mt-4 shrink-0">
+        <SectionContent>
           <PerformanceRow
             ticker={tickerData ?? null}
             isPending={isTickerPending}
           />
-        </CardContent>
-      </Card>
+        </SectionContent>
+      </Section>
 
       <Tabs defaultValue="overview" className="min-h-0 flex-1 gap-4 pt-4">
         <TabsList variant="line" className="shrink-0">
@@ -175,11 +174,8 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
           className="flex min-h-0 flex-1 flex-col gap-4"
         >
           <div className="grid shrink-0 gap-4 md:grid-cols-3">
-            <Card className="md:col-span-3">
-              <CardHeader>
-                <CardTitle>Overview</CardTitle>
-              </CardHeader>
-              <CardContent className="grid grid-cols-2 gap-y-2 text-sm">
+            <Section title="Overview" className="md:col-span-3">
+              <SectionContent className="grid grid-cols-2 gap-y-2 text-sm">
                 {isTickerPending || !tickerData ? (
                   <Skeleton className="col-span-2 h-24" />
                 ) : (
@@ -200,14 +196,11 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
                     </span>
                   </>
                 )}
-              </CardContent>
-            </Card>
+              </SectionContent>
+            </Section>
 
-            <Card className="md:col-span-3">
-              <CardHeader>
-                <CardTitle>Key Statistics</CardTitle>
-              </CardHeader>
-              <CardContent>
+            <Section title="Key Statistics" className="md:col-span-3">
+              <SectionContent>
                 {isFundamentalPending || !fundamental || !tickerData ? (
                   <Skeleton className="h-24 w-full" />
                 ) : (
@@ -681,29 +674,31 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
                         }
                       />
                     </StatGroup>
-
-                    {fundamental.altmanZScore != null && (
-                      <span className="text-xs text-muted-foreground sm:col-span-2 lg:col-span-3">
-                        <span
-                          className={
-                            altmanZoneInfo(fundamental.altmanZScore).className
-                          }
-                        >
-                          Altman Z-Score{' '}
-                          {formatNumber(fundamental.altmanZScore, 2)} (
-                          {altmanZoneInfo(fundamental.altmanZScore).label}):
-                        </span>{' '}
-                        {altmanZoneInfo(fundamental.altmanZScore).description}
-                      </span>
-                    )}
-
-                    <span className="text-xs text-muted-foreground sm:col-span-2 lg:col-span-3">
-                      Refreshed {formatDateTime(fundamental.refreshedAt)}
-                    </span>
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </SectionContent>
+              {!isFundamentalPending && fundamental && tickerData && (
+                <SectionFooter className="flex flex-col gap-1">
+                  {fundamental.altmanZScore != null && (
+                    <span className="text-xs text-muted-foreground">
+                      <span
+                        className={
+                          altmanZoneInfo(fundamental.altmanZScore).className
+                        }
+                      >
+                        Altman Z-Score{' '}
+                        {formatNumber(fundamental.altmanZScore, 2)} (
+                        {altmanZoneInfo(fundamental.altmanZScore).label}):
+                      </span>{' '}
+                      {altmanZoneInfo(fundamental.altmanZScore).description}
+                    </span>
+                  )}
+                  <span className="text-xs text-muted-foreground">
+                    Refreshed {formatDateTime(fundamental.refreshedAt)}
+                  </span>
+                </SectionFooter>
+              )}
+            </Section>
           </div>
         </TabsContent>
 

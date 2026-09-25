@@ -1,5 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Section } from '@/components/Section';
+import { Section, SectionContent } from '@/components/Section';
 import TickerSourceSettings from '@/pages/settings/components/TickerSourceSettings';
 import ActiveTickersSettings from '@/pages/settings/components/ActiveTickersSettings';
 import HiddenTickersSettings from '@/pages/settings/components/HiddenTickersSettings';
@@ -20,7 +20,9 @@ const SettingsPage = () => {
 
         <TabsContent value="tickers" className="flex flex-col gap-4">
           <Section title="Ticker source">
-            <TickerSourceSettings />
+            <SectionContent>
+              <TickerSourceSettings />
+            </SectionContent>
           </Section>
           <ActiveTickersSettings />
           <HiddenTickersSettings />

@@ -4,9 +4,13 @@ module.exports = {
     // getScreenerTickerOptions (the ticker search used by the screener's
     // Ticker filter and the admin trigger-sync dialogs), which was doing a
     // full collection scan per candidate without this index.
-    await db
-      .collection('ticker_static_data')
-      .createIndex('isin', { unique: true, name: 'isin_unique' });
+    // Partial: some legacy tickers have no ISIN, and a plain unique index
+    // would collide on those `null` values (E11000 on isin_unique).
+    await db.collection('ticker_static_data').createIndex('isin', {
+      unique: true,
+      name: 'isin_unique',
+      partialFilterExpression: { isin: { $type: 'string' } },
+    });
 
     await db
       .collection('ticker_sources')

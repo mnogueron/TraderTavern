@@ -40,7 +40,7 @@ const TickerTableSkeleton = ({
 
   return (
     <Table
-      containerClassName={fillHeight ? 'h-full' : undefined}
+      containerClassName={fillHeight ? 'min-h-0 flex-1' : undefined}
       className="text-xs"
     >
       <TableHeader>

@@ -6,7 +6,7 @@ export function CardSurface({ className, ...props }: ComponentProps<'div'>) {
     <div
       data-slot="card-surface"
       className={cn(
-        'rounded-xl bg-card p-4 text-sm text-card-foreground ring-1 ring-foreground/10',
+        'rounded-xl bg-card text-sm text-card-foreground ring-1 ring-foreground/10',
         className,
       )}
       {...props}

@@ -7,7 +7,7 @@ import type {
   Time,
   UTCTimestamp,
 } from 'lightweight-charts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Section, SectionContent } from '@/components/Section';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Chart, Series, useChartColors } from '@/components/charts';
@@ -95,11 +95,8 @@ const AltmanScoreCard = ({ history, isPending }: AltmanScoreCardProps) => {
   }, [series, average, colors.mutedText]);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Altman Z-Score</CardTitle>
-      </CardHeader>
-      <CardContent>
+    <Section title="Altman Z-Score">
+      <SectionContent>
         {isPending || !history ? (
           <Skeleton className="h-64 w-full" />
         ) : (
@@ -198,8 +195,8 @@ const AltmanScoreCard = ({ history, isPending }: AltmanScoreCardProps) => {
             </div>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </SectionContent>
+    </Section>
   );
 };
 
