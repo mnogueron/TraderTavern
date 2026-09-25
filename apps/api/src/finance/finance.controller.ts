@@ -19,6 +19,7 @@ import { PaginatedTickerDto } from './dto/PaginatedTicker.dto';
 import { PaginatedTickerOptionDto } from './dto/PaginatedTickerOption.dto';
 import { ScreenerFilterOptionsDto } from './dto/ScreenerFilterOptions.dto';
 import { MarketHoursDto } from './dto/MarketHours.dto';
+import { MarketSummaryDto } from './dto/MarketSummary.dto';
 import { SyncStatusDto } from './dto/SyncStatus.dto';
 import { GetHiddenTickersDto } from './dto/GetHiddenTickers.dto';
 import { PaginatedHiddenTickerDto } from './dto/PaginatedHiddenTicker.dto';
@@ -62,6 +63,13 @@ export class FinanceController {
   @ApiOkResponse({ type: ScreenerFilterOptionsDto })
   getScreenerFilterOptions(): Promise<ScreenerFilterOptionsDto> {
     return this.financeService.getScreenerFilterOptions();
+  }
+
+  @Get('markets')
+  @Auth(Role.Admin)
+  @ApiOkResponse({ type: MarketSummaryDto, isArray: true })
+  getMarkets(): Promise<MarketSummaryDto[]> {
+    return this.financeService.getMarketSummaries();
   }
 
   @Get('screener/filters/tickers')

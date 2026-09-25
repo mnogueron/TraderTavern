@@ -12,63 +12,11 @@ import { Section, SectionContent } from '@/components/Section';
 import EmptyCell from '@/components/EmptyCell';
 import { formatDateTime } from '@/lib/format';
 
-const MARKET_TICKERS_LIMIT = 1000;
-
-type MarketSyncRowProps = {
-  market: string;
-};
-
-// TODO: this approximates "last complete sync" by taking the least-recent
-// `refreshedAt` across a market's tickers, since the ticker data only holds a
-// per-ticker last-sync date. Once sync history can be searched per market,
-// replace this with a proper lookup of the last sync run that fully
-// succeeded for the market.
-const MarketSyncRow = ({ market }: MarketSyncRowProps) => {
-  const { data, isPending } = useClientQuery('get', '/api/finance/screener', {
-    params: {
-      query: {
-        page: 1,
-        limit: MARKET_TICKERS_LIMIT,
-        filters: JSON.stringify({
-          market: { type: 'multiselect', values: [market] },
-        }),
-      },
-    },
-  });
-
-  const refreshedDates = (data?.data ?? [])
-    .map((ticker) => ticker.refreshedAt)
-    .filter((value): value is string => Boolean(value));
-
-  const lastCompleteSync = refreshedDates.length
-    ? refreshedDates.reduce((earliest, current) =>
-        current < earliest ? current : earliest,
-      )
-    : null;
-
-  return (
-    <TableRow>
-      <TableCell className="font-medium">{market}</TableCell>
-      <TableCell className="tabular-nums">
-        {isPending ? (
-          <Skeleton className="h-4 w-32" />
-        ) : lastCompleteSync ? (
-          formatDateTime(lastCompleteSync)
-        ) : (
-          <EmptyCell />
-        )}
-      </TableCell>
-    </TableRow>
-  );
-};
-
 const MarketsSettings = () => {
-  const { data: filterOptions, isPending } = useClientQuery(
+  const { data: markets, isPending } = useClientQuery(
     'get',
-    '/api/finance/screener/filters/options',
+    '/api/finance/markets',
   );
-
-  const markets = filterOptions?.markets ?? [];
 
   return (
     <Section title="Markets">
@@ -84,14 +32,15 @@ const MarketsSettings = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Market</TableHead>
+                <TableHead>Name</TableHead>
                 <TableHead>Last complete sync</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {markets.length === 0 ? (
+              {!markets || markets.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={2}
+                    colSpan={3}
                     className="text-center text-sm text-muted-foreground"
                   >
                     No markets available.
@@ -99,7 +48,25 @@ const MarketsSettings = () => {
                 </TableRow>
               ) : (
                 markets.map((market) => (
-                  <MarketSyncRow key={market} market={market} />
+                  <TableRow key={market.market}>
+                    <TableCell className="font-medium">
+                      {market.market}
+                    </TableCell>
+                    <TableCell>
+                      {market.label ?? (
+                        <span className="text-muted-foreground">
+                          Unconfigured
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="tabular-nums">
+                      {market.lastCompleteSync ? (
+                        formatDateTime(market.lastCompleteSync)
+                      ) : (
+                        <EmptyCell />
+                      )}
+                    </TableCell>
+                  </TableRow>
                 ))
               )}
             </TableBody>

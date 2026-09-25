@@ -180,6 +180,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/finance/markets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getMarkets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/finance/screener/filters/tickers": {
         parameters: {
             query?: never;
@@ -903,6 +919,13 @@ export interface components {
             currencies: string[];
             analystRatings: string[];
         };
+        MarketSummaryDto: {
+            /** @description Raw exchange code as used by ticker_static_data.market and sync scheduling (e.g. "NMS", "PAR") */
+            market: string;
+            /** @description Friendly market_hours label, null if this market has no configured hours yet */
+            label: string | null;
+            lastCompleteSync: string | null;
+        };
         TickerOptionDto: {
             isin: string;
             ticker: string;
@@ -938,6 +961,10 @@ export interface components {
             /** Format: date-time */
             finishedAt: string | null;
         };
+        PaginatedSyncHistoryDto: {
+            data: components["schemas"]["SyncHistoryListItemDto"][];
+            meta: components["schemas"]["PaginationMetaDto"];
+        };
         SyncHistoryTickerDto: {
             isin: string;
             ticker: string | null;
@@ -970,10 +997,6 @@ export interface components {
             finishedAt: string | null;
             tickers: components["schemas"]["SyncHistoryTickerDto"][];
             generalError: string | null;
-        };
-        PaginatedSyncHistoryDto: {
-            data: components["schemas"]["SyncHistoryListItemDto"][];
-            meta: components["schemas"]["PaginationMetaDto"];
         };
         FundamentalTickerDto: {
             ticker: string;
@@ -1468,6 +1491,25 @@ export interface operations {
             };
         };
     };
+    getMarkets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarketSummaryDto"][];
+                };
+            };
+        };
+    };
     getScreenerTickerOptions: {
         parameters: {
             query?: {
@@ -1516,7 +1558,6 @@ export interface operations {
             query?: {
                 limit?: number;
                 page?: number;
-                /** @enum {string} */
                 status?: "running" | "success" | "partial_success" | "failed" | "timeout";
             };
             header?: never;
@@ -1953,9 +1994,9 @@ export interface operations {
     getSyncHealthList: {
         parameters: {
             query: {
-                status: "healthy" | "unhealthy";
-                page?: number;
                 limit?: number;
+                page?: number;
+                status: "healthy" | "unhealthy";
                 /** @description Fuzzy search on isin or ticker */
                 search?: string;
             };

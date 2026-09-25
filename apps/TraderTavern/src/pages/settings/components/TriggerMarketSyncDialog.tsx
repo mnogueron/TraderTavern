@@ -33,12 +33,12 @@ const TriggerMarketSyncDialog = ({
 
   const { data } = useClientQuery(
     'get',
-    '/api/finance/screener/filters/options',
+    '/api/finance/markets',
     {},
     { enabled: open },
   );
 
-  const markets = data?.markets ?? [];
+  const markets = data ?? [];
 
   const toggleMarket = (market: string) => {
     setSelected((current) =>
@@ -76,14 +76,17 @@ const TriggerMarketSyncDialog = ({
           <CommandList>
             <CommandEmpty>No markets found.</CommandEmpty>
             <CommandGroup>
-              {markets.map((market) => (
+              {markets.map(({ market, label }) => (
                 <CommandItem
                   key={market}
-                  value={market}
+                  value={label ? `${market} ${label}` : market}
                   data-checked={selected.includes(market)}
                   onSelect={() => toggleMarket(market)}
                 >
                   {market}
+                  {label && (
+                    <span className="text-muted-foreground">{label}</span>
+                  )}
                 </CommandItem>
               ))}
             </CommandGroup>

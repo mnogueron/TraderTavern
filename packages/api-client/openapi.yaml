@@ -158,7 +158,7 @@ paths:
           in: query
           schema:
             minimum: 1
-            default: 20
+            default: 50
             type: number
         - name: sortBy
           required: false
@@ -225,6 +225,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ScreenerFilterOptionsDto'
+      security:
+        - cookie: []
+      tags:
+        - Finance
+  /api/finance/markets:
+    get:
+      operationId: getMarkets
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MarketSummaryDto'
       security:
         - cookie: []
       tags:
@@ -347,8 +364,8 @@ paths:
           required: false
           in: query
           description: >-
-            Comma-separated list of markets to scope the sync to; omit to
-            sync every market
+            Comma-separated list of markets to scope the sync to; omit to sync
+            every market
           schema:
             type: string
       responses:
@@ -702,14 +719,13 @@ paths:
     get:
       operationId: getSyncHealthList
       parameters:
-        - name: status
-          required: true
+        - name: limit
+          required: false
           in: query
           schema:
-            enum:
-              - healthy
-              - unhealthy
-            type: string
+            minimum: 10
+            default: 10
+            type: number
         - name: page
           required: false
           in: query
@@ -717,13 +733,14 @@ paths:
             minimum: 1
             default: 1
             type: number
-        - name: limit
-          required: false
+        - name: status
+          required: true
           in: query
           schema:
-            minimum: 1
-            default: 20
-            type: number
+            type: string
+            enum:
+              - healthy
+              - unhealthy
         - name: search
           required: false
           in: query
@@ -1546,6 +1563,27 @@ components:
         - markets
         - currencies
         - analystRatings
+    MarketSummaryDto:
+      type: object
+      properties:
+        market:
+          type: string
+          description: >-
+            Raw exchange code as used by ticker_static_data.market and sync
+            scheduling (e.g. "NMS", "PAR")
+        label:
+          type: string
+          nullable: true
+          description: >-
+            Friendly market_hours label, null if this market has no configured
+            hours yet
+        lastCompleteSync:
+          type: string
+          nullable: true
+      required:
+        - market
+        - label
+        - lastCompleteSync
     TickerOptionDto:
       type: object
       properties:
@@ -1650,6 +1688,18 @@ components:
         - triggeredByUsername
         - startedAt
         - finishedAt
+    PaginatedSyncHistoryDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncHistoryListItemDto'
+        meta:
+          $ref: '#/components/schemas/PaginationMetaDto'
+      required:
+        - data
+        - meta
     SyncHistoryTickerDto:
       type: object
       properties:
@@ -1759,18 +1809,6 @@ components:
         - finishedAt
         - tickers
         - generalError
-    PaginatedSyncHistoryDto:
-      type: object
-      properties:
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/SyncHistoryListItemDto'
-        meta:
-          $ref: '#/components/schemas/PaginationMetaDto'
-      required:
-        - data
-        - meta
     FundamentalTickerDto:
       type: object
       properties:
