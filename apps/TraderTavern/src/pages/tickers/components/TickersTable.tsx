@@ -19,6 +19,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { AppPagination } from '@/components/AppPagination';
+import { PageSizeSelector } from '@/components/PageSizeSelector';
+import { PageRangeSummary } from '@/components/PageRangeSummary';
 import { TableFooter } from '@/components/TableFooter';
 import CompanyCell from '@/components/CompanyCell';
 import MarketBadge from '@/components/MarketBadge';
@@ -33,13 +35,14 @@ import type { components } from '@trader-tavern/api-client';
 type TickerSummary = components['schemas']['TickerSummaryDto'];
 type TickerStatusFilter = TickerSummary['status'] | 'all';
 
-const LIMIT = 20;
+const DEFAULT_LIMIT = 50;
 const VISIBLE_ROWS = 10;
 const TICKERS_LIST_QUERY_KEY = ['get', '/api/finance/tickers/list'];
 
 const TickersTable = () => {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_LIMIT);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<TickerStatusFilter>('all');
   const [deleteTarget, setDeleteTarget] = useState<TickerSummary | null>(
@@ -54,7 +57,7 @@ const TickersTable = () => {
     params: {
       query: {
         page,
-        limit: LIMIT,
+        limit,
         search: debouncedSearch || undefined,
         status,
       },
@@ -86,11 +89,30 @@ const TickersTable = () => {
     setPage(1);
   };
 
+  const handleLimitChange = (value: number) => {
+    setLimit(value);
+    setPage(1);
+  };
+
   const meta = data?.meta;
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4">
-      <div className="flex shrink-0 justify-end">
+      <div className="flex shrink-0 items-center justify-between gap-2">
+        <Select value={status} onValueChange={handleStatusChange}>
+          <SelectTrigger
+            aria-label="Filter by status"
+            size="sm"
+            className="w-36"
+          >
+            <SelectValue placeholder="All statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="disabled">Disabled</SelectItem>
+          </SelectContent>
+        </Select>
         <Input
           value={search}
           onChange={(event) => {
@@ -182,20 +204,16 @@ const TickersTable = () => {
             </TableBody>
           </Table>
           <TableFooter>
-            <Select value={status} onValueChange={handleStatusChange}>
-              <SelectTrigger
-                aria-label="Filter by status"
-                size="sm"
-                className="w-36"
-              >
-                <SelectValue placeholder="All statuses" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="disabled">Disabled</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-3">
+              <PageSizeSelector value={limit} onChange={handleLimitChange} />
+              {meta && (
+                <PageRangeSummary
+                  page={meta.page}
+                  pageSize={limit}
+                  total={meta.total}
+                />
+              )}
+            </div>
             {meta && (
               <AppPagination
                 page={meta.page}
