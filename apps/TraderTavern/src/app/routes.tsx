@@ -1,4 +1,9 @@
-import { type RouteConfig, index, layout, route } from '@react-router/dev/routes';
+import {
+  type RouteConfig,
+  index,
+  layout,
+  route,
+} from '@react-router/dev/routes';
 
 export default [
   layout('./layouts/protected-layout.tsx', [
@@ -10,9 +15,10 @@ export default [
     route('watchlists', './routes/watchlists.tsx'),
     route('watchlists/:id', './routes/watchlist.tsx'),
     route('ticker/:ticker', './routes/ticker.tsx'),
+    route('tickers', './routes/tickers.tsx'),
+    route('markets', './routes/markets.tsx'),
     route('news', './routes/news.tsx'),
     route('sync', './routes/sync.tsx'),
-    route('settings', './routes/settings.tsx'),
   ]),
   layout('./layouts/guest-layout.tsx', [
     route('login', './routes/login.tsx'),

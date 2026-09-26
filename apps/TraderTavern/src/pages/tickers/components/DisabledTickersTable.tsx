@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { useClientQuery } from '@trader-tavern/api-client';
+import { useQueryClient } from '@tanstack/react-query';
+import { useClientMutation, useClientQuery } from '@trader-tavern/api-client';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -12,32 +14,38 @@ import {
 } from '@/components/ui/table';
 import { AppPagination } from '@/components/AppPagination';
 import { TableFooter } from '@/components/TableFooter';
-import { formatDateTime, formatDuration } from '@/lib/format';
+import { formatDateTime } from '@/lib/format';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import CompanyCell from '@/components/CompanyCell';
-import MarketBadge from '@/components/MarketBadge';
-import SyncHealthReasonBadge from '@/pages/sync/components/SyncHealthReasonBadge';
-import type { components } from '@trader-tavern/api-client';
-
-type SyncHealthStatus = components['schemas']['TickerSyncHealthDto']['status'];
 
 const LIMIT = 20;
 const VISIBLE_ROWS = 10;
+const HIDDEN_TICKERS_QUERY_KEY = ['get', '/api/finance/tickers/hidden'];
 
-type SyncHealthTableProps = {
-  status: SyncHealthStatus;
-};
-
-const SyncHealthTable = ({ status }: SyncHealthTableProps) => {
+const DisabledTickersTable = () => {
+  const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search, 250);
 
-  const { data, isPending } = useClientQuery('get', '/api/finance/tickers/health', {
-    params: {
-      query: { status, page, limit: LIMIT, search: debouncedSearch || undefined },
+  const { data, isPending } = useClientQuery(
+    'get',
+    '/api/finance/tickers/hidden',
+    {
+      params: {
+        query: { page, limit: LIMIT, search: debouncedSearch || undefined },
+      },
     },
-  });
+  );
+
+  const unhideMutation = useClientMutation(
+    'post',
+    '/api/finance/ticker/{id}/unhide',
+    {
+      onSuccess: () =>
+        queryClient.invalidateQueries({ queryKey: HIDDEN_TICKERS_QUERY_KEY }),
+    },
+  );
 
   const meta = data?.meta;
 
@@ -54,7 +62,6 @@ const SyncHealthTable = ({ status }: SyncHealthTableProps) => {
           className="h-7 w-56"
         />
       </div>
-
       {isPending || !data ? (
         <div className="flex flex-col gap-2">
           {Array.from({ length: VISIBLE_ROWS }).map((_, index) => (
@@ -68,20 +75,20 @@ const SyncHealthTable = ({ status }: SyncHealthTableProps) => {
               <TableRow>
                 <TableHead>Company</TableHead>
                 <TableHead>ISIN</TableHead>
-                <TableHead>Market</TableHead>
-                <TableHead>Last full sync</TableHead>
-                <TableHead>Overdue by</TableHead>
-                {status === 'unhealthy' && <TableHead>Reason</TableHead>}
+                <TableHead className="text-right">Errors</TableHead>
+                <TableHead>Last error</TableHead>
+                <TableHead>Hidden since</TableHead>
+                <TableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
               {data.data.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={status === 'unhealthy' ? 6 : 5}
+                    colSpan={6}
                     className="text-center text-sm text-muted-foreground"
                   >
-                    No tickers found.
+                    No tickers are currently hidden.
                   </TableCell>
                 </TableRow>
               ) : (
@@ -97,24 +104,37 @@ const SyncHealthTable = ({ status }: SyncHealthTableProps) => {
                     <TableCell className="font-mono text-xs">
                       {ticker.isin}
                     </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {ticker.errorCount}
+                    </TableCell>
+                    <TableCell
+                      className="max-w-xs truncate whitespace-nowrap text-xs text-muted-foreground"
+                      title={ticker.lastError ?? undefined}
+                    >
+                      {ticker.lastError ?? '—'}
+                    </TableCell>
+                    <TableCell className="tabular-nums">
+                      {formatDateTime(ticker.hiddenAt)}
+                    </TableCell>
                     <TableCell>
-                      <MarketBadge market={ticker.market} marketLabel={ticker.marketLabel} />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={
+                          unhideMutation.isPending &&
+                          unhideMutation.variables?.params.path.id ===
+                            ticker.ticker
+                        }
+                        onClick={() =>
+                          unhideMutation.mutate({
+                            params: { path: { id: ticker.ticker } },
+                          })
+                        }
+                      >
+                        Unhide
+                      </Button>
                     </TableCell>
-                    <TableCell className="tabular-nums">
-                      {formatDateTime(ticker.lastFullSyncedAt)}
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {ticker.minutesPastClose === null
-                        ? '—'
-                        : formatDuration(ticker.minutesPastClose * 60_000)}
-                    </TableCell>
-                    {status === 'unhealthy' && (
-                      <TableCell>
-                        {ticker.reason && (
-                          <SyncHealthReasonBadge reason={ticker.reason} />
-                        )}
-                      </TableCell>
-                    )}
                   </TableRow>
                 ))
               )}
@@ -135,4 +155,4 @@ const SyncHealthTable = ({ status }: SyncHealthTableProps) => {
   );
 };
 
-export default SyncHealthTable;
+export default DisabledTickersTable;

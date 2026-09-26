@@ -22,12 +22,15 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { formatDateTime, formatDuration } from '@/lib/format';
-import SyncStatusBadge from '@/pages/settings/components/SyncStatusBadge';
-import SyncKindBadge from '@/pages/settings/components/SyncKindBadge';
-import MarketBadgeList from '@/pages/settings/components/MarketBadgeList';
-import { SYNC_STATUS_LABEL, formatSyncTrigger } from '@/pages/settings/components/syncLabels';
-import SyncHistoryDetailSheet from '@/pages/settings/components/SyncHistoryDetailSheet';
-import TriggerSyncMenu from '@/pages/settings/components/TriggerSyncMenu';
+import SyncStatusBadge from '@/pages/sync/components/SyncStatusBadge';
+import SyncKindBadge from '@/pages/sync/components/SyncKindBadge';
+import MarketBadgeList from '@/components/MarketBadgeList';
+import {
+  SYNC_STATUS_LABEL,
+  formatSyncTrigger,
+} from '@/pages/sync/components/syncLabels';
+import SyncHistoryDetailSheet from '@/pages/sync/components/SyncHistoryDetailSheet';
+import TriggerSyncMenu from '@/pages/sync/components/TriggerSyncMenu';
 import type { components } from '@trader-tavern/api-client';
 
 type SyncStatus = components['schemas']['SyncHistoryListItemDto']['status'];
@@ -208,7 +211,10 @@ const DataSyncSettings = () => {
                       <SyncKindBadge kind={item.kind} />
                     </TableCell>
                     <TableCell>
-                      <MarketBadgeList markets={item.markets} marketLabels={item.marketLabels} />
+                      <MarketBadgeList
+                        markets={item.markets}
+                        marketLabels={item.marketLabels}
+                      />
                     </TableCell>
                     <TableCell>
                       {formatSyncTrigger(item.type, item.triggeredByUsername)}
@@ -220,7 +226,9 @@ const DataSyncSettings = () => {
                       {formatDateTime(item.startedAt)}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {formatDuration(getElapsedMs(item.startedAt, item.finishedAt))}
+                      {formatDuration(
+                        getElapsedMs(item.startedAt, item.finishedAt),
+                      )}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {item.tickerCount}
@@ -254,7 +262,11 @@ const DataSyncSettings = () => {
         )}
         <TableFooter>
           <Select value={status} onValueChange={handleStatusChange}>
-            <SelectTrigger aria-label="Filter by status" size="sm" className="w-40">
+            <SelectTrigger
+              aria-label="Filter by status"
+              size="sm"
+              className="w-40"
+            >
               <SelectValue placeholder="All statuses" />
             </SelectTrigger>
             <SelectContent>

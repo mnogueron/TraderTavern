@@ -20,7 +20,8 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import {
-  RiSettingsLine,
+  RiStockLine,
+  RiGlobalLine,
   RiLogoutBoxLine,
   RiTeamLine,
   RiMoonLine,
@@ -100,10 +101,16 @@ export function NavUser() {
                   Sync
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem onClick={() => navigate('/settings')}>
-                <RiSettingsLine />
-                Settings
+              <DropdownMenuItem onClick={() => navigate('/tickers')}>
+                <RiStockLine />
+                Tickers
               </DropdownMenuItem>
+              {isAdmin && (
+                <DropdownMenuItem onClick={() => navigate('/markets')}>
+                  <RiGlobalLine />
+                  Markets
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={toggleTheme}>
                 {theme === 'dark' ? <RiSunLine /> : <RiMoonLine />}
                 {theme === 'dark' ? 'Light mode' : 'Dark mode'}

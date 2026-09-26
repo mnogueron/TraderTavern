@@ -25,10 +25,10 @@ const CancelSyncDialog = ({
       <DialogHeader>
         <DialogTitle>Cancel this sync</DialogTitle>
         <DialogDescription>
-          This marks the sync as cancelled, freeing its lock so a new sync
-          can start. Only do this if you're sure the job is actually stuck
-          (e.g. orphaned after a server restart) — a genuinely in-progress
-          sync will be interrupted.
+          This marks the sync as cancelled, freeing its lock so a new sync can
+          start. Only do this if you're sure the job is actually stuck (e.g.
+          orphaned after a server restart) — a genuinely in-progress sync will
+          be interrupted.
         </DialogDescription>
       </DialogHeader>
       <div className="flex items-center justify-end gap-2">

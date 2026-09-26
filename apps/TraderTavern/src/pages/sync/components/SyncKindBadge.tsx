@@ -1,5 +1,5 @@
 import { Badge } from '@/components/ui/badge';
-import { SYNC_KIND_LABEL } from '@/pages/settings/components/syncLabels';
+import { SYNC_KIND_LABEL } from '@/pages/sync/components/syncLabels';
 import type { components } from '@trader-tavern/api-client';
 
 type SyncKind = components['schemas']['SyncHistoryListItemDto']['kind'];

@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { RiPlayLine, RiGlobalLine, RiStockLine } from '@remixicon/react';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
-import TriggerTickerSyncDialog from '@/pages/settings/components/TriggerTickerSyncDialog';
-import TriggerMarketSyncDialog from '@/pages/settings/components/TriggerMarketSyncDialog';
+import TriggerTickerSyncDialog from '@/pages/sync/components/TriggerTickerSyncDialog';
+import TriggerMarketSyncDialog from '@/pages/sync/components/TriggerMarketSyncDialog';
 
 type TriggerSyncMenuProps = {
   isPending: boolean;

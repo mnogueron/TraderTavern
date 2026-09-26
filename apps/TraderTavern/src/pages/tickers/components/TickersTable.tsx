@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useClientQuery } from '@trader-tavern/api-client';
-import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
@@ -12,30 +11,19 @@ import {
 } from '@/components/ui/table';
 import { AppPagination } from '@/components/AppPagination';
 import { TableFooter } from '@/components/TableFooter';
-import { formatDateTime, formatDuration } from '@/lib/format';
-import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import CompanyCell from '@/components/CompanyCell';
 import MarketBadge from '@/components/MarketBadge';
-import SyncHealthReasonBadge from '@/pages/sync/components/SyncHealthReasonBadge';
-import type { components } from '@trader-tavern/api-client';
-
-type SyncHealthStatus = components['schemas']['TickerSyncHealthDto']['status'];
+import { formatDateTime } from '@/lib/format';
 
 const LIMIT = 20;
 const VISIBLE_ROWS = 10;
 
-type SyncHealthTableProps = {
-  status: SyncHealthStatus;
-};
-
-const SyncHealthTable = ({ status }: SyncHealthTableProps) => {
+const TickersTable = () => {
   const [page, setPage] = useState(1);
-  const [search, setSearch] = useState('');
-  const debouncedSearch = useDebouncedValue(search, 250);
 
-  const { data, isPending } = useClientQuery('get', '/api/finance/tickers/health', {
+  const { data, isPending } = useClientQuery('get', '/api/finance/screener', {
     params: {
-      query: { status, page, limit: LIMIT, search: debouncedSearch || undefined },
+      query: { page, limit: LIMIT, sortBy: 'ticker', sortOrder: 'asc' },
     },
   });
 
@@ -43,18 +31,6 @@ const SyncHealthTable = ({ status }: SyncHealthTableProps) => {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-end">
-        <Input
-          value={search}
-          onChange={(event) => {
-            setSearch(event.target.value);
-            setPage(1);
-          }}
-          placeholder="Search isin or ticker..."
-          className="h-7 w-56"
-        />
-      </div>
-
       {isPending || !data ? (
         <div className="flex flex-col gap-2">
           {Array.from({ length: VISIBLE_ROWS }).map((_, index) => (
@@ -69,19 +45,17 @@ const SyncHealthTable = ({ status }: SyncHealthTableProps) => {
                 <TableHead>Company</TableHead>
                 <TableHead>ISIN</TableHead>
                 <TableHead>Market</TableHead>
-                <TableHead>Last full sync</TableHead>
-                <TableHead>Overdue by</TableHead>
-                {status === 'unhealthy' && <TableHead>Reason</TableHead>}
+                <TableHead>Last sync</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {data.data.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={status === 'unhealthy' ? 6 : 5}
+                    colSpan={4}
                     className="text-center text-sm text-muted-foreground"
                   >
-                    No tickers found.
+                    No active tickers.
                   </TableCell>
                 </TableRow>
               ) : (
@@ -98,23 +72,11 @@ const SyncHealthTable = ({ status }: SyncHealthTableProps) => {
                       {ticker.isin}
                     </TableCell>
                     <TableCell>
-                      <MarketBadge market={ticker.market} marketLabel={ticker.marketLabel} />
+                      <MarketBadge market={ticker.market} marketLabel={null} />
                     </TableCell>
                     <TableCell className="tabular-nums">
-                      {formatDateTime(ticker.lastFullSyncedAt)}
+                      {formatDateTime(ticker.refreshedAt ?? null)}
                     </TableCell>
-                    <TableCell className="tabular-nums">
-                      {ticker.minutesPastClose === null
-                        ? '—'
-                        : formatDuration(ticker.minutesPastClose * 60_000)}
-                    </TableCell>
-                    {status === 'unhealthy' && (
-                      <TableCell>
-                        {ticker.reason && (
-                          <SyncHealthReasonBadge reason={ticker.reason} />
-                        )}
-                      </TableCell>
-                    )}
                   </TableRow>
                 ))
               )}
@@ -135,4 +97,4 @@ const SyncHealthTable = ({ status }: SyncHealthTableProps) => {
   );
 };
 
-export default SyncHealthTable;
+export default TickersTable;
