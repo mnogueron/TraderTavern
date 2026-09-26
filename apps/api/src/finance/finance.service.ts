@@ -26,6 +26,10 @@ import { PaginatedTickerSyncHealthDto } from './dto/PaginatedTickerSyncHealth.dt
 import { SyncHealthSummaryDto } from './dto/SyncHealthSummary.dto';
 import { SyncHealthStatus } from './enums/sync-health-status.enum';
 import { SyncHealthReason } from './enums/sync-health-reason.enum';
+import { TickerStatus } from './enums/ticker-status.enum';
+import { TickerSummaryDto } from './dto/TickerSummary.dto';
+import { GetTickersListDto } from './dto/GetTickersList.dto';
+import { PaginatedTickerSummaryDto } from './dto/PaginatedTickerSummary.dto';
 import {
   TICKER_STALE_THRESHOLD_MINUTES_ENV_VAR,
   DEFAULT_TICKER_STALE_THRESHOLD_MINUTES,
@@ -343,26 +347,30 @@ export class FinanceService {
       );
   }
 
-  // Same exact/prefix/substring-then-fuzzy scoring as rankTickerCandidates,
-  // but matching on isin/ticker only, since that's what hidden-ticker
-  // search is scoped to (company name isn't shown as a search field there).
-  private rankByIsinOrTicker<T extends { isin: string; ticker: string }>(
-    candidates: T[],
-    search: string,
-  ): T[] {
+  // Same exact/prefix/substring-then-fuzzy scoring as rankTickerCandidates.
+  // Matches on isin/ticker always, plus companyName substrings when the
+  // candidate has one (hidden-ticker search doesn't surface companyName).
+  private rankByIsinOrTicker<
+    T extends { isin: string; ticker: string; companyName?: string | null },
+  >(candidates: T[], search: string): T[] {
     const term = search.toLowerCase();
 
     const scored = candidates
       .map((candidate) => {
         const isin = candidate.isin.toLowerCase();
         const ticker = candidate.ticker.toLowerCase();
+        const companyName = candidate.companyName?.toLowerCase() ?? '';
 
         let score: number | null = null;
         if (isin === term || ticker === term) {
           score = 0;
         } else if (isin.startsWith(term) || ticker.startsWith(term)) {
           score = 1;
-        } else if (isin.includes(term) || ticker.includes(term)) {
+        } else if (
+          isin.includes(term) ||
+          ticker.includes(term) ||
+          companyName.includes(term)
+        ) {
           score = 2;
         }
 
@@ -443,6 +451,100 @@ export class FinanceService {
 
   async unhideTicker(ticker: string): Promise<void> {
     await this.tickerHealthService.unhideByTicker(ticker);
+  }
+
+  // Every ticker regardless of active/disabled state, annotated with its
+  // sync health so the Tickers page can list, filter and search across both
+  // in one table instead of two separate endpoints.
+  async getTickersList(
+    query: GetTickersListDto,
+  ): Promise<PaginatedTickerSummaryDto> {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const search = query.search?.trim();
+    const status = query.status ?? 'all';
+
+    const [staticData, marketLabelByCode, healthByIsin] = await Promise.all([
+      this.tickerStaticDataModel
+        .find()
+        .select('isin ticker companyName logoUrl market')
+        .lean(),
+      this.getMarketLabelsByCode(),
+      this.tickerHealthService.getHealthByIsin(),
+    ]);
+
+    const summaries = staticData
+      .filter((ticker): ticker is typeof ticker & { isin: string } => !!ticker.isin)
+      .map((ticker) => {
+        const health = healthByIsin.get(ticker.isin);
+        return new TickerSummaryDto(
+          ticker.isin,
+          ticker.ticker,
+          ticker.companyName ?? null,
+          ticker.logoUrl ?? null,
+          ticker.market ?? null,
+          (ticker.market && marketLabelByCode.get(ticker.market)) ?? null,
+          health?.lastFullSyncedAt ?? null,
+          health?.hidden ? TickerStatus.Disabled : TickerStatus.Active,
+          health?.errorCount ?? 0,
+          health?.lastError ?? null,
+          health?.hiddenAt ?? null,
+        );
+      });
+
+    const statusFiltered =
+      status === 'all'
+        ? summaries
+        : summaries.filter((ticker) => ticker.status === status);
+
+    const rows = search
+      ? this.rankByIsinOrTicker(statusFiltered, search)
+      : statusFiltered.sort((a, b) => a.ticker.localeCompare(b.ticker));
+
+    const total = rows.length;
+    const skip = (page - 1) * limit;
+    const data = rows.slice(skip, skip + limit);
+
+    return new PaginatedTickerSummaryDto(
+      data,
+      page,
+      limit,
+      total,
+      Math.max(Math.ceil(total / limit), 1),
+    );
+  }
+
+  async hideTicker(ticker: string): Promise<void> {
+    const doc = await this.tickerStaticDataModel
+      .findOne({ ticker })
+      .select('isin ticker')
+      .lean();
+    if (!doc) {
+      throw new NotFoundException(`Ticker ${ticker} not found`);
+    }
+
+    await this.tickerHealthService.hide(doc.isin, doc.ticker);
+  }
+
+  async deleteTicker(ticker: string): Promise<void> {
+    const doc = await this.tickerStaticDataModel
+      .findOne({ ticker })
+      .select('isin')
+      .lean();
+    if (!doc) {
+      throw new NotFoundException(`Ticker ${ticker} not found`);
+    }
+
+    const { isin } = doc;
+    await Promise.all([
+      this.tickerStaticDataModel.deleteOne({ isin }),
+      this.compoundTechnicalTickerDataModel.deleteMany({ isin }),
+      this.fundamentalTickerDataModel.deleteMany({ isin }),
+      this.technicalTickerDataModel.deleteMany({ isin }),
+      this.tickerFinancialHistoryModel.deleteMany({ isin }),
+      this.tickerEarningsHistoryModel.deleteMany({ isin }),
+      this.tickerHealthService.deleteByIsin(isin),
+    ]);
   }
 
   // Every non-hidden ticker with a resolved market, annotated with whether

@@ -117,6 +117,25 @@ export class TickerHealthService {
     return new Set(isins);
   }
 
+  // Used by the unified tickers list to annotate every ticker with its
+  // health record in one query, regardless of hidden state.
+  async getHealthByIsin(): Promise<Map<string, TickerSyncHealth>> {
+    const docs = await this.tickerSyncHealthModel.find().lean<TickerSyncHealth[]>();
+    return new Map(docs.map((doc) => [doc.isin, doc]));
+  }
+
+  // Manually disables a ticker regardless of its current error count — as
+  // opposed to recordFailure's automatic hide once TICKER_SYNC_ERROR_THRESHOLD_ENV_VAR
+  // is reached. Upserts since a ticker can be manually disabled before it
+  // has ever failed a sync (no existing health record yet).
+  async hide(isin: string, ticker: string): Promise<void> {
+    await this.tickerSyncHealthModel.updateOne(
+      { isin },
+      { $set: { isin, ticker, hidden: true, hiddenAt: new Date() } },
+      { upsert: true },
+    );
+  }
+
   // Used by the sync health monitor to tell whether each ticker's EOD data
   // has been refreshed since its market closed (see
   // FinanceService.computeTickerHealthEntries). Tickers with no health
@@ -144,6 +163,10 @@ export class TickerHealthService {
       .find({ hidden: true })
       .sort({ hiddenAt: -1 })
       .lean<TickerSyncHealth[]>();
+  }
+
+  async deleteByIsin(isin: string): Promise<void> {
+    await this.tickerSyncHealthModel.deleteOne({ isin });
   }
 
   async unhideByTicker(ticker: string): Promise<void> {

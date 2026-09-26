@@ -446,7 +446,7 @@ export interface paths {
         get: operations["getTicker"];
         put?: never;
         post?: never;
-        delete?: never;
+        delete: operations["deleteTicker"];
         options?: never;
         head?: never;
         patch?: never;
@@ -548,6 +548,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/finance/tickers/list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getTickersList"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/finance/tickers/hidden": {
         parameters: {
             query?: never;
@@ -574,6 +590,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["unhideTicker"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/finance/ticker/{id}/hide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["hideTicker"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1183,6 +1215,26 @@ export interface components {
             regularClose: string;
             /** @description HH:mm, local to timezone */
             postMarketClose: string | null;
+        };
+        TickerSummaryDto: {
+            isin: string;
+            ticker: string;
+            companyName: string | null;
+            logoUrl: string | null;
+            market: string | null;
+            marketLabel: string | null;
+            /** Format: date-time */
+            lastFullSyncedAt: string | null;
+            /** @enum {string} */
+            status: "active" | "disabled";
+            errorCount: number;
+            lastError: string | null;
+            /** Format: date-time */
+            hiddenAt: string | null;
+        };
+        PaginatedTickerSummaryDto: {
+            data: components["schemas"]["TickerSummaryDto"][];
+            meta: components["schemas"]["PaginationMetaDto"];
         };
         HiddenTickerDto: {
             isin: string;
@@ -1836,6 +1888,25 @@ export interface operations {
             };
         };
     };
+    deleteTicker: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     getTickerFundamental: {
         parameters: {
             query?: never;
@@ -1964,6 +2035,31 @@ export interface operations {
             };
         };
     };
+    getTickersList: {
+        parameters: {
+            query?: {
+                limit?: number;
+                page?: number;
+                /** @description Fuzzy search on isin, ticker or company name */
+                search?: string;
+                status?: "active" | "disabled" | "all";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedTickerSummaryDto"];
+                };
+            };
+        };
+    };
     getHiddenTickers: {
         parameters: {
             query?: {
@@ -1989,6 +2085,25 @@ export interface operations {
         };
     };
     unhideTicker: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    hideTicker: {
         parameters: {
             query?: never;
             header?: never;
