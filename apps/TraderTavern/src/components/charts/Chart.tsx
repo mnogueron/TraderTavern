@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { createChart } from 'lightweight-charts';
 import type { ChartOptions, DeepPartial, IChartApi } from 'lightweight-charts';
@@ -65,14 +65,27 @@ const Chart = ({ options, className, children, onCreated }: ChartProps) => {
       chart.applyOptions({ width, height });
     });
     resizeObserver.observe(container);
+    // ResizeObserver's own initial callback isn't reliable immediately after
+    // this chart's underlying panes were rebuilt (e.g. by <Series>'s
+    // StrictMode-safe remount handling below), so also force one synchronous
+    // resize now using the container's current size.
+    chart.applyOptions({
+      width: container.clientWidth,
+      height: container.clientHeight,
+    });
 
     return () => resizeObserver.disconnect();
   }, [chart]);
 
+  // Memoized so <Series> children's effects (keyed on this context value)
+  // don't spuriously re-fire on every Chart re-render — only when the
+  // underlying chart instance itself actually changes.
+  const contextValue = useMemo(() => (chart ? { chart } : null), [chart]);
+
   return (
     <div ref={containerRef} className={className}>
-      {chart ? (
-        <ChartContext.Provider value={{ chart }}>
+      {contextValue ? (
+        <ChartContext.Provider value={contextValue}>
           {children}
         </ChartContext.Provider>
       ) : null}
