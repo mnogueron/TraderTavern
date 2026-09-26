@@ -26,7 +26,6 @@ type TickerTableProps = {
   columnVisibility: VisibilityState;
   columnOrder: ColumnOrderState;
   fillHeight: boolean;
-  onRowClick: (ticker: Ticker) => void;
 };
 
 const StickyEdgeGradient = () => (
@@ -40,7 +39,6 @@ const TickerTable = ({
   columnVisibility,
   columnOrder,
   fillHeight,
-  onRowClick,
 }: TickerTableProps) => {
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -91,16 +89,7 @@ const TickerTable = ({
       </TableHeader>
       <TableBody className="bg-card">
         {table.getRowModel().rows.map((row) => (
-          <TableRow
-            key={row.id}
-            className="cursor-pointer"
-            onClick={(event) => {
-              if ((event.target as HTMLElement).closest('a')) {
-                return;
-              }
-              onRowClick(row.original);
-            }}
-          >
+          <TableRow key={row.id}>
             {row.getVisibleCells().map((cell) => (
               <TableCell
                 key={cell.id}

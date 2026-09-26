@@ -155,7 +155,11 @@ const TickersTable = () => {
                 </TableRow>
               ) : (
                 data.data.map((ticker) => (
-                  <TableRow key={ticker.isin}>
+                  <TableRow
+                    key={ticker.isin}
+                    className="cursor-pointer"
+                    onClick={() => setDetailTarget(ticker)}
+                  >
                     <TableCell>
                       <CompanyCell
                         ticker={ticker.ticker}
@@ -173,12 +177,15 @@ const TickersTable = () => {
                       />
                     </TableCell>
                     <TableCell>
-                      <TickerStatusBadge status={ticker.status} />
+                      <TickerStatusBadge
+                        status={ticker.status}
+                        lastError={ticker.lastError}
+                      />
                     </TableCell>
                     <TableCell className="tabular-nums">
                       {formatDateTime(ticker.lastFullSyncedAt)}
                     </TableCell>
-                    <TableCell>
+                    <TableCell onClick={(event) => event.stopPropagation()}>
                       <TickerRowMenu
                         ticker={ticker}
                         onShowDetails={() => setDetailTarget(ticker)}

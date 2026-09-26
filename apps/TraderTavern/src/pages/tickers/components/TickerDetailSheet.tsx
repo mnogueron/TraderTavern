@@ -82,8 +82,14 @@ const TickerDetailSheet = ({ ticker, onOpenChange }: TickerDetailSheetProps) => 
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
               <dt className="text-muted-foreground">Status</dt>
               <dd>
-                <TickerStatusBadge status={ticker.status} />
+                <TickerStatusBadge
+                  status={ticker.status}
+                  lastError={ticker.lastError}
+                />
               </dd>
+
+              <dt className="text-muted-foreground">Ticker</dt>
+              <dd className="font-mono text-xs">{ticker.ticker}</dd>
 
               <dt className="text-muted-foreground">ISIN</dt>
               <dd className="font-mono text-xs">{ticker.isin}</dd>

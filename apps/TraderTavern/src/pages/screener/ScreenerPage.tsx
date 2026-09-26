@@ -13,11 +13,9 @@ import type { SortingState, VisibilityState } from '@tanstack/react-table';
 import TickerTable from '@/pages/screener/components/TickerTable';
 import TickerTableSkeleton from '@/pages/screener/components/TickerTableSkeleton';
 import ColumnVisibilityPopover from '@/pages/screener/components/ColumnVisibilityPopover';
-import TickerInfoSheet from '@/pages/screener/components/TickerInfoSheet';
 import {
   DEFAULT_VISIBLE_COLUMNS,
   columns,
-  type Ticker,
 } from '@/pages/screener/components/columns';
 import ScreenerFilterBar, {
   getDefaultScreenerFilterValues,
@@ -73,7 +71,6 @@ const ScreenerPage = () => {
   const limit = Number(searchParams.get('limit') ?? DEFAULT_LIMIT);
   const sortBy = searchParams.get('sortBy') ?? 'ticker';
   const sortOrder = searchParams.get('sortOrder') === 'desc' ? 'desc' : 'asc';
-  const [detailTarget, setDetailTarget] = useState<Ticker | null>(null);
 
   const filterValues: ScreenerFilterValues = useMemo(() => {
     const raw = searchParams.get('filters');
@@ -279,7 +276,6 @@ const ScreenerPage = () => {
             columnVisibility={columnVisibility}
             columnOrder={columnOrder}
             fillHeight={fillHeight}
-            onRowClick={setDetailTarget}
           />
         )}
         <TableFooter>
@@ -304,11 +300,6 @@ const ScreenerPage = () => {
           )}
         </TableFooter>
       </div>
-
-      <TickerInfoSheet
-        ticker={detailTarget}
-        onOpenChange={(open) => !open && setDetailTarget(null)}
-      />
     </div>
   );
 };
