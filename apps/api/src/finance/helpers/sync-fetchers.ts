@@ -55,6 +55,28 @@ export async function fetchDailyChart(
   );
 }
 
+// Just enough of a daily chart to read `meta`: Yahoo's only source for a
+// market's actual current session times (pre/regular/post, as UTC instants
+// for today) and its IANA timezone name, used to backfill market_hours for
+// markets discovered without a manually curated entry (see
+// TickerSyncService.discoverMissingMarketHours). A 5-day lookback keeps this
+// far lighter than fetchDailyChart's, since the candles themselves are
+// discarded.
+export async function fetchMarketMeta(
+  yahooRateLimiter: YahooRateLimiterService,
+  ticker: string,
+) {
+  const chart = await yahooRateLimiter.schedule(() =>
+    yahooFinance.chart(ticker, {
+      period1: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+      interval: '1d',
+    }),
+  );
+  return chart.meta;
+}
+
+export type ChartMetaResult = Awaited<ReturnType<typeof fetchMarketMeta>>;
+
 export async function fetchCandleChart(
   yahooRateLimiter: YahooRateLimiterService,
   ticker: string,

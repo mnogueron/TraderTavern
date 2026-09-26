@@ -472,7 +472,12 @@ export class FinanceService {
 
     const entries: TickerHealthEntry[] = [];
     for (const ticker of staticData) {
-      if (!ticker.market || hiddenIsins.has(ticker.isin)) {
+      // A doc with no isin can't be matched against any isin-keyed lookup
+      // below (hidden set, last-synced map), so it would always render as a
+      // phantom "never synced" entry regardless of the ticker's real health —
+      // this happens for stale pre-ISIN-tracking duplicates left behind when
+      // a ticker's isin was first resolved (see TickerStaticDataRepository.upsert).
+      if (!ticker.market || !ticker.isin || hiddenIsins.has(ticker.isin)) {
         continue;
       }
       const hours = marketHoursByCode.get(ticker.market);
@@ -865,8 +870,8 @@ export class FinanceService {
       doc.kind,
       doc.status,
       doc.syncDate,
-      doc.market,
-      (doc.market && marketLabelByCode.get(doc.market)) ?? null,
+      doc.markets,
+      doc.markets.map((market) => marketLabelByCode.get(market) ?? null),
       doc.tickerCount,
       succeeded,
       failed,

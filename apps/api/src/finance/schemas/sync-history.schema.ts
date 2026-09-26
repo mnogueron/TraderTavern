@@ -21,7 +21,11 @@ export class SyncHistory {
   syncDate!: Date;
 
   // sha256 of the sorted ISIN list this chunk covers, so a given day's chunk
-  // can be resumed/skipped idempotently instead of retriggered.
+  // that already ran (Running/Success/PartialSuccess/Cancelled) isn't
+  // retriggered. A Failed/Timeout attempt does *not* block a retry — but the
+  // retry always inserts a brand new document (see
+  // SyncHistoryRepository.claimLock) rather than reusing the failed one, so
+  // a failed run's own counters/timestamps are never overwritten.
   @Prop({ required: true })
   chunkHash!: string;
 
@@ -41,11 +45,13 @@ export class SyncHistory {
   @Prop()
   generalError?: string;
 
-  // The single Yahoo exchange code every ISIN in this chunk belongs to
-  // (chunks are grouped by market, see buildMarketChunks), or null for the
-  // ungated group of ISINs whose market hasn't been resolved yet.
-  @Prop({ type: String, default: null })
-  market!: string | null;
+  // Every Yahoo exchange code this chunk's ISINs belong to (chunks are
+  // grouped by market, see TickerSyncService.buildChunks) — usually one, but
+  // more than one when small markets closing the same day were bulk
+  // aggregated into a single chunk. Empty for the ungated group of ISINs
+  // whose market hasn't been resolved yet.
+  @Prop({ type: [String], default: [] })
+  markets!: string[];
 
   // The full set of ISINs this chunk covers, regardless of whether each one
   // was successfully resolved/synced, so the admin sync log can show what
@@ -61,12 +67,12 @@ export class SyncHistory {
 
 export const SyncHistorySchema = SchemaFactory.createForClass(SyncHistory);
 
-// Prevents the same chunk of tickers from being processed twice on the same
-// day, regardless of how many times it's (re)triggered.
-SyncHistorySchema.index(
-  { syncDate: 1, kind: 1, chunkHash: 1 },
-  { unique: true },
-);
+// Not unique: a chunk can have more than one document for the same
+// { syncDate, kind, chunkHash } once retried after a Failed/Timeout attempt
+// (each attempt is its own document, see claimLock). isChunkDone's status
+// filter — not this index — is what prevents an already-run chunk from being
+// processed twice; this just keeps that lookup fast.
+SyncHistorySchema.index({ syncDate: 1, kind: 1, chunkHash: 1 });
 
 // Acts as a distributed lock: at most one "running" chunk per kind at a
 // time, so concurrent triggers (e.g. an overlapping cron tick, or a manual

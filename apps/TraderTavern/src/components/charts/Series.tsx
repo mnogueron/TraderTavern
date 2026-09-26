@@ -46,6 +46,13 @@ type SeriesProps<T extends SeriesKind> = {
   onCreated?: (series: ISeriesApi<T>) => void;
 };
 
+type PendingRemoval<T extends SeriesKind> = {
+  series: ISeriesApi<T>;
+  type: T;
+  paneIndex: number | undefined;
+  timer: ReturnType<typeof setTimeout>;
+};
+
 // Generic series attached to the nearest <Chart>. One instance is
 // created on mount and kept for the component's lifetime; data/options
 // updates are pushed onto it rather than recreating the series, so zoom
@@ -59,26 +66,55 @@ function Series<T extends SeriesKind>({
 }: SeriesProps<T>) {
   const context = useContext(ChartContext);
   const seriesRef = useRef<ISeriesApi<T> | null>(null);
+  const pendingRemovalRef = useRef<PendingRemoval<T> | null>(null);
 
   useEffect(() => {
     if (!context) {
       return;
     }
+    const chart = context.chart;
 
-    const series = context.chart.addSeries(
-      SERIES_DEFINITIONS[type],
-      options,
-      paneIndex,
-    );
+    // React StrictMode immediately cleans up and re-runs this effect once on
+    // mount (dev only) to help surface missing cleanup logic. lightweight-
+    // charts can't tolerate this series being removed and an equivalent one
+    // re-added within the same tick — the chart briefly has no series in
+    // this pane, which leaves its pane sizing broken even after the
+    // replacement series is added — so if a removal from that simulated
+    // cleanup is still pending, cancel it and reuse the existing series
+    // instead of creating a new one.
+    const pending = pendingRemovalRef.current;
+    if (pending && pending.type === type && pending.paneIndex === paneIndex) {
+      clearTimeout(pending.timer);
+      pendingRemovalRef.current = null;
+      seriesRef.current = pending.series;
+      onCreated?.(pending.series);
+      return () => scheduleRemoval(pending.series);
+    }
+
+    const series = chart.addSeries(SERIES_DEFINITIONS[type], options, paneIndex);
     seriesRef.current = series;
     onCreated?.(series);
 
-    return;
+    return () => scheduleRemoval(series);
 
-    return () => {
-      context.chart.removeSeries(series);
-      seriesRef.current = null;
-    };
+    function scheduleRemoval(series: ISeriesApi<T>) {
+      const timer = setTimeout(() => {
+        pendingRemovalRef.current = null;
+        // The chart itself may already be disposed by the time this runs
+        // (e.g. the parent <Chart> tearing down first on a real unmount) —
+        // in that case lightweight-charts throws on removeSeries, but
+        // there's nothing left to clean up either way.
+        try {
+          chart.removeSeries(series);
+        } catch {
+          // Chart/series already disposed — nothing to do.
+        }
+        if (seriesRef.current === series) {
+          seriesRef.current = null;
+        }
+      }, 0);
+      pendingRemovalRef.current = { series, type, paneIndex, timer };
+    }
     // `options`/`onCreated` are applied via the effects below rather than
     // recreating the series on every change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -86,7 +122,7 @@ function Series<T extends SeriesKind>({
 
   useEffect(() => {
     seriesRef.current?.setData(data);
-  }, []);
+  }, [data]);
 
   useEffect(() => {
     if (options) {

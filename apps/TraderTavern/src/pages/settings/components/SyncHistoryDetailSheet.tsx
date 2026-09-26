@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import { AlertCircleIcon } from 'lucide-react';
-import { useClientQuery } from '@trader-tavern/api-client';
+import { RiCloseCircleLine } from '@remixicon/react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useClientMutation, useClientQuery } from '@trader-tavern/api-client';
 import {
   Sheet,
   SheetContent,
@@ -9,6 +12,8 @@ import {
 } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import CancelSyncDialog from '@/pages/settings/components/CancelSyncDialog';
 import {
   Table,
   TableBody,
@@ -20,6 +25,7 @@ import {
 import CompanyCell from '@/components/CompanyCell';
 import EmptyCell from '@/components/EmptyCell';
 import SyncStatusBadge from '@/pages/settings/components/SyncStatusBadge';
+import MarketBadgeList from '@/pages/settings/components/MarketBadgeList';
 import { SYNC_KIND_LABEL, formatSyncTrigger } from '@/pages/settings/components/syncLabels';
 import { formatDateTime, formatDuration } from '@/lib/format';
 
@@ -32,6 +38,9 @@ const SyncHistoryDetailSheet = ({
   syncId,
   onOpenChange,
 }: SyncHistoryDetailSheetProps) => {
+  const queryClient = useQueryClient();
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+
   const { data, isPending } = useClientQuery(
     'get',
     '/api/finance/sync/history/{id}',
@@ -40,6 +49,17 @@ const SyncHistoryDetailSheet = ({
       enabled: !!syncId,
       refetchInterval: (query) =>
         query.state.data?.status === 'running' ? 3000 : false,
+    },
+  );
+
+  const cancelMutation = useClientMutation(
+    'post',
+    '/api/finance/sync/history/{id}/cancel',
+    {
+      onSuccess: () =>
+        queryClient.invalidateQueries({
+          queryKey: ['get', '/api/finance/sync/history'],
+        }),
     },
   );
 
@@ -70,6 +90,18 @@ const SyncHistoryDetailSheet = ({
           <SheetDescription>
             {data ? SYNC_KIND_LABEL[data.kind] : 'Loading sync run details'}
           </SheetDescription>
+          {isRunning && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-fit"
+              onClick={() => setCancelDialogOpen(true)}
+            >
+              <RiCloseCircleLine />
+              Cancel sync
+            </Button>
+          )}
         </SheetHeader>
 
         <div className="flex flex-col gap-4 overflow-auto px-4 pb-4">
@@ -102,11 +134,9 @@ const SyncHistoryDetailSheet = ({
                 <dt className="text-muted-foreground">Triggered by</dt>
                 <dd>{formatSyncTrigger(data.type, data.triggeredByUsername)}</dd>
 
-                <dt className="text-muted-foreground">Market</dt>
+                <dt className="text-muted-foreground">Markets</dt>
                 <dd>
-                  {data.market
-                    ? `${data.market}${data.marketLabel ? ` — ${data.marketLabel}` : ''}`
-                    : '—'}
+                  <MarketBadgeList markets={data.markets} marketLabels={data.marketLabels} />
                 </dd>
 
                 <dt className="text-muted-foreground">Sync date</dt>
@@ -262,6 +292,15 @@ const SyncHistoryDetailSheet = ({
           )}
         </div>
       </SheetContent>
+
+      <CancelSyncDialog
+        open={cancelDialogOpen}
+        onOpenChange={setCancelDialogOpen}
+        onConfirm={() =>
+          syncId && cancelMutation.mutate({ params: { path: { id: syncId } } })
+        }
+        isPending={cancelMutation.isPending}
+      />
     </Sheet>
   );
 };

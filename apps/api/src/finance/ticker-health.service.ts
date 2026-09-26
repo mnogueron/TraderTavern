@@ -1,19 +1,23 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { TICKER_SYNC_ERROR_THRESHOLD } from './constants/candle-windows';
+import {
+  DEFAULT_TICKER_SYNC_ERROR_THRESHOLD,
+  TICKER_SYNC_ERROR_THRESHOLD_ENV_VAR,
+} from './constants/candle-windows';
 import {
   TickerSyncHealth,
   TickerSyncHealthDocument,
 } from './schemas/ticker-sync-health.schema';
 import { TickerRef } from './helpers/sync-utils';
+import { AppConfigService } from '../shared/app-config.service';
 
 // Error messages that indicate a ticker will never succeed on retry (e.g.
 // the ISIN has no resolvable Yahoo ticker at all, or Yahoo's response shape
 // doesn't match what the library expects), as opposed to transient network
 // or rate-limit issues. These hide the ticker on the very first occurrence
-// instead of waiting for TICKER_SYNC_ERROR_THRESHOLD retries that would
-// just reproduce the same error every time.
+// instead of waiting for TICKER_SYNC_ERROR_THRESHOLD_ENV_VAR retries that
+// would just reproduce the same error every time.
 const PERMANENT_FAILURE_PATTERNS = [
   /no yahoo ticker could be resolved for this isin/i,
   /failed yahoo schema validation/i,
@@ -25,14 +29,15 @@ function isPermanentFailure(message: string): boolean {
 
 // Tracks per-ISIN sync health so a persistently broken ticker is excluded
 // from future automated sync attempts instead of being retried forever (see
-// TICKER_SYNC_ERROR_THRESHOLD). A single shared service backs both the sync
-// job (recordSuccess/recordFailure/getHiddenIsins) and the settings UI
-// (listHidden/unhideByTicker).
+// TICKER_SYNC_ERROR_THRESHOLD_ENV_VAR). A single shared service backs both
+// the sync job (recordSuccess/recordFailure/getHiddenIsins) and the settings
+// UI (listHidden/unhideByTicker).
 @Injectable()
 export class TickerHealthService {
   constructor(
     @InjectModel(TickerSyncHealth.name)
     private readonly tickerSyncHealthModel: Model<TickerSyncHealthDocument>,
+    private readonly configService: AppConfigService,
   ) {}
 
   // `isFullSync` distinguishes a full ticker sync (static + compound +
@@ -51,16 +56,29 @@ export class TickerHealthService {
           hidden: false,
           ...(isFullSync ? { lastFullSyncedAt: new Date() } : {}),
         },
-        $unset: { lastError: '', lastErrorAt: '', hiddenAt: '' },
+        $unset: { lastError: '', lastErrorAt: '', hiddenAt: '', lastTimeoutAt: '' },
       },
       { upsert: true },
     );
   }
 
+  // Records that a Yahoo request for this ISIN timed out, purely to gate the
+  // short retry cooldown (see getTimeoutCooldownUntil) — deliberately
+  // separate from recordFailure/errorCount so a run of transient timeouts
+  // never counts towards TICKER_SYNC_ERROR_THRESHOLD_ENV_VAR or hides the
+  // ticker.
+  async recordTimeout(ref: TickerRef): Promise<void> {
+    await this.tickerSyncHealthModel.updateOne(
+      { isin: ref.isin },
+      { $set: { isin: ref.isin, ticker: ref.ticker, lastTimeoutAt: new Date() } },
+      { upsert: true },
+    );
+  }
+
   // Increments the error counter for this ISIN and hides it once the
-  // counter reaches TICKER_SYNC_ERROR_THRESHOLD, or immediately if the error
-  // is a known-permanent failure (see isPermanentFailure). Returns whether
-  // this call just hid the ticker, so callers can log it.
+  // counter reaches TICKER_SYNC_ERROR_THRESHOLD_ENV_VAR, or immediately if
+  // the error is a known-permanent failure (see isPermanentFailure). Returns
+  // whether this call just hid the ticker, so callers can log it.
   async recordFailure(ref: TickerRef, error: unknown): Promise<boolean> {
     const message = error instanceof Error ? error.message : String(error);
 
@@ -73,10 +91,13 @@ export class TickerHealthService {
       { upsert: true, new: true },
     );
 
+    const threshold = this.configService.getNumber(
+      TICKER_SYNC_ERROR_THRESHOLD_ENV_VAR,
+      DEFAULT_TICKER_SYNC_ERROR_THRESHOLD,
+    );
     const shouldHide =
       !updated.hidden &&
-      (updated.errorCount >= TICKER_SYNC_ERROR_THRESHOLD ||
-        isPermanentFailure(message));
+      (updated.errorCount >= threshold || isPermanentFailure(message));
 
     if (shouldHide) {
       await this.tickerSyncHealthModel.updateOne(
@@ -105,6 +126,17 @@ export class TickerHealthService {
       .find({}, 'isin lastFullSyncedAt')
       .lean();
     return new Map(docs.map((doc) => [doc.isin, doc.lastFullSyncedAt]));
+  }
+
+  // Used by the sync job to skip retrying an ISIN whose last Yahoo request
+  // timed out until the configured cooldown has elapsed (see
+  // TickerSyncService.runChunkedSync). ISINs that never timed out (or
+  // succeeded since) are simply absent from the map.
+  async getLastTimeoutByIsin(): Promise<Map<string, Date | undefined>> {
+    const docs = await this.tickerSyncHealthModel
+      .find({ lastTimeoutAt: { $exists: true } }, 'isin lastTimeoutAt')
+      .lean();
+    return new Map(docs.map((doc) => [doc.isin, doc.lastTimeoutAt]));
   }
 
   async listHidden(): Promise<TickerSyncHealth[]> {

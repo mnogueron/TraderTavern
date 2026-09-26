@@ -11,6 +11,7 @@ const STATUS_CLASSNAME: Record<SyncStatus, string> = {
   partial_success: 'border-amber-500/20 bg-amber-500/10 text-amber-600',
   failed: 'border-red-500/20 bg-red-500/10 text-red-600',
   timeout: 'border-red-500/20 bg-red-500/10 text-red-600',
+  cancelled: 'border-muted-foreground/20 bg-muted text-muted-foreground',
 };
 
 type SyncStatusBadgeProps = {
@@ -26,7 +27,7 @@ const SyncStatusBadge = ({ status }: SyncStatusBadgeProps) => (
       </span>
     ) : status === 'partial_success' ? (
       <RiAlertFill data-icon="inline-start" />
-    ) : status === 'failed' || status === 'timeout' ? (
+    ) : status === 'failed' || status === 'timeout' || status === 'cancelled' ? (
       <RiCloseCircleFill data-icon="inline-start" />
     ) : (
       <RiCheckboxCircleFill data-icon="inline-start" />

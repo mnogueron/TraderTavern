@@ -21,11 +21,11 @@ export class SyncHistoryDetailDto {
   @ApiProperty()
   syncDate: Date;
 
-  @ApiProperty({ nullable: true, type: String })
-  market: string | null;
+  @ApiProperty({ type: [String] })
+  markets: string[];
 
-  @ApiProperty({ nullable: true, type: String })
-  marketLabel: string | null;
+  @ApiProperty({ type: 'array', items: { type: 'string', nullable: true } })
+  marketLabels: (string | null)[];
 
   @ApiProperty()
   tickerCount: number;
@@ -67,8 +67,8 @@ export class SyncHistoryDetailDto {
     this.kind = base.kind;
     this.status = base.status;
     this.syncDate = base.syncDate;
-    this.market = base.market;
-    this.marketLabel = base.marketLabel;
+    this.markets = base.markets;
+    this.marketLabels = base.marketLabels;
     this.tickerCount = base.tickerCount;
     this.succeededCount = base.succeededCount;
     this.failedCount = base.failedCount;

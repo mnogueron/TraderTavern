@@ -77,20 +77,49 @@ export const SYNC_CONCURRENCY_ENV_VAR = 'SYNC_TICKER_CONCURRENCY';
 // increasing Yahoo request pressure.
 export const DEFAULT_SYNC_CONCURRENCY = 5;
 
-// Number of consecutive sync failures for a given ISIN before it's marked
-// hidden and excluded from future automated sync attempts (see
-// TickerHealthService). Chosen to tolerate a handful of transient Yahoo
-// hiccups (timeouts, schema validation errors) without masking a genuinely
-// broken/delisted ticker for too long.
-export const TICKER_SYNC_ERROR_THRESHOLD = 5;
+// Env var holding the number of consecutive sync failures for a given ISIN
+// before it's marked hidden and excluded from future automated sync
+// attempts (see TickerHealthService).
+export const TICKER_SYNC_ERROR_THRESHOLD_ENV_VAR = 'TICKER_SYNC_ERROR_THRESHOLD';
 
-// Env var holding how many tickers make up one sync_history chunk.
+// Chosen to tolerate a handful of transient Yahoo hiccups (timeouts, schema
+// validation errors) without masking a genuinely broken/delisted ticker for
+// too long.
+export const DEFAULT_TICKER_SYNC_ERROR_THRESHOLD = 5;
+
+// Env var holding how many minutes an ISIN must wait after a Yahoo request
+// timeout before it's eligible to be retried again (see
+// TickerSyncService.runChunkedSync). Without this, a single persistently
+// slow/hanging ticker gets retried on every single EVERY_MINUTE cron tick,
+// aborting that whole chunk's sync again and again.
+export const SYNC_TIMEOUT_COOLDOWN_MINUTES_ENV_VAR =
+  'SYNC_TIMEOUT_COOLDOWN_MINUTES';
+
+// Long enough to let a transient Yahoo/network hiccup clear, short enough
+// that a real, resolvable ticker isn't left out of the day's sync for long.
+export const DEFAULT_SYNC_TIMEOUT_COOLDOWN_MINUTES = 5;
+
+// Env var holding how many tickers make up one sync_history chunk. A value
+// of -1 disables chunking entirely: every market becomes exactly one chunk,
+// however large (see TickerSyncService.getChunkSize).
 export const SYNC_CHUNK_SIZE_ENV_VAR = 'SYNC_CHUNK_SIZE';
 
 // With ~8000 tickers across all configured sources, one chunk per
 // EVERY_10_MINUTES cron tick spreads a full day's sync out over several
 // hours instead of one long run that would trip Yahoo's rate limiting.
 export const DEFAULT_SYNC_CHUNK_SIZE = 200;
+
+// Env var holding the max ticker count for a market to be considered
+// "small" and eligible to be bulk-aggregated with other small markets
+// closing on the same day into a single chunk (see
+// TickerSyncService.buildChunks), instead of each waiting its own turn one
+// cron tick at a time.
+export const SYNC_SMALL_MARKET_LIMIT_ENV_VAR = 'SYNC_SMALL_MARKET_TICKER_LIMIT';
+
+// Markets with only a handful to a few dozen tickers each would otherwise
+// consume a full EVERY_MINUTE cron tick to sync ~1s of actual work; below
+// this size they're grouped together instead.
+export const DEFAULT_SYNC_SMALL_MARKET_LIMIT = 50;
 
 // Env var holding how many minutes a ticker may go unsynced past its
 // market's regular close before the sync health monitor flags it as

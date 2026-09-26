@@ -62,7 +62,7 @@ const CandlestickChart = ({
   const [hovered, setHovered] = useState<HoveredCandle | null>(null);
 
   const visibleCandles = (
-    showPreMarket || !marketHours
+    !isIntraday || showPreMarket || !marketHours
       ? candles
       : candles.filter(
           (candle) => !isOutsideRegularHours(candle.startTime, marketHours),

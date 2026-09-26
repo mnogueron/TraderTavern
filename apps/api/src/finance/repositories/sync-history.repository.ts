@@ -39,25 +39,38 @@ export class SyncHistoryRepository {
         syncDate,
         kind,
         chunkHash,
+        // Cancelled is deliberately included here (unlike Failed/Timeout):
+        // an admin cancel is an explicit stop, not a transient failure, so
+        // it must not be silently resumed by the next cron tick.
         status: {
-          $in: [SyncStatus.Running, SyncStatus.Success, SyncStatus.PartialSuccess],
+          $in: [
+            SyncStatus.Running,
+            SyncStatus.Success,
+            SyncStatus.PartialSuccess,
+            SyncStatus.Cancelled,
+          ],
         },
       }),
     );
   }
 
-  // Attempts to atomically claim this chunk's "running" slot, both via the
-  // { syncDate, kind, chunkHash } unique index (this exact chunk hasn't been
-  // processed today) and the { kind, status: 'running' } partial unique
-  // index (no other chunk of this kind is in flight). Returns null if either
-  // lock is already held.
+  // Atomically claims this chunk's "running" slot by always inserting a
+  // brand new document — a prior Failed/Timeout attempt of the exact same
+  // { syncDate, kind, chunkHash } is never reused/resumed, so its own
+  // counters/timestamps stay untouched as a permanent record of that failed
+  // run, and this run starts the whole chunk fresh. The caller is expected
+  // to have already checked isChunkDone; the { kind, status: 'running' }
+  // partial unique index is what actually enforces "no other chunk of this
+  // kind is in flight" (and closes the race where one raced ahead between
+  // that check and this call) — an insert that violates it throws a
+  // duplicate-key error, which is caught and turned into a null return.
   async claimLock(
     trigger: SyncTrigger,
     kind: SyncKind,
     syncDate: Date,
     chunkHash: string,
     tickerCount: number,
-    market: string | null,
+    markets: string[],
     isins: string[],
   ): Promise<SyncHistoryDocument | null> {
     try {
@@ -69,7 +82,7 @@ export class SyncHistoryRepository {
         chunkHash,
         tickerCount,
         triggeredByUserId: trigger.userId,
-        market,
+        markets,
         isins,
       });
     } catch (error) {
@@ -96,6 +109,46 @@ export class SyncHistoryRepository {
       },
     );
     return result.modifiedCount;
+  }
+
+  // Marks every still-"running" lock (any kind) as failed, unconditionally
+  // (no STALE_LOCK_MS age gate). Called once on server startup: a "running"
+  // doc left over from before this process started can only mean the
+  // previous process died mid-sync, so it's already orphaned regardless of
+  // age — waiting out reclaimStale's 30-minute grace period would otherwise
+  // leave that kind's { kind, status: 'running' } lock stuck and block any
+  // new sync of that kind until the next cron tick clears it. Returns the
+  // number of locks reclaimed.
+  async cancelAllRunningOnStartup(): Promise<number> {
+    const result = await this.syncHistoryModel.updateMany(
+      { status: SyncStatus.Running },
+      {
+        $set: {
+          status: SyncStatus.Failed,
+          generalError:
+            'Reclaimed: running lock left over from a prior server process',
+        },
+      },
+    );
+    return result.modifiedCount;
+  }
+
+  // Immediately marks this lock as cancelled if (and only if) it's still
+  // "running", freeing its { kind, status: 'running' } slot. Used by the
+  // admin "cancel" action on a specific sync's detail page, as opposed to
+  // reclaimStale's passive, age-gated, kind-wide cleanup. Returns whether a
+  // running job was actually found and cancelled.
+  async cancelIfRunning(id: string): Promise<boolean> {
+    const result = await this.syncHistoryModel.updateOne(
+      { _id: id, status: SyncStatus.Running },
+      {
+        $set: {
+          status: SyncStatus.Cancelled,
+          generalError: 'Cancelled by admin',
+        },
+      },
+    );
+    return result.modifiedCount > 0;
   }
 
   async finalize(

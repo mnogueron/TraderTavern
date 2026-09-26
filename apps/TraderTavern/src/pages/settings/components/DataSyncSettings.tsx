@@ -24,7 +24,7 @@ import { cn } from '@/lib/utils';
 import { formatDateTime, formatDuration } from '@/lib/format';
 import SyncStatusBadge from '@/pages/settings/components/SyncStatusBadge';
 import SyncKindBadge from '@/pages/settings/components/SyncKindBadge';
-import MarketBadge from '@/pages/settings/components/MarketBadge';
+import MarketBadgeList from '@/pages/settings/components/MarketBadgeList';
 import { SYNC_STATUS_LABEL, formatSyncTrigger } from '@/pages/settings/components/syncLabels';
 import SyncHistoryDetailSheet from '@/pages/settings/components/SyncHistoryDetailSheet';
 import TriggerSyncMenu from '@/pages/settings/components/TriggerSyncMenu';
@@ -40,6 +40,7 @@ const STATUS_OPTIONS: SyncStatus[] = [
   'partial_success',
   'failed',
   'timeout',
+  'cancelled',
 ];
 const SYNC_HISTORY_QUERY_KEY = ['get', '/api/finance/sync/history'];
 
@@ -120,12 +121,12 @@ const DataSyncSettings = () => {
               <TableRow>
                 <TableHead>Status</TableHead>
                 <TableHead>Kind</TableHead>
-                <TableHead>Market</TableHead>
+                <TableHead className="min-w-[170px]">Market</TableHead>
                 <TableHead>Triggered by</TableHead>
                 <TableHead>Sync date</TableHead>
                 <TableHead>Started</TableHead>
-                <TableHead>Finished</TableHead>
                 <TableHead className="text-right">Elapsed</TableHead>
+                <TableHead className="text-right">Total</TableHead>
                 <TableHead className="text-right">Succeeded</TableHead>
                 <TableHead className="text-right">Failed</TableHead>
               </TableRow>
@@ -152,10 +153,10 @@ const DataSyncSettings = () => {
                     <Skeleton className="h-4 w-28" />
                   </TableCell>
                   <TableCell>
-                    <Skeleton className="h-4 w-28" />
+                    <Skeleton className="ml-auto h-4 w-14" />
                   </TableCell>
                   <TableCell>
-                    <Skeleton className="ml-auto h-4 w-14" />
+                    <Skeleton className="ml-auto h-4 w-10" />
                   </TableCell>
                   <TableCell>
                     <Skeleton className="ml-auto h-4 w-10" />
@@ -173,12 +174,12 @@ const DataSyncSettings = () => {
               <TableRow>
                 <TableHead>Status</TableHead>
                 <TableHead>Kind</TableHead>
-                <TableHead>Market</TableHead>
+                <TableHead className="min-w-[170px]">Market</TableHead>
                 <TableHead>Triggered by</TableHead>
                 <TableHead>Sync date</TableHead>
                 <TableHead>Started</TableHead>
-                <TableHead>Finished</TableHead>
                 <TableHead className="text-right">Elapsed</TableHead>
+                <TableHead className="text-right">Total</TableHead>
                 <TableHead className="text-right">Succeeded</TableHead>
                 <TableHead className="text-right">Failed</TableHead>
               </TableRow>
@@ -207,7 +208,7 @@ const DataSyncSettings = () => {
                       <SyncKindBadge kind={item.kind} />
                     </TableCell>
                     <TableCell>
-                      <MarketBadge market={item.market} marketLabel={item.marketLabel} />
+                      <MarketBadgeList markets={item.markets} marketLabels={item.marketLabels} />
                     </TableCell>
                     <TableCell>
                       {formatSyncTrigger(item.type, item.triggeredByUsername)}
@@ -218,11 +219,11 @@ const DataSyncSettings = () => {
                     <TableCell className="tabular-nums">
                       {formatDateTime(item.startedAt)}
                     </TableCell>
-                    <TableCell className="tabular-nums">
-                      {item.finishedAt ? formatDateTime(item.finishedAt) : '—'}
-                    </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {formatDuration(getElapsedMs(item.startedAt, item.finishedAt))}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {item.tickerCount}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {item.status === 'running' ? (
