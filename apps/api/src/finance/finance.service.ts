@@ -337,7 +337,7 @@ export class FinanceService {
     );
 
     return staticData
-      .filter((ticker) => !hiddenIsins.has(ticker.isin))
+      .filter((ticker) => ticker.isin && !hiddenIsins.has(ticker.isin))
       .map((ticker) =>
         this.toTickerDto(
           ticker,
@@ -863,7 +863,7 @@ export class FinanceService {
 
     const isinsByMarket = new Map<string, string[]>();
     for (const ticker of staticData) {
-      if (!ticker.market || hiddenIsins.has(ticker.isin)) {
+      if (!ticker.market || !ticker.isin || hiddenIsins.has(ticker.isin)) {
         continue;
       }
       const group = isinsByMarket.get(ticker.market);
@@ -1268,6 +1268,10 @@ export class FinanceService {
     model: Model<any>,
   ): Promise<T[]> {
     return model.aggregate<T>([
+      // Legacy docs from before `isin` became the join key lack the field
+      // entirely; without this they'd all collapse into one `_id: null`
+      // group and get attached to unrelated tickers.
+      { $match: { isin: { $exists: true, $ne: null } } },
       { $sort: { syncDate: -1 } },
       { $group: { _id: '$isin', doc: { $first: '$$ROOT' } } },
       { $replaceRoot: { newRoot: '$doc' } },
