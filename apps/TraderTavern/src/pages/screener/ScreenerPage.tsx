@@ -69,8 +69,9 @@ const ScreenerPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const page = Number(searchParams.get('page') ?? 1);
   const limit = Number(searchParams.get('limit') ?? DEFAULT_LIMIT);
-  const sortBy = searchParams.get('sortBy') ?? 'ticker';
-  const sortOrder = searchParams.get('sortOrder') === 'desc' ? 'desc' : 'asc';
+  const sortBy = searchParams.get('sortBy') ?? 'marketCap';
+  const sortOrder: 'asc' | 'desc' =
+    searchParams.get('sortOrder') === 'asc' ? 'asc' : 'desc';
 
   const filterValues: ScreenerFilterValues = useMemo(() => {
     const raw = searchParams.get('filters');
