@@ -12,3 +12,6 @@
 
 ## Frontend design direction
 The TraderTavern frontend should read as a modern financial dashboard: dense, data-first layouts; tabular numbers and clear alignment in tables; a restrained, mostly-neutral palette with color reserved for meaningful signal (gains/losses, status, roles); minimal decoration. Prioritize data readability over visual flourish in every screen, not just tables.
+
+## Market trading days
+Yahoo's chart-meta endpoint (the only automatic market-hours discovery source) never exposes which days of the week a market trades, only session times. `apps/api/src/finance/constants/trading-days.ts` is therefore a hand-maintained list: everything defaults to Mon-Fri, and non-Mon-Fri markets (e.g. Tel Aviv's Sun-Thu week) must be added manually to `TRADING_DAYS_OVERRIDES`. When onboarding a new market whose week doesn't match Mon-Fri, add it there — it cannot be fetched automatically.
