@@ -4,7 +4,7 @@ import SyncHealthMonitor from '@/pages/sync/components/SyncHealthMonitor';
 
 const SyncPage = () => {
   return (
-    <Tabs defaultValue="history" className="flex h-full min-h-0 flex-col gap-3">
+    <Tabs defaultValue="history" className="flex h-full min-h-0 flex-col gap-4">
       <TabsList variant="line" className="shrink-0">
         <TabsTrigger value="history">History</TabsTrigger>
         <TabsTrigger value="health">Health</TabsTrigger>
