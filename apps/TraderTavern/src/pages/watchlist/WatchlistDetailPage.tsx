@@ -151,7 +151,7 @@ const WatchlistDetailPage = ({ watchlistId }: WatchlistDetailPageProps) => {
         </div>
       </div>
 
-      <div className="min-h-[600px] flex-1 overflow-hidden rounded-md border">
+      <div className="min-h-[600px] flex-1 overflow-hidden rounded-lg border">
         {tickers.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
             <p className="text-sm">No tickers in this watchlist yet.</p>

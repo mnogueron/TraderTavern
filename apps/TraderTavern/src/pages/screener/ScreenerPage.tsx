@@ -258,7 +258,7 @@ const ScreenerPage = () => {
       </div>
       <div
         className={cn(
-          'flex flex-col overflow-hidden rounded-xl ring-1 ring-foreground/10',
+          'flex flex-col overflow-hidden rounded-lg ring-1 ring-foreground/10',
           fillHeight ? 'min-h-[780px] flex-1' : 'shrink-0',
         )}
       >

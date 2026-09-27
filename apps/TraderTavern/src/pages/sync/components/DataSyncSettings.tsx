@@ -139,7 +139,7 @@ const DataSyncSettings = () => {
         />
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl ring-1 ring-foreground/10">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg ring-1 ring-foreground/10">
         {isPending || !data ? (
           <Table containerClassName="min-h-0 flex-1" className="text-xs">
             <TableHeader>
