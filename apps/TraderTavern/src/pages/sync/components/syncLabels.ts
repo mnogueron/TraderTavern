@@ -23,4 +23,7 @@ export const SYNC_STATUS_LABEL: Record<SyncHistoryItem['status'], string> = {
 export const formatSyncTrigger = (
   type: SyncHistoryItem['type'],
   triggeredByUsername: string | null,
-) => (type === 'manual' ? `Manual · ${triggeredByUsername ?? 'unknown'}` : 'Automatic');
+) =>
+  type === 'manual'
+    ? `Manual · ${triggeredByUsername ?? 'unknown'}`
+    : 'Automatic';

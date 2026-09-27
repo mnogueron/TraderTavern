@@ -12,6 +12,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { AppPagination } from '@/components/AppPagination';
+import { PageSizeSelector } from '@/components/PageSizeSelector';
+import { PageRangeSummary } from '@/components/PageRangeSummary';
 import { TableFooter } from '@/components/TableFooter';
 import {
   Select,
@@ -22,18 +24,20 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { formatDateTime, formatDuration } from '@/lib/format';
-import SyncStatusBadge from '@/pages/settings/components/SyncStatusBadge';
-import SyncKindBadge from '@/pages/settings/components/SyncKindBadge';
-import MarketBadgeList from '@/pages/settings/components/MarketBadgeList';
-import { SYNC_STATUS_LABEL, formatSyncTrigger } from '@/pages/settings/components/syncLabels';
-import SyncHistoryDetailSheet from '@/pages/settings/components/SyncHistoryDetailSheet';
-import TriggerSyncMenu from '@/pages/settings/components/TriggerSyncMenu';
+import SyncStatusBadge from '@/pages/sync/components/SyncStatusBadge';
+import SyncKindBadge from '@/pages/sync/components/SyncKindBadge';
+import MarketBadgeList from '@/components/MarketBadgeList';
+import {
+  SYNC_STATUS_LABEL,
+  formatSyncTrigger,
+} from '@/pages/sync/components/syncLabels';
+import SyncHistoryDetailSheet from '@/pages/sync/components/SyncHistoryDetailSheet';
+import TriggerSyncMenu from '@/pages/sync/components/TriggerSyncMenu';
 import type { components } from '@trader-tavern/api-client';
 
 type SyncStatus = components['schemas']['SyncHistoryListItemDto']['status'];
 
-const LIMIT = 50;
-const SKELETON_ROWS = LIMIT;
+const DEFAULT_LIMIT = 50;
 const STATUS_OPTIONS: SyncStatus[] = [
   'running',
   'success',
@@ -51,6 +55,7 @@ const getElapsedMs = (startedAt: string, finishedAt: string | null) =>
 const DataSyncSettings = () => {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_LIMIT);
   const [status, setStatus] = useState<SyncStatus | 'all'>('all');
   const [selectedSyncId, setSelectedSyncId] = useState<string | null>(null);
 
@@ -61,7 +66,7 @@ const DataSyncSettings = () => {
       params: {
         query: {
           page,
-          limit: LIMIT,
+          limit,
           status: status === 'all' ? undefined : status,
         },
       },
@@ -92,14 +97,33 @@ const DataSyncSettings = () => {
     setPage(1);
   };
 
+  const handleLimitChange = (value: number) => {
+    setLimit(value);
+    setPage(1);
+  };
+
   const meta = data?.meta;
 
   return (
     <>
       <div className="flex shrink-0 items-center justify-between gap-2">
-        <span className="text-sm text-muted-foreground">
-          {meta ? `${meta.total.toLocaleString()} syncs` : '—'}
-        </span>
+        <Select value={status} onValueChange={handleStatusChange}>
+          <SelectTrigger
+            aria-label="Filter by status"
+            size="sm"
+            className="w-40"
+          >
+            <SelectValue placeholder="All statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            {STATUS_OPTIONS.map((option) => (
+              <SelectItem key={option} value={option}>
+                {SYNC_STATUS_LABEL[option]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <TriggerSyncMenu
           isPending={fullSyncMutation.isPending}
           onFullSync={() => fullSyncMutation.mutate({})}
@@ -132,7 +156,7 @@ const DataSyncSettings = () => {
               </TableRow>
             </TableHeader>
             <TableBody className="bg-card">
-              {Array.from({ length: SKELETON_ROWS }, (_, index) => (
+              {Array.from({ length: limit }, (_, index) => (
                 <TableRow key={index}>
                   <TableCell>
                     <Skeleton className="h-4 w-20" />
@@ -208,7 +232,10 @@ const DataSyncSettings = () => {
                       <SyncKindBadge kind={item.kind} />
                     </TableCell>
                     <TableCell>
-                      <MarketBadgeList markets={item.markets} marketLabels={item.marketLabels} />
+                      <MarketBadgeList
+                        markets={item.markets}
+                        marketLabels={item.marketLabels}
+                      />
                     </TableCell>
                     <TableCell>
                       {formatSyncTrigger(item.type, item.triggeredByUsername)}
@@ -220,7 +247,9 @@ const DataSyncSettings = () => {
                       {formatDateTime(item.startedAt)}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {formatDuration(getElapsedMs(item.startedAt, item.finishedAt))}
+                      {formatDuration(
+                        getElapsedMs(item.startedAt, item.finishedAt),
+                      )}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {item.tickerCount}
@@ -253,19 +282,12 @@ const DataSyncSettings = () => {
           </Table>
         )}
         <TableFooter>
-          <Select value={status} onValueChange={handleStatusChange}>
-            <SelectTrigger aria-label="Filter by status" size="sm" className="w-40">
-              <SelectValue placeholder="All statuses" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              {STATUS_OPTIONS.map((option) => (
-                <SelectItem key={option} value={option}>
-                  {SYNC_STATUS_LABEL[option]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-3">
+            <PageSizeSelector value={limit} onChange={handleLimitChange} />
+            {meta && (
+              <PageRangeSummary page={page} pageSize={limit} total={meta.total} />
+            )}
+          </div>
           {meta && (
             <AppPagination
               page={meta.page}

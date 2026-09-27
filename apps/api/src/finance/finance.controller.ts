@@ -1,4 +1,12 @@
-import { Controller, Get, HttpCode, Param, Post, Query } from '@nestjs/common';
+import {
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiOkResponse } from '@nestjs/swagger';
 import { FinanceService } from './finance.service';
 import { SyncHistoryDetailDto } from './dto/SyncHistoryDetail.dto';
@@ -23,6 +31,8 @@ import { MarketSummaryDto } from './dto/MarketSummary.dto';
 import { SyncStatusDto } from './dto/SyncStatus.dto';
 import { GetHiddenTickersDto } from './dto/GetHiddenTickers.dto';
 import { PaginatedHiddenTickerDto } from './dto/PaginatedHiddenTicker.dto';
+import { GetTickersListDto } from './dto/GetTickersList.dto';
+import { PaginatedTickerSummaryDto } from './dto/PaginatedTickerSummary.dto';
 import { GetSyncHealthDto } from './dto/GetSyncHealth.dto';
 import { PaginatedTickerSyncHealthDto } from './dto/PaginatedTickerSyncHealth.dto';
 import { SyncHealthSummaryDto } from './dto/SyncHealthSummary.dto';
@@ -272,6 +282,15 @@ export class FinanceController {
     return this.financeService.getMarketHours(id.toUpperCase());
   }
 
+  @Get('tickers/list')
+  @Auth(Role.Admin)
+  @ApiOkResponse({ type: PaginatedTickerSummaryDto })
+  getTickersList(
+    @Query() query: GetTickersListDto,
+  ): Promise<PaginatedTickerSummaryDto> {
+    return this.financeService.getTickersList(query);
+  }
+
   @Get('tickers/hidden')
   @Auth(Role.Admin)
   @ApiOkResponse({ type: PaginatedHiddenTickerDto })
@@ -286,6 +305,20 @@ export class FinanceController {
   @Auth(Role.Admin)
   unhideTicker(@Param('id') id: string): Promise<void> {
     return this.financeService.unhideTicker(id.toUpperCase());
+  }
+
+  @Post('ticker/:id/hide')
+  @HttpCode(204)
+  @Auth(Role.Admin)
+  hideTicker(@Param('id') id: string): Promise<void> {
+    return this.financeService.hideTicker(id.toUpperCase());
+  }
+
+  @Delete('ticker/:id')
+  @HttpCode(204)
+  @Auth(Role.Admin)
+  deleteTicker(@Param('id') id: string): Promise<void> {
+    return this.financeService.deleteTicker(id.toUpperCase());
   }
 
   @Get('tickers/health/summary')

@@ -1,12 +1,16 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { TriangleAlert } from 'lucide-react';
 import { RiEyeLine, RiEyeOffLine } from '@remixicon/react';
 import { useClientQuery } from '@trader-tavern/api-client';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
 import { Section, SectionContent, SectionFooter } from '@/components/Section';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import CandlestickChart from '@/pages/ticker/components/CandlestickChart';
+import CandlestickChart, {
+  type Candle,
+} from '@/pages/ticker/components/CandlestickChart';
 import FinancialsTab from '@/pages/ticker/components/financials/FinancialsTab';
 import AnalysisTab from '@/pages/ticker/components/analysis/AnalysisTab';
 import PerformanceRow from '@/pages/ticker/components/PerformanceRow';
@@ -15,13 +19,13 @@ import {
   changePercentClassName,
   formatChangePercent,
   formatDate,
-  formatDateTime,
   formatMarketCap,
   formatMonthYear,
   formatNumber,
   formatPercent,
 } from '@/lib/format';
 import { altmanZoneInfo } from '@/lib/altman';
+import { lastRegularCloseAt } from '@/lib/marketHours';
 
 type CandleWindow = '5m' | '1h' | '1d' | '1wk';
 
@@ -43,7 +47,7 @@ const StatGroup = ({
     <h3 className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
       {title}
     </h3>
-    <div className="grid grid-cols-2 gap-y-1.5 text-sm">{children}</div>
+    <div className="flex flex-col text-sm">{children}</div>
   </div>
 );
 
@@ -56,13 +60,31 @@ const StatRow = ({
   value: React.ReactNode;
   valueClassName?: string;
 }) => (
-  <>
+  <div className="-mx-1.5 grid grid-cols-2 gap-y-1.5 rounded-md border-b border-dotted border-border/70 px-1.5 py-0.5 transition-colors hover:bg-muted/60">
     <span className="text-muted-foreground">{label}</span>
     <span className={`text-right tabular-nums ${valueClassName ?? ''}`}>
       {value}
     </span>
-  </>
+  </div>
 );
+
+const CandleReadout = ({ candle }: { candle: Candle }) => {
+  const valueClassName =
+    candle.exit >= candle.entry ? 'text-emerald-600' : 'text-red-600';
+
+  return (
+    <span className="font-mono tabular-nums">
+      O<span className={valueClassName}>{formatNumber(candle.entry, 3)}</span>{' '}
+      H<span className={valueClassName}>{formatNumber(candle.high, 3)}</span>{' '}
+      L<span className={valueClassName}>{formatNumber(candle.low, 3)}</span>{' '}
+      C<span className={valueClassName}>{formatNumber(candle.exit, 3)}</span> -{' '}
+      V
+      <span className={valueClassName}>
+        {(candle.volume ?? 0).toLocaleString()}
+      </span>
+    </span>
+  );
+};
 
 type TickerDetailPageProps = {
   ticker: string;
@@ -71,6 +93,7 @@ type TickerDetailPageProps = {
 const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
   const [window, setWindow] = useState<CandleWindow>('1d');
   const [showPreMarket, setShowPreMarket] = useState(false);
+  const [displayCandle, setDisplayCandle] = useState<Candle | null>(null);
 
   const { data: tickerData, isPending: isTickerPending } = useClientQuery(
     'get',
@@ -98,6 +121,15 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
     { params: { path: { id: ticker } } },
   );
 
+  const isDataStale = useMemo(() => {
+    if (!tickerData?.refreshedAt || !marketHours) {
+      return false;
+    }
+    return (
+      new Date(tickerData.refreshedAt) < lastRegularCloseAt(marketHours)
+    );
+  }, [tickerData?.refreshedAt, marketHours]);
+
   return (
     <div className="flex flex-col">
       <div className="sticky -top-4 z-10 -mx-4 -mt-4 flex flex-col bg-background px-4 pt-4">
@@ -108,9 +140,24 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
         />
       </div>
 
+      {isDataStale && (
+        <Alert className="mt-4 border-amber-500/30 bg-amber-500/10 text-amber-600 shrink-0">
+          <TriangleAlert />
+          <AlertTitle>Data may be outdated</AlertTitle>
+          <AlertDescription className="text-amber-600/90">
+            This ticker was last updated before the last market close. The
+            figures below reflect past results and will update once the
+            sync finishes.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Section
         title="Candles"
-        className="mt-4 h-[420px] shrink-0"
+        description={
+          displayCandle ? <CandleReadout candle={displayCandle} /> : undefined
+        }
+        className="mt-4 h-[max(min(50vh,700px),400px)] shrink-0"
         actionElement={
           <div className="flex items-center gap-2">
             <Button
@@ -147,7 +194,7 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
               window={chart.window}
               marketHours={marketHours}
               showPreMarket={showPreMarket}
-              currency={tickerData?.currency}
+              onDisplayCandleChange={setDisplayCandle}
             />
           )}
         </SectionContent>
@@ -174,37 +221,32 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
           className="flex min-h-0 flex-1 flex-col gap-4"
         >
           <div className="grid shrink-0 gap-4 md:grid-cols-3">
-            <Section title="Overview" className="md:col-span-3">
-              <SectionContent className="grid grid-cols-2 gap-y-2 text-sm">
-                {isTickerPending || !tickerData ? (
-                  <Skeleton className="col-span-2 h-24" />
-                ) : (
-                  <>
-                    <span className="text-muted-foreground">Employees</span>
-                    <span className="text-right tabular-nums">
-                      {tickerData.employees?.toLocaleString() ?? '—'}
-                    </span>
-                    <span className="text-muted-foreground">
-                      Fiscal Year End
-                    </span>
-                    <span className="text-right">
-                      {formatMonthYear(tickerData.fiscalYearEnd)}
-                    </span>
-                    <span className="text-muted-foreground">MR Quarter</span>
-                    <span className="text-right">
-                      {formatMonthYear(tickerData.mostRecentQuarter)}
-                    </span>
-                  </>
-                )}
-              </SectionContent>
-            </Section>
-
             <Section title="Key Statistics" className="md:col-span-3">
               <SectionContent>
-                {isFundamentalPending || !fundamental || !tickerData ? (
+                {isFundamentalPending ||
+                !fundamental ||
+                isTickerPending ||
+                !tickerData ? (
                   <Skeleton className="h-24 w-full" />
                 ) : (
                   <div className="columns-1 gap-6 sm:columns-2 lg:columns-3 [column-rule:1px_solid_var(--border)]">
+                    <StatGroup title="Overview">
+                      <StatRow
+                        label="Employees"
+                        value={tickerData.employees?.toLocaleString() ?? '—'}
+                      />
+                      <StatRow
+                        label="Fiscal Year End"
+                        value={formatMonthYear(tickerData.fiscalYearEnd)}
+                      />
+                      <StatRow
+                        label="MR Quarter"
+                        value={formatMonthYear(tickerData.mostRecentQuarter)}
+                      />
+                    </StatGroup>
+
+                    <hr className="break-inside-avoid-column my-6 border-border" />
+
                     <StatGroup title="Company">
                       <StatRow
                         label="Market Cap"
@@ -715,9 +757,6 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
                       {altmanZoneInfo(fundamental.altmanZScore).description}
                     </span>
                   )}
-                  <span className="text-xs text-muted-foreground">
-                    Refreshed {formatDateTime(fundamental.refreshedAt)}
-                  </span>
                 </SectionFooter>
               )}
             </Section>

@@ -13,7 +13,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import CancelSyncDialog from '@/pages/settings/components/CancelSyncDialog';
+import CancelSyncDialog from '@/pages/sync/components/CancelSyncDialog';
 import {
   Table,
   TableBody,
@@ -24,9 +24,12 @@ import {
 } from '@/components/ui/table';
 import CompanyCell from '@/components/CompanyCell';
 import EmptyCell from '@/components/EmptyCell';
-import SyncStatusBadge from '@/pages/settings/components/SyncStatusBadge';
-import MarketBadgeList from '@/pages/settings/components/MarketBadgeList';
-import { SYNC_KIND_LABEL, formatSyncTrigger } from '@/pages/settings/components/syncLabels';
+import SyncStatusBadge from '@/pages/sync/components/SyncStatusBadge';
+import MarketBadgeList from '@/components/MarketBadgeList';
+import {
+  SYNC_KIND_LABEL,
+  formatSyncTrigger,
+} from '@/pages/sync/components/syncLabels';
 import { formatDateTime, formatDuration } from '@/lib/format';
 
 type SyncHistoryDetailSheetProps = {
@@ -77,9 +80,7 @@ const SyncHistoryDetailSheet = ({
     ? data?.tickers.filter((ticker) => ticker.status === 'did_not_run')
     : undefined;
   const failedTickers = data?.tickers.filter((ticker) =>
-    isRunning
-      ? ticker.status === 'failed'
-      : ticker.status !== 'success',
+    isRunning ? ticker.status === 'failed' : ticker.status !== 'success',
   );
 
   return (
@@ -132,18 +133,27 @@ const SyncHistoryDetailSheet = ({
                 <dd>{SYNC_KIND_LABEL[data.kind]}</dd>
 
                 <dt className="text-muted-foreground">Triggered by</dt>
-                <dd>{formatSyncTrigger(data.type, data.triggeredByUsername)}</dd>
+                <dd>
+                  {formatSyncTrigger(data.type, data.triggeredByUsername)}
+                </dd>
 
                 <dt className="text-muted-foreground">Markets</dt>
                 <dd>
-                  <MarketBadgeList markets={data.markets} marketLabels={data.marketLabels} />
+                  <MarketBadgeList
+                    markets={data.markets}
+                    marketLabels={data.marketLabels}
+                  />
                 </dd>
 
                 <dt className="text-muted-foreground">Sync date</dt>
-                <dd className="tabular-nums">{formatDateTime(data.syncDate)}</dd>
+                <dd className="tabular-nums">
+                  {formatDateTime(data.syncDate)}
+                </dd>
 
                 <dt className="text-muted-foreground">Started</dt>
-                <dd className="tabular-nums">{formatDateTime(data.startedAt)}</dd>
+                <dd className="tabular-nums">
+                  {formatDateTime(data.startedAt)}
+                </dd>
 
                 <dt className="text-muted-foreground">Finished</dt>
                 <dd className="tabular-nums">

@@ -94,7 +94,9 @@ const TriggerMarketSyncDialog = ({
         </Command>
         <div className="flex items-center justify-end gap-2 border-t p-3">
           <span className="mr-auto text-xs text-muted-foreground">
-            {selected.length > 0 ? `${selected.length} selected` : 'None selected'}
+            {selected.length > 0
+              ? `${selected.length} selected`
+              : 'None selected'}
           </span>
           <Button
             type="button"

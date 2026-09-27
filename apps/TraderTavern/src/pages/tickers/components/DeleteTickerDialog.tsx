@@ -7,28 +7,28 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 
-type CancelSyncDialogProps = {
-  open: boolean;
+type DeleteTickerDialogProps = {
+  ticker: string | null;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
   isPending: boolean;
 };
 
-const CancelSyncDialog = ({
-  open,
+const DeleteTickerDialog = ({
+  ticker,
   onOpenChange,
   onConfirm,
   isPending,
-}: CancelSyncDialogProps) => (
-  <Dialog open={open} onOpenChange={onOpenChange}>
+}: DeleteTickerDialogProps) => (
+  <Dialog open={!!ticker} onOpenChange={onOpenChange}>
     <DialogContent>
       <DialogHeader>
-        <DialogTitle>Cancel this sync</DialogTitle>
+        <DialogTitle>Delete {ticker}</DialogTitle>
         <DialogDescription>
-          This marks the sync as cancelled, freeing its lock so a new sync
-          can start. Only do this if you're sure the job is actually stuck
-          (e.g. orphaned after a server restart) — a genuinely in-progress
-          sync will be interrupted.
+          This permanently removes all stored data for this ticker (static
+          data, financials, technicals, history and sync health). If it's
+          still part of a configured ticker source, it will be recreated on
+          the next sync.
         </DialogDescription>
       </DialogHeader>
       <div className="flex items-center justify-end gap-2">
@@ -50,11 +50,11 @@ const CancelSyncDialog = ({
             onOpenChange(false);
           }}
         >
-          Cancel sync
+          Delete ticker
         </Button>
       </div>
     </DialogContent>
   </Dialog>
 );
 
-export default CancelSyncDialog;
+export default DeleteTickerDialog;

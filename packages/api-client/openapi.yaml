@@ -536,6 +536,21 @@ paths:
         - cookie: []
       tags:
         - Finance
+    delete:
+      operationId: deleteTicker
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '204':
+          description: ''
+      security:
+        - cookie: []
+      tags:
+        - Finance
   /api/finance/ticker/{id}/fundamental:
     get:
       operationId: getTickerFundamental
@@ -666,6 +681,51 @@ paths:
         - cookie: []
       tags:
         - Finance
+  /api/finance/tickers/list:
+    get:
+      operationId: getTickersList
+      parameters:
+        - name: limit
+          required: false
+          in: query
+          schema:
+            minimum: 10
+            default: 10
+            type: number
+        - name: page
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            default: 1
+            type: number
+        - name: search
+          required: false
+          in: query
+          description: Fuzzy search on isin, ticker or company name
+          schema:
+            type: string
+        - name: status
+          required: false
+          in: query
+          schema:
+            default: all
+            type: string
+            enum:
+              - active
+              - disabled
+              - all
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTickerSummaryDto'
+      security:
+        - cookie: []
+      tags:
+        - Finance
   /api/finance/tickers/hidden:
     get:
       operationId: getHiddenTickers
@@ -704,6 +764,22 @@ paths:
   /api/finance/ticker/{id}/unhide:
     post:
       operationId: unhideTicker
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '204':
+          description: ''
+      security:
+        - cookie: []
+      tags:
+        - Finance
+  /api/finance/ticker/{id}/hide:
+    post:
+      operationId: hideTicker
       parameters:
         - name: id
           required: true
@@ -2330,6 +2406,67 @@ components:
         - regularOpen
         - regularClose
         - postMarketClose
+    TickerSummaryDto:
+      type: object
+      properties:
+        isin:
+          type: string
+        ticker:
+          type: string
+        companyName:
+          type: string
+          nullable: true
+        logoUrl:
+          type: string
+          nullable: true
+        market:
+          type: string
+          nullable: true
+        marketLabel:
+          type: string
+          nullable: true
+        lastFullSyncedAt:
+          format: date-time
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum:
+            - active
+            - disabled
+        errorCount:
+          type: number
+        lastError:
+          type: string
+          nullable: true
+        hiddenAt:
+          format: date-time
+          type: string
+          nullable: true
+      required:
+        - isin
+        - ticker
+        - companyName
+        - logoUrl
+        - market
+        - marketLabel
+        - lastFullSyncedAt
+        - status
+        - errorCount
+        - lastError
+        - hiddenAt
+    PaginatedTickerSummaryDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/TickerSummaryDto'
+        meta:
+          $ref: '#/components/schemas/PaginationMetaDto'
+      required:
+        - data
+        - meta
     HiddenTickerDto:
       type: object
       properties:

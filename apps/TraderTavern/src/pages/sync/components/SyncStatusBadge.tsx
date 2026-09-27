@@ -1,6 +1,10 @@
-import { RiAlertFill, RiCheckboxCircleFill, RiCloseCircleFill } from '@remixicon/react';
+import {
+  RiAlertFill,
+  RiCheckboxCircleFill,
+  RiCloseCircleFill,
+} from '@remixicon/react';
 import { Badge } from '@/components/ui/badge';
-import { SYNC_STATUS_LABEL } from '@/pages/settings/components/syncLabels';
+import { SYNC_STATUS_LABEL } from '@/pages/sync/components/syncLabels';
 import type { components } from '@trader-tavern/api-client';
 
 type SyncStatus = components['schemas']['SyncHistoryListItemDto']['status'];
@@ -27,7 +31,9 @@ const SyncStatusBadge = ({ status }: SyncStatusBadgeProps) => (
       </span>
     ) : status === 'partial_success' ? (
       <RiAlertFill data-icon="inline-start" />
-    ) : status === 'failed' || status === 'timeout' || status === 'cancelled' ? (
+    ) : status === 'failed' ||
+      status === 'timeout' ||
+      status === 'cancelled' ? (
       <RiCloseCircleFill data-icon="inline-start" />
     ) : (
       <RiCheckboxCircleFill data-icon="inline-start" />

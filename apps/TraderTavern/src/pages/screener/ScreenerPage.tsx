@@ -27,17 +27,11 @@ import type {
 import { buildScreenerFilterConfigs } from '@/pages/screener/screenerFilters';
 import { AppPagination } from '@/components/AppPagination';
 import { PaginationSkeleton } from '@/components/PaginationSkeleton';
+import { PageSizeSelector } from '@/components/PageSizeSelector';
+import { PageRangeSummary } from '@/components/PageRangeSummary';
 import { TableFooter } from '@/components/TableFooter';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 
 const DEFAULT_LIMIT = 50;
-const PAGE_SIZE_OPTIONS = [50, 100, 200, 500];
 const MIN_ROWS_FOR_FILL_HEIGHT = 20;
 const COLUMN_ORDER_STORAGE_KEY = 'screener:column-order';
 const COLUMN_VISIBILITY_STORAGE_KEY = 'screener:column-visibility';
@@ -218,13 +212,10 @@ const ScreenerPage = () => {
     );
   };
 
-  const handleLimitChange = (value: string | null) => {
-    if (!value) {
-      return;
-    }
+  const handleLimitChange = (value: number) => {
     setSearchParams(
       (params) => {
-        params.set('limit', value);
+        params.set('limit', String(value));
         params.set('page', '1');
         return params;
       },
@@ -288,18 +279,16 @@ const ScreenerPage = () => {
           />
         )}
         <TableFooter>
-          <Select value={String(limit)} onValueChange={handleLimitChange}>
-            <SelectTrigger aria-label="Page size" size="sm">
-              <SelectValue placeholder="Page size" />
-            </SelectTrigger>
-            <SelectContent>
-              {PAGE_SIZE_OPTIONS.map((size) => (
-                <SelectItem key={size} value={String(size)}>
-                  {size} / page
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-3">
+            <PageSizeSelector value={limit} onChange={handleLimitChange} />
+            {knownMeta && (
+              <PageRangeSummary
+                page={page}
+                pageSize={limit}
+                total={knownMeta.total}
+              />
+            )}
+          </div>
           {knownMeta ? (
             <AppPagination
               page={page}

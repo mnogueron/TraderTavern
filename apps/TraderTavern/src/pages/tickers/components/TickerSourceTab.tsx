@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import FileDropzone from '@/pages/settings/components/FileDropzone';
+import FileDropzone from '@/pages/tickers/components/FileDropzone';
 import { formatDateTime } from '@/lib/format';
 
 type TickerSource = 'yahoo' | 'xtb';
@@ -23,7 +23,7 @@ const TICKER_SOURCE_OPTIONS: { value: TickerSource; label: string }[] = [
   { value: 'xtb', label: 'XTB (OMI)' },
 ];
 
-const TickerSourceSettings = () => {
+const TickerSourceTab = () => {
   const queryClient = useQueryClient();
   const { data: currentUser } = useCurrentUser();
   const [selectedSource, setSelectedSource] = useState<TickerSource>(
@@ -164,4 +164,4 @@ const TickerSourceSettings = () => {
   );
 };
 
-export default TickerSourceSettings;
+export default TickerSourceTab;
