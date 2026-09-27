@@ -3,6 +3,7 @@ import { MarketHoursRepository } from './repositories/market-hours.repository';
 import { MarketHours } from './schemas/market-hours.schema';
 import { ChartMetaResult } from './helpers/sync-fetchers';
 import { formatLocalTime } from './helpers/date-time';
+import { resolveTradingDaysForMarket } from './constants/trading-days';
 
 // Seeds market_hours from a Yahoo chart's `meta.currentTradingPeriod` — the
 // only place Yahoo exposes a market's actual pre/regular/post session times
@@ -31,6 +32,7 @@ export class MarketHoursSyncService {
       postMarketClose: period?.post
         ? formatLocalTime(period.post.end, timezone)
         : undefined,
+      tradingDays: [...resolveTradingDaysForMarket(market)],
     });
   }
 }

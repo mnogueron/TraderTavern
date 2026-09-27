@@ -1215,6 +1215,8 @@ export interface components {
             regularClose: string;
             /** @description HH:mm, local to timezone */
             postMarketClose: string | null;
+            /** @description Day-of-week indices (0 = Sunday) this market trades on */
+            tradingDays: number[];
         };
         TickerSummaryDto: {
             isin: string;

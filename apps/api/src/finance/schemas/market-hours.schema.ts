@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import { DEFAULT_TRADING_DAYS } from '../constants/trading-days';
 
 export type MarketHoursDocument = HydratedDocument<MarketHours>;
 
@@ -25,6 +26,11 @@ export class MarketHours {
 
   @Prop()
   postMarketClose?: string;
+
+  // Day-of-week indices (0 = Sunday) this market trades on. Defaults to
+  // Mon-Fri; see constants/trading-days.ts for known exceptions (e.g. TLV).
+  @Prop({ type: [Number], default: () => [...DEFAULT_TRADING_DAYS] })
+  tradingDays!: number[];
 }
 
 export const MarketHoursSchema = SchemaFactory.createForClass(MarketHours);
