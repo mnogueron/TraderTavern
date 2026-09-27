@@ -11,6 +11,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { AppPagination } from '@/components/AppPagination';
+import { PageSizeSelector } from '@/components/PageSizeSelector';
+import { PageRangeSummary } from '@/components/PageRangeSummary';
 import { TableFooter } from '@/components/TableFooter';
 import { formatDateTime, formatDuration } from '@/lib/format';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
@@ -21,7 +23,7 @@ import type { components } from '@trader-tavern/api-client';
 
 type SyncHealthStatus = components['schemas']['TickerSyncHealthDto']['status'];
 
-const LIMIT = 20;
+const DEFAULT_LIMIT = 50;
 const VISIBLE_ROWS = 10;
 
 type SyncHealthTableProps = {
@@ -30,20 +32,26 @@ type SyncHealthTableProps = {
 
 const SyncHealthTable = ({ status }: SyncHealthTableProps) => {
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_LIMIT);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search, 250);
 
   const { data, isPending } = useClientQuery('get', '/api/finance/tickers/health', {
     params: {
-      query: { status, page, limit: LIMIT, search: debouncedSearch || undefined },
+      query: { status, page, limit, search: debouncedSearch || undefined },
     },
   });
 
   const meta = data?.meta;
 
+  const handleLimitChange = (value: number) => {
+    setLimit(value);
+    setPage(1);
+  };
+
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex justify-end">
+    <div className="flex min-h-[400px] flex-1 flex-col gap-3">
+      <div className="flex shrink-0 justify-end">
         <Input
           value={search}
           onChange={(event) => {
@@ -62,8 +70,8 @@ const SyncHealthTable = ({ status }: SyncHealthTableProps) => {
           ))}
         </div>
       ) : (
-        <div className="flex flex-col overflow-hidden rounded-lg border border-input">
-          <Table containerClassName="max-h-[410px]">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-input">
+          <Table containerClassName="min-h-0 flex-1">
             <TableHeader>
               <TableRow>
                 <TableHead>Company</TableHead>
@@ -120,15 +128,25 @@ const SyncHealthTable = ({ status }: SyncHealthTableProps) => {
               )}
             </TableBody>
           </Table>
-          {meta && (
-            <TableFooter>
+          <TableFooter>
+            <div className="flex items-center gap-3">
+              <PageSizeSelector value={limit} onChange={handleLimitChange} />
+              {meta && (
+                <PageRangeSummary
+                  page={page}
+                  pageSize={limit}
+                  total={meta.total}
+                />
+              )}
+            </div>
+            {meta && (
               <AppPagination
                 page={meta.page}
                 totalPages={meta.totalPages}
                 onPageChange={setPage}
               />
-            </TableFooter>
-          )}
+            )}
+          </TableFooter>
         </div>
       )}
     </div>

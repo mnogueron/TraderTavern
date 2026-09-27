@@ -50,8 +50,8 @@ const SyncHealthMonitor = () => {
   const severity = summary ? getSeverity(summary.healthyPercentage) : 'success';
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="grid gap-4 md:grid-cols-2">
+    <div className="flex h-full min-h-0 flex-col gap-4">
+      <div className="grid shrink-0 gap-4 md:grid-cols-2">
         {isPending || !summary ? (
           <>
             <Skeleton className="h-24" />
@@ -107,8 +107,12 @@ const SyncHealthMonitor = () => {
         )}
       </div>
 
-      <Tabs value={resolvedTab} onValueChange={(value) => setActiveTab(value as SyncHealthStatus)}>
-        <TabsList variant="line">
+      <Tabs
+        value={resolvedTab}
+        onValueChange={(value) => setActiveTab(value as SyncHealthStatus)}
+        className="flex min-h-0 flex-1 flex-col gap-3"
+      >
+        <TabsList variant="line" className="shrink-0">
           <TabsTrigger value="unhealthy">
             Unhealthy{summary ? ` (${summary.unhealthyCount})` : ''}
           </TabsTrigger>
@@ -117,10 +121,10 @@ const SyncHealthMonitor = () => {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="unhealthy">
+        <TabsContent value="unhealthy" className="flex min-h-0 flex-1 flex-col">
           <SyncHealthTable status="unhealthy" />
         </TabsContent>
-        <TabsContent value="healthy">
+        <TabsContent value="healthy" className="flex min-h-0 flex-1 flex-col">
           <SyncHealthTable status="healthy" />
         </TabsContent>
       </Tabs>

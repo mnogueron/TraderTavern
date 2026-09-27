@@ -16,7 +16,7 @@ const SyncPage = () => {
       >
         <DataSyncSettings />
       </TabsContent>
-      <TabsContent value="health" className="min-h-0 flex-1 overflow-y-auto">
+      <TabsContent value="health" className="flex min-h-0 flex-1 flex-col">
         <SyncHealthMonitor />
       </TabsContent>
     </Tabs>
