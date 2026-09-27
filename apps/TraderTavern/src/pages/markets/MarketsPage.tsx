@@ -9,7 +9,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import EmptyCell from '@/components/EmptyCell';
-import { formatDateTime } from '@/lib/format';
+import RelativeDateTime from '@/components/RelativeDateTime';
 
 const MarketsPage = () => {
   const { data: markets, isPending } = useClientQuery(
@@ -57,7 +57,7 @@ const MarketsPage = () => {
               </TableCell>
               <TableCell className="tabular-nums">
                 {market.lastCompleteSync ? (
-                  formatDateTime(market.lastCompleteSync)
+                  <RelativeDateTime value={market.lastCompleteSync} />
                 ) : (
                   <EmptyCell />
                 )}

@@ -14,10 +14,11 @@ import { AppPagination } from '@/components/AppPagination';
 import { PageSizeSelector } from '@/components/PageSizeSelector';
 import { PageRangeSummary } from '@/components/PageRangeSummary';
 import { TableFooter } from '@/components/TableFooter';
-import { formatDateTime, formatDuration } from '@/lib/format';
+import { formatDuration } from '@/lib/format';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import CompanyCell from '@/components/CompanyCell';
 import MarketBadge from '@/components/MarketBadge';
+import RelativeDateTime from '@/components/RelativeDateTime';
 import SyncHealthReasonBadge from '@/pages/sync/components/SyncHealthReasonBadge';
 import type { components } from '@trader-tavern/api-client';
 
@@ -109,7 +110,7 @@ const SyncHealthTable = ({ status }: SyncHealthTableProps) => {
                       <MarketBadge market={ticker.market} marketLabel={ticker.marketLabel} />
                     </TableCell>
                     <TableCell className="tabular-nums">
-                      {formatDateTime(ticker.lastFullSyncedAt)}
+                      <RelativeDateTime value={ticker.lastFullSyncedAt} />
                     </TableCell>
                     <TableCell className="tabular-nums">
                       {ticker.minutesPastClose === null

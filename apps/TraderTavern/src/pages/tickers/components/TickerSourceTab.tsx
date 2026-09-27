@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import FileDropzone from '@/pages/tickers/components/FileDropzone';
-import { formatDateTime } from '@/lib/format';
+import RelativeDateTime from '@/components/RelativeDateTime';
 
 type TickerSource = 'yahoo' | 'xtb';
 
@@ -118,7 +118,7 @@ const TickerSourceTab = () => {
             <Skeleton className="mt-1 h-4 w-32" />
           ) : (
             <span className="text-sm tabular-nums">
-              {formatDateTime(syncStatus?.sourceUpdatedAt ?? null)}
+              <RelativeDateTime value={syncStatus?.sourceUpdatedAt ?? null} />
             </span>
           )}
         </div>

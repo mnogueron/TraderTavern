@@ -30,7 +30,8 @@ import {
   SYNC_KIND_LABEL,
   formatSyncTrigger,
 } from '@/pages/sync/components/syncLabels';
-import { formatDateTime, formatDuration } from '@/lib/format';
+import { formatDuration } from '@/lib/format';
+import RelativeDateTime from '@/components/RelativeDateTime';
 
 type SyncHistoryDetailSheetProps = {
   syncId: string | null;
@@ -147,17 +148,17 @@ const SyncHistoryDetailSheet = ({
 
                 <dt className="text-muted-foreground">Sync date</dt>
                 <dd className="tabular-nums">
-                  {formatDateTime(data.syncDate)}
+                  <RelativeDateTime value={data.syncDate} />
                 </dd>
 
                 <dt className="text-muted-foreground">Started</dt>
                 <dd className="tabular-nums">
-                  {formatDateTime(data.startedAt)}
+                  <RelativeDateTime value={data.startedAt} />
                 </dd>
 
                 <dt className="text-muted-foreground">Finished</dt>
                 <dd className="tabular-nums">
-                  {data.finishedAt ? formatDateTime(data.finishedAt) : '—'}
+                  <RelativeDateTime value={data.finishedAt} />
                 </dd>
 
                 <dt className="text-muted-foreground">Elapsed</dt>

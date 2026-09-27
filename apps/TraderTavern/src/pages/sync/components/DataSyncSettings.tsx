@@ -23,7 +23,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { formatDateTime, formatDuration } from '@/lib/format';
+import { formatDuration } from '@/lib/format';
+import RelativeDateTime from '@/components/RelativeDateTime';
 import SyncStatusBadge from '@/pages/sync/components/SyncStatusBadge';
 import SyncKindBadge from '@/pages/sync/components/SyncKindBadge';
 import MarketBadgeList from '@/components/MarketBadgeList';
@@ -241,10 +242,10 @@ const DataSyncSettings = () => {
                       {formatSyncTrigger(item.type, item.triggeredByUsername)}
                     </TableCell>
                     <TableCell className="tabular-nums">
-                      {formatDateTime(item.syncDate)}
+                      <RelativeDateTime value={item.syncDate} />
                     </TableCell>
                     <TableCell className="tabular-nums">
-                      {formatDateTime(item.startedAt)}
+                      <RelativeDateTime value={item.startedAt} />
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {formatDuration(
