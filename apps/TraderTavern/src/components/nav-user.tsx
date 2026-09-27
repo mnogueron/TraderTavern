@@ -26,6 +26,7 @@ import {
   RiTeamLine,
   RiMoonLine,
   RiSunLine,
+  RiUserLine,
 } from '@remixicon/react';
 
 export function NavUser() {
@@ -89,6 +90,10 @@ export function NavUser() {
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
+              <DropdownMenuItem onClick={() => navigate('/profile')}>
+                <RiUserLine />
+                Profile
+              </DropdownMenuItem>
               {isAdmin && (
                 <DropdownMenuItem onClick={() => navigate('/users')}>
                   <RiTeamLine />

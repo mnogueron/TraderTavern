@@ -59,6 +59,27 @@ paths:
         - cookie: []
       tags:
         - User
+  /api/user/me/email:
+    patch:
+      operationId: updateEmail
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateEmailDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDto'
+      security:
+        - cookie: []
+      tags:
+        - User
   /api/auth/register:
     post:
       operationId: register
@@ -125,6 +146,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ResetPasswordResponseDto'
+      tags:
+        - Auth
+  /api/auth/change-password:
+    post:
+      operationId: changePassword
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordDto'
+      responses:
+        '200':
+          description: ''
+      security:
+        - cookie: []
       tags:
         - Auth
   /api/auth/me:
@@ -1166,6 +1204,13 @@ components:
             - xtb
       required:
         - tickerSource
+    UpdateEmailDto:
+      type: object
+      properties:
+        email:
+          type: string
+      required:
+        - email
     RegisterDto:
       type: object
       properties:
@@ -1207,6 +1252,16 @@ components:
           type: string
         success:
           type: boolean
+    ChangePasswordDto:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+      required:
+        - currentPassword
+        - newPassword
     TickerDto:
       type: object
       properties:

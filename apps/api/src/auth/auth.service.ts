@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -104,6 +105,24 @@ export class AuthService {
     user.passwordHash = await bcrypt.hash(newPassword, PASSWORD_SALT_ROUNDS);
     user.resetPasswordTokenHash = undefined;
     user.resetPasswordExpiresAt = undefined;
+    await user.save();
+  }
+
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    const user = await this.userService.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (!(await bcrypt.compare(currentPassword, user.passwordHash))) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    user.passwordHash = await bcrypt.hash(newPassword, PASSWORD_SALT_ROUNDS);
     await user.save();
   }
 

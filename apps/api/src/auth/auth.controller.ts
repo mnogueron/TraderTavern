@@ -16,6 +16,7 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ResetPasswordResponseDto } from './dto/reset-password-response.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { UserDto } from '../shared/User.dto';
 import { Auth } from './decorators/auth.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
@@ -108,6 +109,21 @@ export class AuthController {
 
     const token = await this.authService.requestPasswordReset(dto.email);
     return { token };
+  }
+
+  @Post('change-password')
+  @HttpCode(200)
+  @Auth()
+  async changePassword(
+    @CurrentUser() currentUser: JwtPayload,
+    @Body() dto: ChangePasswordDto,
+  ): Promise<{ success: true }> {
+    await this.authService.changePassword(
+      currentUser.sub,
+      dto.currentPassword,
+      dto.newPassword,
+    );
+    return { success: true };
   }
 
   @Get('me')

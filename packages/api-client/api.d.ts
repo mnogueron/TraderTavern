@@ -52,6 +52,22 @@ export interface paths {
         patch: operations["updateSettings"];
         trace?: never;
     };
+    "/api/user/me/email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["updateEmail"];
+        trace?: never;
+    };
     "/api/auth/register": {
         parameters: {
             query?: never;
@@ -110,6 +126,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["resetPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/change-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["changePassword"];
         delete?: never;
         options?: never;
         head?: never;
@@ -798,6 +830,9 @@ export interface components {
             /** @enum {string} */
             tickerSource: "yahoo" | "xtb";
         };
+        UpdateEmailDto: {
+            email: string;
+        };
         RegisterDto: {
             username: string;
             email: string;
@@ -815,6 +850,10 @@ export interface components {
         ResetPasswordResponseDto: {
             token?: string;
             success?: boolean;
+        };
+        ChangePasswordDto: {
+            currentPassword: string;
+            newPassword: string;
         };
         TickerDto: {
             isin: string;
@@ -1388,6 +1427,29 @@ export interface operations {
             };
         };
     };
+    updateEmail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateEmailDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserDto"];
+                };
+            };
+        };
+    };
     register: {
         parameters: {
             query?: never;
@@ -1471,6 +1533,27 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ResetPasswordResponseDto"];
                 };
+            };
+        };
+    };
+    changePassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePasswordDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

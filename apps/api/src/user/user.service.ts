@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { PaginationDto } from '../shared/Pagination.dto';
@@ -64,6 +68,21 @@ export class UserService {
     tickerSource: TickerSourceType,
   ): Promise<UserDocument | null> {
     return this.userModel.findByIdAndUpdate(id, { tickerSource }, { new: true }).exec();
+  }
+
+  async updateEmail(id: string, email: string): Promise<UserDocument> {
+    const existing = await this.userModel.findOne({ email }).exec();
+    if (existing && existing._id.toString() !== id) {
+      throw new ConflictException('Email is already in use');
+    }
+
+    const user = await this.userModel
+      .findByIdAndUpdate(id, { email }, { new: true })
+      .exec();
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+    return user;
   }
 
   async create(user: {
