@@ -4,6 +4,7 @@ import { PaginationDto } from '../shared/Pagination.dto';
 import { ApiOkResponse } from '@nestjs/swagger';
 import { PaginatedUserDto } from './PaginatedUser.dto';
 import { UpdateUserSettingsDto } from './dto/UpdateUserSettings.dto';
+import { UpdateEmailDto } from './dto/UpdateEmail.dto';
 import { UserDto } from '../shared/User.dto';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -35,6 +36,17 @@ export class UserController {
     if (!user) {
       throw new BadRequestException('User not found');
     }
+    return this.userService.toDto(user);
+  }
+
+  @Patch('me/email')
+  @Auth()
+  @ApiOkResponse({ type: UserDto })
+  async updateEmail(
+    @CurrentUser() currentUser: JwtPayload,
+    @Body() dto: UpdateEmailDto,
+  ): Promise<UserDto> {
+    const user = await this.userService.updateEmail(currentUser.sub, dto.email);
     return this.userService.toDto(user);
   }
 }

@@ -9,6 +9,7 @@ export default [
   layout('./layouts/protected-layout.tsx', [
     index('./app.tsx'),
     route('about', './routes/about.tsx'),
+    route('profile', './routes/profile.tsx'),
     route('users', './routes/users.tsx'),
     route('dashboard', './routes/dashboard.tsx'),
     route('screener', './routes/screener.tsx'),
