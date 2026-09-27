@@ -22,6 +22,12 @@ export class MarketHoursDto {
   @ApiProperty({ nullable: true, type: String, description: 'HH:mm, local to timezone' })
   postMarketClose: string | null;
 
+  @ApiProperty({
+    type: [Number],
+    description: 'Day-of-week indices (0 = Sunday) this market trades on',
+  })
+  tradingDays: number[];
+
   constructor(
     market: string,
     label: string,
@@ -30,6 +36,7 @@ export class MarketHoursDto {
     regularOpen: string,
     regularClose: string,
     postMarketClose: string | null,
+    tradingDays: number[],
   ) {
     this.market = market;
     this.label = label;
@@ -38,5 +45,6 @@ export class MarketHoursDto {
     this.regularOpen = regularOpen;
     this.regularClose = regularClose;
     this.postMarketClose = postMarketClose;
+    this.tradingDays = tradingDays;
   }
 }

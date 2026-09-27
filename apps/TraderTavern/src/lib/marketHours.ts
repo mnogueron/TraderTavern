@@ -2,7 +2,24 @@ type MarketHours = {
   timezone: string;
   regularOpen: string;
   regularClose: string;
+  tradingDays?: number[];
 };
+
+const DEFAULT_TRADING_DAYS = [1, 2, 3, 4, 5];
+
+const resolveTradingDays = (hours: MarketHours): number[] =>
+  hours.tradingDays?.length ? hours.tradingDays : DEFAULT_TRADING_DAYS;
+
+const weekdayIndex = (date: Date, timezone: string): number => {
+  const weekday = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    weekday: 'short',
+  }).format(date);
+  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(weekday);
+};
+
+const isTradingDay = (hours: MarketHours, date: Date): boolean =>
+  resolveTradingDays(hours).includes(weekdayIndex(date, hours.timezone));
 
 const formatLocalTime = (date: Date, timezone: string): string =>
   new Intl.DateTimeFormat('en-GB', {
@@ -49,18 +66,23 @@ const zonedTimeToUtc = (
 };
 
 // The UTC instant of `hours`' most recently completed regular close: today's
-// close (in the market's own timezone) once local time has reached it,
-// otherwise yesterday's. Mirrors the backend's `regularCloseAt` helper
+// close (in the market's own timezone) once local time has reached it and
+// today is a trading day, otherwise the closest preceding trading day's
+// close. Mirrors the backend's `regularCloseAt` helper
 // (apps/api/src/finance/helpers/date-time.ts).
 export const lastRegularCloseAt = (hours: MarketHours): Date => {
   const now = new Date();
-  const dateKey =
-    formatLocalTime(now, hours.timezone) >= hours.regularClose
-      ? calendarDateKey(now, hours.timezone)
-      : calendarDateKey(
-          new Date(now.getTime() - 24 * 60 * 60 * 1000),
-          hours.timezone,
-        );
+  const closedToday =
+    isTradingDay(hours, now) &&
+    formatLocalTime(now, hours.timezone) >= hours.regularClose;
 
+  let candidate = closedToday
+    ? now
+    : new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  while (!isTradingDay(hours, candidate)) {
+    candidate = new Date(candidate.getTime() - 24 * 60 * 60 * 1000);
+  }
+
+  const dateKey = calendarDateKey(candidate, hours.timezone);
   return zonedTimeToUtc(dateKey, hours.regularClose, hours.timezone);
 };

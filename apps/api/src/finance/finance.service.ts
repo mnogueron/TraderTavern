@@ -34,7 +34,7 @@ import {
   TICKER_STALE_THRESHOLD_MINUTES_ENV_VAR,
   DEFAULT_TICKER_STALE_THRESHOLD_MINUTES,
 } from './constants/candle-windows';
-import { calendarDateKey, minutesPastRegularClose } from './helpers/date-time';
+import { minutesPastRegularClose, regularCloseAt } from './helpers/date-time';
 import {
   TickerStaticData,
   TickerStaticDataDocument,
@@ -99,6 +99,7 @@ import {
   parseScreenerFilters,
   sortScreenerTickers,
 } from './screener-filters';
+import { DEFAULT_TRADING_DAYS } from './constants/trading-days';
 
 type WithUpdatedAt = { updatedAt: Date };
 type WithTimestamps = { createdAt: Date; updatedAt: Date };
@@ -570,8 +571,6 @@ export class FinanceService {
       TICKER_STALE_THRESHOLD_MINUTES_ENV_VAR,
       DEFAULT_TICKER_STALE_THRESHOLD_MINUTES,
     );
-    const now = new Date();
-
     const entries: TickerHealthEntry[] = [];
     for (const ticker of staticData) {
       // A doc with no isin can't be matched against any isin-keyed lookup
@@ -596,10 +595,7 @@ export class FinanceService {
         if (!lastFullSyncedAt) {
           status = SyncHealthStatus.Unhealthy;
           reason = SyncHealthReason.NeverSynced;
-        } else if (
-          calendarDateKey(lastFullSyncedAt, hours.timezone) !==
-          calendarDateKey(now, hours.timezone)
-        ) {
+        } else if (lastFullSyncedAt < regularCloseAt(hours)) {
           status = SyncHealthStatus.Unhealthy;
           reason = SyncHealthReason.StaleSinceClose;
         }
@@ -746,6 +742,7 @@ export class FinanceService {
       marketHours.regularOpen,
       marketHours.regularClose,
       marketHours.postMarketClose ?? null,
+      marketHours.tradingDays?.length ? marketHours.tradingDays : [...DEFAULT_TRADING_DAYS],
     );
   }
 

@@ -2398,6 +2398,11 @@ components:
           type: string
           nullable: true
           description: HH:mm, local to timezone
+        tradingDays:
+          description: Day-of-week indices (0 = Sunday) this market trades on
+          type: array
+          items:
+            type: number
       required:
         - market
         - label
@@ -2406,6 +2411,7 @@ components:
         - regularOpen
         - regularClose
         - postMarketClose
+        - tradingDays
     TickerSummaryDto:
       type: object
       properties:

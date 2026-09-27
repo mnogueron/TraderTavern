@@ -1,4 +1,5 @@
 import { MarketHours } from '../schemas/market-hours.schema';
+import { DEFAULT_TRADING_DAYS } from '../constants/trading-days';
 
 // "HH:mm" (24h) for `date` in `timezone`.
 export function formatLocalTime(date: Date, timezone: string): string {
@@ -46,41 +47,48 @@ function zonedTimeToUtc(dateKey: string, hhmm: string, timezone: string): Date {
   return new Date(guess.getTime() - offsetMinutes * 60_000);
 }
 
-// Whether `hours`' regular session is over for the current moment in its
-// own timezone.
-export function isPastRegularClose(hours: MarketHours): boolean {
-  const localTime = localHHmm(hours.timezone);
+// `hours.tradingDays`, falling back to Mon-Fri for records predating that
+// field (e.g. read via `.lean()`, which skips schema defaults).
+function resolveTradingDays(hours: MarketHours): readonly number[] {
+  return hours.tradingDays?.length ? hours.tradingDays : DEFAULT_TRADING_DAYS;
+}
 
-  // Once local time has wrapped past midnight into the next calendar day,
-  // today's regular session (which always closes before midnight) is
-  // necessarily long over. Comparing "HH:mm" strings naively would read
-  // e.g. "00:39" as earlier than a "17:30" close and wrongly treat the
-  // market as still open, so also treat any time before the next open as
-  // past-close.
+// Day-of-week index (0 = Sunday) of `date`'s local calendar day in
+// `timezone`.
+function weekdayIndex(date: Date, timezone: string): number {
+  const weekday = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    weekday: 'short',
+  }).format(date);
+  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(weekday);
+}
+
+function isTradingDay(hours: MarketHours, date: Date): boolean {
+  return resolveTradingDays(hours).includes(weekdayIndex(date, hours.timezone));
+}
+
+// Whether `hours`' regular session is over for the current moment in its
+// own timezone — either because today isn't one of its trading days at all,
+// or because local time has moved past today's close (or hasn't yet reached
+// today's open, which also means the prior session's close already passed).
+export function isPastRegularClose(hours: MarketHours): boolean {
+  const now = new Date();
+  if (!isTradingDay(hours, now)) {
+    return true;
+  }
+
+  const localTime = localHHmm(hours.timezone);
   return localTime >= hours.regularClose || localTime < hours.regularOpen;
 }
 
-function hhmmToMinutes(hhmm: string): number {
-  const [hours, minutes] = hhmm.split(':').map(Number);
-  return hours * 60 + minutes;
-}
-
-// Minutes elapsed since `hours`' most recent regular close, for the current
-// moment in its own timezone; null while the market is within (or hasn't
-// yet reached) its regular session. Handles the same after-midnight wrap as
-// isPastRegularClose (e.g. 00:39 local is ~7h after a 17:30 close, not
-// "before" it).
+// Minutes elapsed since `hours`' most recently completed regular close;
+// null while the market is within its regular session.
 export function minutesPastRegularClose(hours: MarketHours): number | null {
   if (!isPastRegularClose(hours)) {
     return null;
   }
 
-  const nowMinutes = hhmmToMinutes(localHHmm(hours.timezone));
-  const closeMinutes = hhmmToMinutes(hours.regularClose);
-
-  return nowMinutes >= closeMinutes
-    ? nowMinutes - closeMinutes
-    : 24 * 60 - closeMinutes + nowMinutes;
+  return Math.floor((Date.now() - regularCloseAt(hours).getTime()) / 60_000);
 }
 
 // TODO migrate these functions to a proper library instead like date-fns
@@ -97,20 +105,25 @@ export function calendarDateKey(date: Date, timezone?: string): string {
 }
 
 // The UTC instant of `hours`' most recently completed regular close: today's
-// close (in the market's own timezone) once local time has reached it,
-// otherwise yesterday's. This way a sync sitting mid-session or pre-market
-// (e.g. a future pre-market chunk) still gets tagged with the close its EOD
-// data actually reflects, never one that hasn't happened yet.
+// close (in the market's own timezone) once local time has reached it and
+// today is a trading day, otherwise the closest preceding trading day's
+// close. This way a sync sitting mid-session, pre-market, or on a
+// non-trading day (weekend, or any day outside `hours.tradingDays`) still
+// gets tagged with the close its EOD data actually reflects, never one that
+// hasn't happened yet.
 export function regularCloseAt(hours: MarketHours): Date {
   const now = new Date();
-  const dateKey =
-    localHHmm(hours.timezone) >= hours.regularClose
-      ? calendarDateKey(now, hours.timezone)
-      : calendarDateKey(
-          new Date(now.getTime() - 24 * 60 * 60 * 1000),
-          hours.timezone,
-        );
+  const closedToday =
+    isTradingDay(hours, now) && localHHmm(hours.timezone) >= hours.regularClose;
 
+  let candidate = closedToday
+    ? now
+    : new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  while (!isTradingDay(hours, candidate)) {
+    candidate = new Date(candidate.getTime() - 24 * 60 * 60 * 1000);
+  }
+
+  const dateKey = calendarDateKey(candidate, hours.timezone);
   return zonedTimeToUtc(dateKey, hours.regularClose, hours.timezone);
 }
 
