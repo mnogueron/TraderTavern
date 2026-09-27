@@ -9,9 +9,8 @@ import type {
 } from 'lightweight-charts';
 import type { ApiResponse } from '@trader-tavern/api-client';
 import { Chart, Series, useChartColors } from '@/components/charts';
-import { formatCandleTooltipTime, formatNumber } from '@/lib/format';
 
-type Candle = ApiResponse<
+export type Candle = ApiResponse<
   'get',
   '/api/finance/ticker/{id}/chart'
 >['candles'][number];
@@ -22,7 +21,7 @@ type CandlestickChartProps = {
   window: '5m' | '1h' | '1d' | '1wk';
   marketHours?: MarketHours | null;
   showPreMarket: boolean;
-  currency?: string | null;
+  onDisplayCandleChange?: (candle: Candle | null) => void;
 };
 
 const isOutsideRegularHours = (
@@ -47,19 +46,17 @@ const BEARISH_COLOR = '#dc2626';
 const toUnixTime = (isoTime: string): UTCTimestamp =>
   Math.floor(new Date(isoTime).getTime() / 1000) as UTCTimestamp;
 
-type HoveredCandle = Candle & { x: number; y: number };
-
 const CandlestickChart = ({
   candles,
   window,
   marketHours,
   showPreMarket,
-  currency,
+  onDisplayCandleChange,
 }: CandlestickChartProps) => {
   const isIntraday = window === '5m' || window === '1h';
   const colors = useChartColors();
   const [chart, setChart] = useState<IChartApi | null>(null);
-  const [hovered, setHovered] = useState<HoveredCandle | null>(null);
+  const [hovered, setHovered] = useState<Candle | null>(null);
 
   const visibleCandles = (
     !isIntraday || showPreMarket || !marketHours
@@ -116,11 +113,7 @@ const CandlestickChart = ({
       const candle = param.time
         ? candleByTime.get(param.time as UTCTimestamp)
         : undefined;
-      if (!candle || !param.point) {
-        setHovered(null);
-        return;
-      }
-      setHovered({ ...candle, x: param.point.x, y: param.point.y });
+      setHovered(candle ?? null);
     },
     [candleByTime],
   );
@@ -136,6 +129,13 @@ const CandlestickChart = ({
   useEffect(() => {
     chart?.timeScale().fitContent();
   }, [chart, visibleCandles]);
+
+  const displayCandle =
+    hovered ?? visibleCandles[visibleCandles.length - 1] ?? null;
+
+  useEffect(() => {
+    onDisplayCandleChange?.(displayCandle);
+  }, [displayCandle, onDisplayCandleChange]);
 
   if (candlestickData.length === 0) {
     return (
@@ -189,39 +189,6 @@ const CandlestickChart = ({
           onCreated={(series) => series.getPane().setHeight(80)}
         />
       </Chart>
-
-      {hovered ? (
-        <div
-          className="pointer-events-none absolute z-10 rounded-md border bg-popover p-2 text-xs text-popover-foreground shadow-md"
-          style={{ left: hovered.x + 12, top: hovered.y + 12 }}
-        >
-          <div className="mb-1 font-medium">
-            {formatCandleTooltipTime(hovered.startTime)}
-          </div>
-          <div className="grid grid-cols-2 gap-x-3 tabular-nums">
-            <span className="text-muted-foreground">Open</span>
-            <span className="text-right">
-              {formatNumber(hovered.entry, 2, currency)}
-            </span>
-            <span className="text-muted-foreground">High</span>
-            <span className="text-right">
-              {formatNumber(hovered.high, 2, currency)}
-            </span>
-            <span className="text-muted-foreground">Low</span>
-            <span className="text-right">
-              {formatNumber(hovered.low, 2, currency)}
-            </span>
-            <span className="text-muted-foreground">Close</span>
-            <span className="text-right">
-              {formatNumber(hovered.exit, 2, currency)}
-            </span>
-            <span className="text-muted-foreground">Volume</span>
-            <span className="text-right">
-              {hovered.volume.toLocaleString()}
-            </span>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 };

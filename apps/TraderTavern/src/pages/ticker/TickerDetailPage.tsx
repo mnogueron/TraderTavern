@@ -6,7 +6,9 @@ import { ButtonGroup } from '@/components/ui/button-group';
 import { Section, SectionContent, SectionFooter } from '@/components/Section';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import CandlestickChart from '@/pages/ticker/components/CandlestickChart';
+import CandlestickChart, {
+  type Candle,
+} from '@/pages/ticker/components/CandlestickChart';
 import FinancialsTab from '@/pages/ticker/components/financials/FinancialsTab';
 import AnalysisTab from '@/pages/ticker/components/analysis/AnalysisTab';
 import PerformanceRow from '@/pages/ticker/components/PerformanceRow';
@@ -15,7 +17,6 @@ import {
   changePercentClassName,
   formatChangePercent,
   formatDate,
-  formatDateTime,
   formatMarketCap,
   formatMonthYear,
   formatNumber,
@@ -57,12 +58,34 @@ const StatRow = ({
   valueClassName?: string;
 }) => (
   <>
-    <span className="text-muted-foreground">{label}</span>
-    <span className={`text-right tabular-nums ${valueClassName ?? ''}`}>
+    <span className="border-b border-dotted border-border/40 py-0.5 text-muted-foreground">
+      {label}
+    </span>
+    <span
+      className={`border-b border-dotted border-border/40 py-0.5 text-right tabular-nums ${valueClassName ?? ''}`}
+    >
       {value}
     </span>
   </>
 );
+
+const CandleReadout = ({ candle }: { candle: Candle }) => {
+  const valueClassName =
+    candle.exit >= candle.entry ? 'text-emerald-600' : 'text-red-600';
+
+  return (
+    <span className="font-mono tabular-nums">
+      O<span className={valueClassName}>{formatNumber(candle.entry, 3)}</span>{' '}
+      H<span className={valueClassName}>{formatNumber(candle.high, 3)}</span>{' '}
+      L<span className={valueClassName}>{formatNumber(candle.low, 3)}</span>{' '}
+      C<span className={valueClassName}>{formatNumber(candle.exit, 3)}</span> -{' '}
+      V
+      <span className={valueClassName}>
+        {(candle.volume ?? 0).toLocaleString()}
+      </span>
+    </span>
+  );
+};
 
 type TickerDetailPageProps = {
   ticker: string;
@@ -71,6 +94,7 @@ type TickerDetailPageProps = {
 const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
   const [window, setWindow] = useState<CandleWindow>('1d');
   const [showPreMarket, setShowPreMarket] = useState(false);
+  const [displayCandle, setDisplayCandle] = useState<Candle | null>(null);
 
   const { data: tickerData, isPending: isTickerPending } = useClientQuery(
     'get',
@@ -110,7 +134,10 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
 
       <Section
         title="Candles"
-        className="mt-4 h-[420px] shrink-0"
+        description={
+          displayCandle ? <CandleReadout candle={displayCandle} /> : undefined
+        }
+        className="mt-4 h-[max(min(50vh,700px),400px)] shrink-0"
         actionElement={
           <div className="flex items-center gap-2">
             <Button
@@ -147,7 +174,7 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
               window={chart.window}
               marketHours={marketHours}
               showPreMarket={showPreMarket}
-              currency={tickerData?.currency}
+              onDisplayCandleChange={setDisplayCandle}
             />
           )}
         </SectionContent>
@@ -174,37 +201,32 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
           className="flex min-h-0 flex-1 flex-col gap-4"
         >
           <div className="grid shrink-0 gap-4 md:grid-cols-3">
-            <Section title="Overview" className="md:col-span-3">
-              <SectionContent className="grid grid-cols-2 gap-y-2 text-sm">
-                {isTickerPending || !tickerData ? (
-                  <Skeleton className="col-span-2 h-24" />
-                ) : (
-                  <>
-                    <span className="text-muted-foreground">Employees</span>
-                    <span className="text-right tabular-nums">
-                      {tickerData.employees?.toLocaleString() ?? '—'}
-                    </span>
-                    <span className="text-muted-foreground">
-                      Fiscal Year End
-                    </span>
-                    <span className="text-right">
-                      {formatMonthYear(tickerData.fiscalYearEnd)}
-                    </span>
-                    <span className="text-muted-foreground">MR Quarter</span>
-                    <span className="text-right">
-                      {formatMonthYear(tickerData.mostRecentQuarter)}
-                    </span>
-                  </>
-                )}
-              </SectionContent>
-            </Section>
-
             <Section title="Key Statistics" className="md:col-span-3">
               <SectionContent>
-                {isFundamentalPending || !fundamental || !tickerData ? (
+                {isFundamentalPending ||
+                !fundamental ||
+                isTickerPending ||
+                !tickerData ? (
                   <Skeleton className="h-24 w-full" />
                 ) : (
                   <div className="columns-1 gap-6 sm:columns-2 lg:columns-3 [column-rule:1px_solid_var(--border)]">
+                    <StatGroup title="Overview">
+                      <StatRow
+                        label="Employees"
+                        value={tickerData.employees?.toLocaleString() ?? '—'}
+                      />
+                      <StatRow
+                        label="Fiscal Year End"
+                        value={formatMonthYear(tickerData.fiscalYearEnd)}
+                      />
+                      <StatRow
+                        label="MR Quarter"
+                        value={formatMonthYear(tickerData.mostRecentQuarter)}
+                      />
+                    </StatGroup>
+
+                    <hr className="break-inside-avoid-column my-6 border-border" />
+
                     <StatGroup title="Company">
                       <StatRow
                         label="Market Cap"
@@ -715,9 +737,6 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
                       {altmanZoneInfo(fundamental.altmanZScore).description}
                     </span>
                   )}
-                  <span className="text-xs text-muted-foreground">
-                    Refreshed {formatDateTime(fundamental.refreshedAt)}
-                  </span>
                 </SectionFooter>
               )}
             </Section>
