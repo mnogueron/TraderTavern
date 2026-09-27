@@ -72,7 +72,7 @@ const SyncHealthTable = ({ status }: SyncHealthTableProps) => {
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-input">
-          <Table containerClassName="min-h-0 flex-1">
+          <Table containerClassName="min-h-0 flex-1" className="text-xs">
             <TableHeader>
               <TableRow>
                 <TableHead>Company</TableHead>
