@@ -15,7 +15,8 @@ import { Button } from '@/components/ui/button';
 import CompanyCell from '@/components/CompanyCell';
 import MarketBadge from '@/components/MarketBadge';
 import TickerStatusBadge from '@/pages/tickers/components/TickerStatusBadge';
-import { formatDateTime, formatMarketCap, formatNumber } from '@/lib/format';
+import RelativeDateTime from '@/components/RelativeDateTime';
+import { formatMarketCap, formatNumber } from '@/lib/format';
 import type { components } from '@trader-tavern/api-client';
 
 type TickerSummary = components['schemas']['TickerSummaryDto'];
@@ -104,7 +105,7 @@ const TickerDetailSheet = ({ ticker, onOpenChange }: TickerDetailSheetProps) => 
 
               <dt className="text-muted-foreground">Last full sync</dt>
               <dd className="tabular-nums">
-                {formatDateTime(ticker.lastFullSyncedAt)}
+                <RelativeDateTime value={ticker.lastFullSyncedAt} />
               </dd>
 
               <dt className="text-muted-foreground">Error count</dt>
@@ -112,7 +113,7 @@ const TickerDetailSheet = ({ ticker, onOpenChange }: TickerDetailSheetProps) => 
 
               <dt className="text-muted-foreground">Disabled since</dt>
               <dd className="tabular-nums">
-                {ticker.hiddenAt ? formatDateTime(ticker.hiddenAt) : '—'}
+                <RelativeDateTime value={ticker.hiddenAt} />
               </dd>
 
               {marketHours && (
@@ -165,7 +166,7 @@ const TickerDetailSheet = ({ ticker, onOpenChange }: TickerDetailSheetProps) => 
 
                 <dt className="text-muted-foreground">Data refreshed</dt>
                 <dd className="tabular-nums">
-                  {formatDateTime(data.refreshedAt)}
+                  <RelativeDateTime value={data.refreshedAt} />
                 </dd>
               </dl>
             )}

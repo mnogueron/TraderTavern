@@ -7,10 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import WatchlistBookmarkButton from '@/pages/ticker/components/WatchlistBookmarkButton';
 import CountryFlag from '@/components/CountryFlag';
+import RelativeDateTime from '@/components/RelativeDateTime';
 import {
   changePercentClassName,
   formatChangePercent,
-  formatDateTime,
   formatMarketCap,
   formatNumber,
 } from '@/lib/format';
@@ -112,7 +112,7 @@ const TickerHeader = ({
 
         <div className="ml-auto flex shrink-0 items-center gap-3">
           <span className="text-xs text-muted-foreground">
-            Refreshed {formatDateTime(ticker.refreshedAt)}
+            Refreshed <RelativeDateTime value={ticker.refreshedAt} />
           </span>
           <WatchlistBookmarkButton ticker={ticker.ticker} />
         </div>

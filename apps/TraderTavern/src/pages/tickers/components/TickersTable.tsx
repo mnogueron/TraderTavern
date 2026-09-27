@@ -28,7 +28,7 @@ import TickerStatusBadge from '@/pages/tickers/components/TickerStatusBadge';
 import TickerRowMenu from '@/pages/tickers/components/TickerRowMenu';
 import DeleteTickerDialog from '@/pages/tickers/components/DeleteTickerDialog';
 import TickerDetailSheet from '@/pages/tickers/components/TickerDetailSheet';
-import { formatDateTime } from '@/lib/format';
+import RelativeDateTime from '@/components/RelativeDateTime';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import type { components } from '@trader-tavern/api-client';
 
@@ -183,7 +183,7 @@ const TickersTable = () => {
                       />
                     </TableCell>
                     <TableCell className="tabular-nums">
-                      {formatDateTime(ticker.lastFullSyncedAt)}
+                      <RelativeDateTime value={ticker.lastFullSyncedAt} />
                     </TableCell>
                     <TableCell onClick={(event) => event.stopPropagation()}>
                       <TickerRowMenu

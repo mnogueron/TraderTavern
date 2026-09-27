@@ -6,11 +6,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import CompanyCell from '@/components/CompanyCell';
 import CountryFlag from '@/components/CountryFlag';
+import RelativeDateTime from '@/components/RelativeDateTime';
 import {
   changePercentClassName,
   formatChangePercent,
   formatDate,
-  formatDateTime,
   formatMarketCap,
   formatNumber,
   formatPercent,
@@ -389,7 +389,7 @@ export const columns: ColumnDef<Ticker>[] = [
     accessorKey: 'refreshedAt',
     header: 'Refreshed At',
     meta: { label: 'Refreshed At' },
-    cell: ({ row }) => formatDateTime(row.original.refreshedAt),
+    cell: ({ row }) => <RelativeDateTime value={row.original.refreshedAt} />,
   },
 ];
 
