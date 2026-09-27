@@ -58,11 +58,11 @@ const StatRow = ({
   valueClassName?: string;
 }) => (
   <>
-    <span className="border-b border-dotted border-border/40 py-0.5 text-muted-foreground">
+    <span className="border-b border-dotted border-border/70 py-0.5 text-muted-foreground">
       {label}
     </span>
     <span
-      className={`border-b border-dotted border-border/40 py-0.5 text-right tabular-nums ${valueClassName ?? ''}`}
+      className={`border-b border-dotted border-border/70 py-0.5 text-right tabular-nums ${valueClassName ?? ''}`}
     >
       {value}
     </span>
