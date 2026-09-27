@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { TriangleAlert } from 'lucide-react';
 import { RiEyeLine, RiEyeOffLine } from '@remixicon/react';
 import { useClientQuery } from '@trader-tavern/api-client';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
 import { Section, SectionContent, SectionFooter } from '@/components/Section';
@@ -23,6 +25,7 @@ import {
   formatPercent,
 } from '@/lib/format';
 import { altmanZoneInfo } from '@/lib/altman';
+import { lastRegularCloseAt } from '@/lib/marketHours';
 
 type CandleWindow = '5m' | '1h' | '1d' | '1wk';
 
@@ -118,6 +121,15 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
     { params: { path: { id: ticker } } },
   );
 
+  const isDataStale = useMemo(() => {
+    if (!tickerData?.refreshedAt || !marketHours) {
+      return false;
+    }
+    return (
+      new Date(tickerData.refreshedAt) < lastRegularCloseAt(marketHours)
+    );
+  }, [tickerData?.refreshedAt, marketHours]);
+
   return (
     <div className="flex flex-col">
       <div className="sticky -top-4 z-10 -mx-4 -mt-4 flex flex-col bg-background px-4 pt-4">
@@ -127,6 +139,18 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
           isPending={isTickerPending}
         />
       </div>
+
+      {isDataStale && (
+        <Alert className="mt-4 border-amber-500/30 bg-amber-500/10 text-amber-600 shrink-0">
+          <TriangleAlert />
+          <AlertTitle>Data may be outdated</AlertTitle>
+          <AlertDescription className="text-amber-600/90">
+            This ticker was last updated before the last market close. The
+            figures below reflect past results and will update once the
+            sync finishes.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Section
         title="Candles"
