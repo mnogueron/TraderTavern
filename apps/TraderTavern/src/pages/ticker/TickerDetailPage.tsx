@@ -44,7 +44,7 @@ const StatGroup = ({
     <h3 className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
       {title}
     </h3>
-    <div className="grid grid-cols-2 gap-y-1.5 text-sm">{children}</div>
+    <div className="flex flex-col text-sm">{children}</div>
   </div>
 );
 
@@ -57,16 +57,12 @@ const StatRow = ({
   value: React.ReactNode;
   valueClassName?: string;
 }) => (
-  <>
-    <span className="border-b border-dotted border-border/70 py-0.5 text-muted-foreground">
-      {label}
-    </span>
-    <span
-      className={`border-b border-dotted border-border/70 py-0.5 text-right tabular-nums ${valueClassName ?? ''}`}
-    >
+  <div className="-mx-1.5 grid grid-cols-2 gap-y-1.5 rounded-md border-b border-dotted border-border/70 px-1.5 py-0.5 transition-colors hover:bg-muted/60">
+    <span className="text-muted-foreground">{label}</span>
+    <span className={`text-right tabular-nums ${valueClassName ?? ''}`}>
       {value}
     </span>
-  </>
+  </div>
 );
 
 const CandleReadout = ({ candle }: { candle: Candle }) => {
