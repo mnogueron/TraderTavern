@@ -1,21 +1,16 @@
-import type { Column, ColumnDef } from '@tanstack/react-table';
+import type { ColumnDef } from '@tanstack/react-table';
 import type { ApiResponse } from '@trader-tavern/api-client';
-import { ArrowUpDown } from 'lucide-react';
 import { Link } from 'react-router';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import CompanyCell from '@/components/table/CompanyCell';
+import CurrencyCell from '@/components/table/cells/CurrencyCell';
+import DateCell from '@/components/table/cells/DateCell';
+import NumericCell from '@/components/table/cells/NumericCell';
+import SortableHeader from '@/components/table/cells/SortableHeader';
+import StringCell from '@/components/table/cells/StringCell';
 import CountryFlag from '@/components/CountryFlag';
 import RelativeDateTime from '@/components/RelativeDateTime';
-import {
-  changePercentClassName,
-  formatChangePercent,
-  formatDate,
-  formatMarketCap,
-  formatNumber,
-  formatPercent,
-} from '@/lib/format';
-import CurrencyCell from '@/pages/screener/components/CurrencyCell';
+import { formatMarketCap, formatNumber } from '@/lib/format';
+import ChangeBadge from '@/pages/screener/components/cells/ChangeBadge';
 
 export type Ticker = ApiResponse<
   'get',
@@ -46,47 +41,6 @@ export const DEFAULT_VISIBLE_COLUMNS = [
   'changePercent1y',
   'country',
 ];
-
-type SortableHeaderProps = {
-  column: Column<Ticker, unknown>;
-  label: string;
-  align?: 'left' | 'right';
-};
-
-const SortableHeader = ({
-  column,
-  label,
-  align = 'left',
-}: SortableHeaderProps) => (
-  <div className={align === 'right' ? 'text-right' : undefined}>
-    <Button
-      variant="ghost"
-      className="-ml-3 h-7 text-xs"
-      onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-    >
-      {label}
-      <ArrowUpDown className="ml-2 h-3.5 w-3.5" />
-    </Button>
-  </div>
-);
-
-const ChangeBadge = ({ value }: { value: number | null }) => {
-  const rounded = value === null ? null : Math.round(value * 100) / 100;
-  return (
-    <div className="flex justify-end">
-      <Badge
-        variant="outline"
-        className={`tabular-nums ${changePercentClassName(rounded)}`}
-      >
-        {formatChangePercent(rounded)}
-      </Badge>
-    </div>
-  );
-};
-
-const RightAligned = ({ children }: { children: React.ReactNode }) => (
-  <div className="text-right tabular-nums">{children}</div>
-);
 
 type NumericFieldKey = {
   [K in keyof Ticker]: Ticker[K] extends number | null ? K : never;
@@ -197,45 +151,23 @@ const numericColumn = (config: NumericFieldConfig): ColumnDef<Ticker> => ({
     <SortableHeader column={column} label={config.label} align="right" />
   ),
   meta: { label: config.label, align: 'right' },
-  cell: ({ row }) => {
-    const value = row.original[config.id] as number | null;
-    switch (config.kind) {
-      case 'marketCap':
-        return (
-          <RightAligned>
-            {formatMarketCap(value, row.original.currency)}
-          </RightAligned>
-        );
-      case 'currency':
-        return (
-          <CurrencyCell
-            value={value}
-            currency={row.original.currency}
-            format={(v) => formatNumber(v, config.decimals ?? 2)}
-          />
-        );
-      case 'percent':
-        return (
-          <RightAligned>
-            {formatPercent(value, config.decimals ?? 2)}
-          </RightAligned>
-        );
-      case 'number':
-      default:
-        return (
-          <RightAligned>
-            {formatNumber(value, config.decimals ?? 2)}
-          </RightAligned>
-        );
-    }
-  },
+  cell: ({ row }) => (
+    <NumericCell
+      value={row.original[config.id] as number | null}
+      kind={config.kind}
+      decimals={config.decimals}
+      currency={row.original.currency}
+    />
+  ),
 });
 
 const stringColumn = (config: StringFieldConfig): ColumnDef<Ticker> => ({
   accessorKey: config.id,
   header: config.label,
   meta: { label: config.label },
-  cell: ({ row }) => (row.original[config.id] as string | null) ?? '—',
+  cell: ({ row }) => (
+    <StringCell value={row.original[config.id] as string | null} />
+  ),
 });
 
 const dateColumn = (
@@ -245,7 +177,7 @@ const dateColumn = (
   accessorKey: id,
   header: label,
   meta: { label },
-  cell: ({ row }) => formatDate(row.original[id]),
+  cell: ({ row }) => <DateCell value={row.original[id]} />,
 });
 
 export const columns: ColumnDef<Ticker>[] = [
@@ -307,9 +239,7 @@ export const columns: ColumnDef<Ticker>[] = [
     ),
     meta: { label: 'P/E', align: 'right' },
     cell: ({ row }) => (
-      <div className="text-right tabular-nums">
-        {formatNumber(row.original.peRatio)}
-      </div>
+      <NumericCell value={row.original.peRatio} kind="number" />
     ),
   },
   {
