@@ -4,7 +4,7 @@ import UserList from '@/pages/users/components/UserList';
 import UserListSkeleton from '@/pages/users/components/UserListSkeleton';
 import { useClientQuery } from '@trader-tavern/api-client';
 import { AppPagination } from '@/components/AppPagination';
-import { TableFooter } from '@/components/TableFooter';
+import { TableFooter } from '@/components/table/TableFooter';
 import {
   Select,
   SelectContent,

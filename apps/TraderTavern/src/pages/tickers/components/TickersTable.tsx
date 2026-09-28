@@ -21,8 +21,8 @@ import {
 import { AppPagination } from '@/components/AppPagination';
 import { PageSizeSelector } from '@/components/PageSizeSelector';
 import { PageRangeSummary } from '@/components/PageRangeSummary';
-import { TableFooter } from '@/components/TableFooter';
-import CompanyCell from '@/components/CompanyCell';
+import { TableFooter } from '@/components/table/TableFooter';
+import CompanyCell from '@/components/table/CompanyCell';
 import MarketBadge from '@/components/MarketBadge';
 import TickerStatusBadge from '@/pages/tickers/components/TickerStatusBadge';
 import TickerRowMenu from '@/pages/tickers/components/TickerRowMenu';
@@ -45,31 +45,35 @@ const TickersTable = () => {
   const [limit, setLimit] = useState(DEFAULT_LIMIT);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<TickerStatusFilter>('all');
-  const [deleteTarget, setDeleteTarget] = useState<TickerSummary | null>(
-    null,
-  );
-  const [detailTarget, setDetailTarget] = useState<TickerSummary | null>(
-    null,
-  );
+  const [deleteTarget, setDeleteTarget] = useState<TickerSummary | null>(null);
+  const [detailTarget, setDetailTarget] = useState<TickerSummary | null>(null);
   const debouncedSearch = useDebouncedValue(search, 250);
 
-  const { data, isPending } = useClientQuery('get', '/api/finance/tickers/list', {
-    params: {
-      query: {
-        page,
-        limit,
-        search: debouncedSearch || undefined,
-        status,
+  const { data, isPending } = useClientQuery(
+    'get',
+    '/api/finance/tickers/list',
+    {
+      params: {
+        query: {
+          page,
+          limit,
+          search: debouncedSearch || undefined,
+          status,
+        },
       },
     },
-  });
+  );
 
   const invalidateList = () =>
     queryClient.invalidateQueries({ queryKey: TICKERS_LIST_QUERY_KEY });
 
-  const hideMutation = useClientMutation('post', '/api/finance/ticker/{id}/hide', {
-    onSuccess: invalidateList,
-  });
+  const hideMutation = useClientMutation(
+    'post',
+    '/api/finance/ticker/{id}/hide',
+    {
+      onSuccess: invalidateList,
+    },
+  );
   const unhideMutation = useClientMutation(
     'post',
     '/api/finance/ticker/{id}/unhide',
@@ -80,9 +84,13 @@ const TickersTable = () => {
     '/api/finance/ticker/{isin}/sync',
     { onSuccess: invalidateList },
   );
-  const deleteMutation = useClientMutation('delete', '/api/finance/ticker/{id}', {
-    onSuccess: invalidateList,
-  });
+  const deleteMutation = useClientMutation(
+    'delete',
+    '/api/finance/ticker/{id}',
+    {
+      onSuccess: invalidateList,
+    },
+  );
 
   const handleStatusChange = (value: string | null) => {
     setStatus((value ?? 'all') as TickerStatusFilter);

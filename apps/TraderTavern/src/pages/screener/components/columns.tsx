@@ -4,7 +4,7 @@ import { ArrowUpDown } from 'lucide-react';
 import { Link } from 'react-router';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import CompanyCell from '@/components/CompanyCell';
+import CompanyCell from '@/components/table/CompanyCell';
 import CountryFlag from '@/components/CountryFlag';
 import RelativeDateTime from '@/components/RelativeDateTime';
 import {
@@ -402,7 +402,8 @@ export type ColumnMeta = {
 export const columnMetaById = new Map<string, ColumnMeta>(
   columns
     .map((column) => {
-      const id = 'accessorKey' in column ? String(column.accessorKey) : column.id;
+      const id =
+        'accessorKey' in column ? String(column.accessorKey) : column.id;
       if (!id) return null;
       return [
         id,

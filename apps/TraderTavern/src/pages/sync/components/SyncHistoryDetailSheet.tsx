@@ -22,8 +22,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import CompanyCell from '@/components/CompanyCell';
-import EmptyCell from '@/components/EmptyCell';
+import CompanyCell from '@/components/table/CompanyCell';
+import EmptyCell from '@/components/table/EmptyCell';
 import SyncStatusBadge from '@/pages/sync/components/SyncStatusBadge';
 import MarketBadgeList from '@/components/MarketBadgeList';
 import {
@@ -147,7 +147,9 @@ const SyncHistoryDetailSheet = ({
                 </dd>
 
                 <dt className="text-muted-foreground">Sync date</dt>
-                <dd className="tabular-nums">{formatDateTime(data.syncDate)}</dd>
+                <dd className="tabular-nums">
+                  {formatDateTime(data.syncDate)}
+                </dd>
 
                 <dt className="text-muted-foreground">Started</dt>
                 <dd className="tabular-nums">

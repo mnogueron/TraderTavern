@@ -8,7 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import EmptyCell from '@/components/EmptyCell';
+import EmptyCell from '@/components/table/EmptyCell';
 import RelativeDateTime from '@/components/RelativeDateTime';
 
 const MarketsPage = () => {

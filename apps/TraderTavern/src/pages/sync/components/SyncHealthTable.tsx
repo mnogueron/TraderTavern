@@ -13,10 +13,10 @@ import {
 import { AppPagination } from '@/components/AppPagination';
 import { PageSizeSelector } from '@/components/PageSizeSelector';
 import { PageRangeSummary } from '@/components/PageRangeSummary';
-import { TableFooter } from '@/components/TableFooter';
+import { TableFooter } from '@/components/table/TableFooter';
 import { formatDuration } from '@/lib/format';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
-import CompanyCell from '@/components/CompanyCell';
+import CompanyCell from '@/components/table/CompanyCell';
 import MarketBadge from '@/components/MarketBadge';
 import RelativeDateTime from '@/components/RelativeDateTime';
 import SyncHealthReasonBadge from '@/pages/sync/components/SyncHealthReasonBadge';
@@ -37,11 +37,15 @@ const SyncHealthTable = ({ status }: SyncHealthTableProps) => {
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search, 250);
 
-  const { data, isPending } = useClientQuery('get', '/api/finance/tickers/health', {
-    params: {
-      query: { status, page, limit, search: debouncedSearch || undefined },
+  const { data, isPending } = useClientQuery(
+    'get',
+    '/api/finance/tickers/health',
+    {
+      params: {
+        query: { status, page, limit, search: debouncedSearch || undefined },
+      },
     },
-  });
+  );
 
   const meta = data?.meta;
 
@@ -107,7 +111,10 @@ const SyncHealthTable = ({ status }: SyncHealthTableProps) => {
                       {ticker.isin}
                     </TableCell>
                     <TableCell>
-                      <MarketBadge market={ticker.market} marketLabel={ticker.marketLabel} />
+                      <MarketBadge
+                        market={ticker.market}
+                        marketLabel={ticker.marketLabel}
+                      />
                     </TableCell>
                     <TableCell className="tabular-nums">
                       <RelativeDateTime value={ticker.lastFullSyncedAt} />
