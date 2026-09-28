@@ -1,4 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import {
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+} from '@tanstack/react-table';
 import { useClientQuery } from '@trader-tavern/api-client';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,13 +19,9 @@ import { AppPagination } from '@/components/AppPagination';
 import { PageSizeSelector } from '@/components/PageSizeSelector';
 import { PageRangeSummary } from '@/components/PageRangeSummary';
 import { TableFooter } from '@/components/table/TableFooter';
-import { formatDuration } from '@/lib/format';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
-import CompanyCell from '@/components/table/CompanyCell';
-import MarketBadge from '@/components/MarketBadge';
-import RelativeDateTime from '@/components/RelativeDateTime';
-import SyncHealthReasonBadge from '@/pages/sync/components/SyncHealthReasonBadge';
 import type { components } from '@trader-tavern/api-client';
+import { buildSyncHealthColumns } from './columns';
 
 type SyncHealthStatus = components['schemas']['TickerSyncHealthDto']['status'];
 
@@ -54,6 +55,17 @@ const SyncHealthTable = ({ status }: SyncHealthTableProps) => {
     setPage(1);
   };
 
+  const columns = useMemo(
+    () => buildSyncHealthColumns(status === 'unhealthy'),
+    [status],
+  );
+
+  const table = useReactTable({
+    data: data?.data ?? [],
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+  });
+
   return (
     <div className="flex min-h-[400px] flex-1 flex-col gap-3">
       <div className="flex shrink-0 justify-end">
@@ -78,59 +90,42 @@ const SyncHealthTable = ({ status }: SyncHealthTableProps) => {
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-input">
           <Table containerClassName="min-h-0 flex-1" className="text-xs">
             <TableHeader>
-              <TableRow>
-                <TableHead>Company</TableHead>
-                <TableHead>ISIN</TableHead>
-                <TableHead>Market</TableHead>
-                <TableHead>Last full sync</TableHead>
-                <TableHead>Overdue by</TableHead>
-                {status === 'unhealthy' && <TableHead>Reason</TableHead>}
-              </TableRow>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext(),
+                          )}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
             </TableHeader>
             <TableBody>
-              {data.data.length === 0 ? (
+              {table.getRowModel().rows.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={status === 'unhealthy' ? 6 : 5}
+                    colSpan={columns.length}
                     className="text-center text-sm text-muted-foreground"
                   >
                     No tickers found.
                   </TableCell>
                 </TableRow>
               ) : (
-                data.data.map((ticker) => (
-                  <TableRow key={ticker.isin}>
-                    <TableCell>
-                      <CompanyCell
-                        ticker={ticker.ticker}
-                        companyName={ticker.companyName}
-                        logoUrl={ticker.logoUrl}
-                      />
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">
-                      {ticker.isin}
-                    </TableCell>
-                    <TableCell>
-                      <MarketBadge
-                        market={ticker.market}
-                        marketLabel={ticker.marketLabel}
-                      />
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      <RelativeDateTime value={ticker.lastFullSyncedAt} />
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {ticker.minutesPastClose === null
-                        ? '—'
-                        : formatDuration(ticker.minutesPastClose * 60_000)}
-                    </TableCell>
-                    {status === 'unhealthy' && (
-                      <TableCell>
-                        {ticker.reason && (
-                          <SyncHealthReasonBadge reason={ticker.reason} />
+                table.getRowModel().rows.map((row) => (
+                  <TableRow key={row.id}>
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
                         )}
                       </TableCell>
-                    )}
+                    ))}
                   </TableRow>
                 ))
               )}
