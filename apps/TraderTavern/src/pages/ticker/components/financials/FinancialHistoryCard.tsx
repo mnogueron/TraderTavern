@@ -18,6 +18,9 @@ import type {
   AnnualFinancialPeriod,
   FinancialHistory,
 } from '@/pages/ticker/components/financials/types';
+import HistoryTooltip, {
+  type SeriesDefinition,
+} from '@/pages/ticker/components/financials/HistoryTooltip';
 
 type FinancialHistoryCardProps = {
   financialHistory: FinancialHistory | null;
@@ -33,8 +36,6 @@ const SERIES_SET_OPTIONS: { value: SeriesSet; label: string }[] = [
   { value: 'margins', label: 'Margins' },
   { value: 'balance', label: 'Balance' },
 ];
-
-type SeriesDefinition = { key: string; label: string; color: string };
 
 const SERIES_DEFINITIONS: Record<SeriesSet, SeriesDefinition[]> = {
   pnl: [
@@ -92,50 +93,6 @@ const toChartRow = (period: AnnualFinancialPeriod) => {
 };
 
 type ChartRow = ReturnType<typeof toChartRow>;
-
-const HistoryTooltip = ({
-  active,
-  payload,
-  label,
-  series,
-  currency,
-  isPercent,
-}: {
-  active?: boolean;
-  payload?: { value: number | null; dataKey: string }[];
-  label?: string | number;
-  series: SeriesDefinition[];
-  currency: string | null;
-  isPercent: boolean;
-}) => {
-  if (!active || !payload?.length) {
-    return null;
-  }
-
-  return (
-    <div className="rounded-md border bg-popover p-2 text-xs text-popover-foreground shadow-md">
-      <div className="mb-1 font-medium">{label}</div>
-      <div className="grid grid-cols-2 gap-x-3 tabular-nums">
-        {series.map((item) => {
-          const entry = payload.find((p) => p.dataKey === item.key);
-          const value = entry?.value ?? null;
-          return (
-            <div key={item.key} className="contents">
-              <span className="text-muted-foreground">{item.label}</span>
-              <span className="text-right">
-                {isPercent
-                  ? value === null
-                    ? '—'
-                    : `${value.toFixed(2)}%`
-                  : formatMarketCap(value, currency)}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
 
 const FinancialHistoryCard = ({
   financialHistory,
