@@ -13,7 +13,7 @@ import {
   SCREENER_FILTER_CATEGORY_LABELS,
   type ScreenerFilterCategory,
   type ScreenerFilterConfig,
-} from '@/components/screener-filters/types';
+} from '@/pages/screener/components/filters/types';
 
 type ScreenerFilterSearchProps = {
   configs: ScreenerFilterConfig[];

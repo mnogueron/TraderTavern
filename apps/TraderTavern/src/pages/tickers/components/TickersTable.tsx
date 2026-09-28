@@ -1,5 +1,10 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import {
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+} from '@tanstack/react-table';
 import { useClientMutation, useClientQuery } from '@trader-tavern/api-client';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -21,18 +26,12 @@ import {
 import { AppPagination } from '@/components/AppPagination';
 import { PageSizeSelector } from '@/components/PageSizeSelector';
 import { PageRangeSummary } from '@/components/PageRangeSummary';
-import { TableFooter } from '@/components/TableFooter';
-import CompanyCell from '@/components/CompanyCell';
-import MarketBadge from '@/components/MarketBadge';
-import TickerStatusBadge from '@/pages/tickers/components/TickerStatusBadge';
-import TickerRowMenu from '@/pages/tickers/components/TickerRowMenu';
+import { TableFooter } from '@/components/table/TableFooter';
 import DeleteTickerDialog from '@/pages/tickers/components/DeleteTickerDialog';
 import TickerDetailSheet from '@/pages/tickers/components/TickerDetailSheet';
-import RelativeDateTime from '@/components/RelativeDateTime';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
-import type { components } from '@trader-tavern/api-client';
+import { buildTickersColumns, type TickerSummary } from './columns';
 
-type TickerSummary = components['schemas']['TickerSummaryDto'];
 type TickerStatusFilter = TickerSummary['status'] | 'all';
 
 const DEFAULT_LIMIT = 50;
@@ -45,31 +44,35 @@ const TickersTable = () => {
   const [limit, setLimit] = useState(DEFAULT_LIMIT);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<TickerStatusFilter>('all');
-  const [deleteTarget, setDeleteTarget] = useState<TickerSummary | null>(
-    null,
-  );
-  const [detailTarget, setDetailTarget] = useState<TickerSummary | null>(
-    null,
-  );
+  const [deleteTarget, setDeleteTarget] = useState<TickerSummary | null>(null);
+  const [detailTarget, setDetailTarget] = useState<TickerSummary | null>(null);
   const debouncedSearch = useDebouncedValue(search, 250);
 
-  const { data, isPending } = useClientQuery('get', '/api/finance/tickers/list', {
-    params: {
-      query: {
-        page,
-        limit,
-        search: debouncedSearch || undefined,
-        status,
+  const { data, isPending } = useClientQuery(
+    'get',
+    '/api/finance/tickers/list',
+    {
+      params: {
+        query: {
+          page,
+          limit,
+          search: debouncedSearch || undefined,
+          status,
+        },
       },
     },
-  });
+  );
 
   const invalidateList = () =>
     queryClient.invalidateQueries({ queryKey: TICKERS_LIST_QUERY_KEY });
 
-  const hideMutation = useClientMutation('post', '/api/finance/ticker/{id}/hide', {
-    onSuccess: invalidateList,
-  });
+  const hideMutation = useClientMutation(
+    'post',
+    '/api/finance/ticker/{id}/hide',
+    {
+      onSuccess: invalidateList,
+    },
+  );
   const unhideMutation = useClientMutation(
     'post',
     '/api/finance/ticker/{id}/unhide',
@@ -80,9 +83,13 @@ const TickersTable = () => {
     '/api/finance/ticker/{isin}/sync',
     { onSuccess: invalidateList },
   );
-  const deleteMutation = useClientMutation('delete', '/api/finance/ticker/{id}', {
-    onSuccess: invalidateList,
-  });
+  const deleteMutation = useClientMutation(
+    'delete',
+    '/api/finance/ticker/{id}',
+    {
+      onSuccess: invalidateList,
+    },
+  );
 
   const handleStatusChange = (value: string | null) => {
     setStatus((value ?? 'all') as TickerStatusFilter);
@@ -95,6 +102,27 @@ const TickersTable = () => {
   };
 
   const meta = data?.meta;
+
+  const columns = useMemo(
+    () =>
+      buildTickersColumns({
+        onShowDetails: setDetailTarget,
+        onSync: (ticker) =>
+          syncMutation.mutate({ params: { path: { isin: ticker.isin } } }),
+        onToggleStatus: (ticker) =>
+          (ticker.status === 'active' ? hideMutation : unhideMutation).mutate({
+            params: { path: { id: ticker.ticker } },
+          }),
+        onDelete: setDeleteTarget,
+      }),
+    [syncMutation, hideMutation, unhideMutation],
+  );
+
+  const table = useReactTable({
+    data: data?.data ?? [],
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+  });
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4">
@@ -134,77 +162,53 @@ const TickersTable = () => {
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-input">
           <Table containerClassName="min-h-0 flex-1" className="text-xs">
             <TableHeader>
-              <TableRow>
-                <TableHead>Company</TableHead>
-                <TableHead>ISIN</TableHead>
-                <TableHead>Market</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Last sync</TableHead>
-                <TableHead />
-              </TableRow>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext(),
+                          )}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
             </TableHeader>
             <TableBody>
-              {data.data.length === 0 ? (
+              {table.getRowModel().rows.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={6}
+                    colSpan={columns.length}
                     className="text-center text-sm text-muted-foreground"
                   >
                     No tickers found.
                   </TableCell>
                 </TableRow>
               ) : (
-                data.data.map((ticker) => (
+                table.getRowModel().rows.map((row) => (
                   <TableRow
-                    key={ticker.isin}
+                    key={row.id}
                     className="cursor-pointer"
-                    onClick={() => setDetailTarget(ticker)}
+                    onClick={() => setDetailTarget(row.original)}
                   >
-                    <TableCell>
-                      <CompanyCell
-                        ticker={ticker.ticker}
-                        companyName={ticker.companyName}
-                        logoUrl={ticker.logoUrl}
-                      />
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">
-                      {ticker.isin}
-                    </TableCell>
-                    <TableCell>
-                      <MarketBadge
-                        market={ticker.market}
-                        marketLabel={ticker.marketLabel}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <TickerStatusBadge
-                        status={ticker.status}
-                        lastError={ticker.lastError}
-                      />
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      <RelativeDateTime value={ticker.lastFullSyncedAt} />
-                    </TableCell>
-                    <TableCell onClick={(event) => event.stopPropagation()}>
-                      <TickerRowMenu
-                        ticker={ticker}
-                        onShowDetails={() => setDetailTarget(ticker)}
-                        onSync={() =>
-                          syncMutation.mutate({
-                            params: { path: { isin: ticker.isin } },
-                          })
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell
+                        key={cell.id}
+                        onClick={
+                          cell.column.columnDef.meta?.stopRowClick
+                            ? (event) => event.stopPropagation()
+                            : undefined
                         }
-                        onToggleStatus={() =>
-                          (ticker.status === 'active'
-                            ? hideMutation
-                            : unhideMutation
-                          ).mutate({
-                            params: { path: { id: ticker.ticker } },
-                          })
-                        }
-                        onDelete={() => setDeleteTarget(ticker)}
-                      />
-                    </TableCell>
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
+                      </TableCell>
+                    ))}
                   </TableRow>
                 ))
               )}
@@ -215,7 +219,7 @@ const TickersTable = () => {
               <PageSizeSelector value={limit} onChange={handleLimitChange} />
               {meta && (
                 <PageRangeSummary
-                  page={meta.page}
+                  page={page}
                   pageSize={limit}
                   total={meta.total}
                 />

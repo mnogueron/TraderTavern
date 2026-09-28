@@ -2,7 +2,7 @@ import type { ApiResponse } from '@trader-tavern/api-client';
 import type {
   ScreenerFilterConfig,
   ScreenerFilterOption,
-} from '@/components/screener-filters/types';
+} from '@/pages/screener/components/filters/types';
 
 export type ScreenerFilterOptions = ApiResponse<
   'get',

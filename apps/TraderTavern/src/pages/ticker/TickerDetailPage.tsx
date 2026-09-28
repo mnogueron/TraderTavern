@@ -15,6 +15,9 @@ import FinancialsTab from '@/pages/ticker/components/financials/FinancialsTab';
 import AnalysisTab from '@/pages/ticker/components/analysis/AnalysisTab';
 import PerformanceRow from '@/pages/ticker/components/PerformanceRow';
 import TickerHeader from '@/pages/ticker/components/TickerHeader';
+import CandleReadout from '@/pages/ticker/components/CandleReadout';
+import StatGroup from '@/pages/ticker/components/StatGroup';
+import StatRow from '@/pages/ticker/components/StatRow';
 import {
   changePercentClassName,
   formatChangePercent,
@@ -35,56 +38,6 @@ const WINDOW_OPTIONS: { value: CandleWindow; label: string }[] = [
   { value: '1d', label: '1D' },
   { value: '1wk', label: '1W' },
 ];
-
-const StatGroup = ({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) => (
-  <div className="break-inside-avoid-column">
-    <h3 className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-      {title}
-    </h3>
-    <div className="flex flex-col text-sm">{children}</div>
-  </div>
-);
-
-const StatRow = ({
-  label,
-  value,
-  valueClassName,
-}: {
-  label: string;
-  value: React.ReactNode;
-  valueClassName?: string;
-}) => (
-  <div className="-mx-1.5 grid grid-cols-2 gap-y-1.5 rounded-md border-b border-dotted border-border/70 px-1.5 py-0.5 transition-colors hover:bg-muted/60">
-    <span className="text-muted-foreground">{label}</span>
-    <span className={`text-right tabular-nums ${valueClassName ?? ''}`}>
-      {value}
-    </span>
-  </div>
-);
-
-const CandleReadout = ({ candle }: { candle: Candle }) => {
-  const valueClassName =
-    candle.exit >= candle.entry ? 'text-emerald-600' : 'text-red-600';
-
-  return (
-    <span className="font-mono tabular-nums">
-      O<span className={valueClassName}>{formatNumber(candle.entry, 3)}</span>{' '}
-      H<span className={valueClassName}>{formatNumber(candle.high, 3)}</span>{' '}
-      L<span className={valueClassName}>{formatNumber(candle.low, 3)}</span>{' '}
-      C<span className={valueClassName}>{formatNumber(candle.exit, 3)}</span> -{' '}
-      V
-      <span className={valueClassName}>
-        {(candle.volume ?? 0).toLocaleString()}
-      </span>
-    </span>
-  );
-};
 
 type TickerDetailPageProps = {
   ticker: string;

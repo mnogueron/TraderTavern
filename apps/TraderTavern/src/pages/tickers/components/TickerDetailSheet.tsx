@@ -12,7 +12,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import CompanyCell from '@/components/CompanyCell';
+import CompanyCell from '@/components/table/CompanyCell';
 import MarketBadge from '@/components/MarketBadge';
 import TickerStatusBadge from '@/pages/tickers/components/TickerStatusBadge';
 import RelativeDateTime from '@/components/RelativeDateTime';
@@ -26,7 +26,10 @@ type TickerDetailSheetProps = {
   onOpenChange: (open: boolean) => void;
 };
 
-const TickerDetailSheet = ({ ticker, onOpenChange }: TickerDetailSheetProps) => {
+const TickerDetailSheet = ({
+  ticker,
+  onOpenChange,
+}: TickerDetailSheetProps) => {
   const { data, isPending } = useClientQuery(
     'get',
     '/api/finance/ticker/{id}',

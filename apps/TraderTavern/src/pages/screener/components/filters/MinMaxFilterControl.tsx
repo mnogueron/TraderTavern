@@ -5,7 +5,7 @@ import {
   isFilterValueActive,
   type MinMaxScreenerFilterConfig,
   type MinMaxScreenerFilterValue,
-} from '@/components/screener-filters/types';
+} from '@/pages/screener/components/filters/types';
 import { RiArrowDownSLine } from '@remixicon/react';
 
 type MinMaxFilterControlProps = {

@@ -19,17 +19,17 @@ import {
 } from '@/pages/screener/components/columns';
 import ScreenerFilterBar, {
   getDefaultScreenerFilterValues,
-} from '@/components/screener-filters/ScreenerFilterBar';
+} from '@/pages/screener/components/filters/ScreenerFilterBar';
 import type {
   ScreenerFilterValue,
   ScreenerFilterValues,
-} from '@/components/screener-filters/types';
+} from '@/pages/screener/components/filters/types';
 import { buildScreenerFilterConfigs } from '@/pages/screener/screenerFilters';
 import { AppPagination } from '@/components/AppPagination';
 import { PaginationSkeleton } from '@/components/PaginationSkeleton';
 import { PageSizeSelector } from '@/components/PageSizeSelector';
 import { PageRangeSummary } from '@/components/PageRangeSummary';
-import { TableFooter } from '@/components/TableFooter';
+import { TableFooter } from '@/components/table/TableFooter';
 
 const DEFAULT_LIMIT = 50;
 const MIN_ROWS_FOR_FILL_HEIGHT = 20;
@@ -37,7 +37,9 @@ const COLUMN_ORDER_STORAGE_KEY = 'screener:column-order';
 const COLUMN_VISIBILITY_STORAGE_KEY = 'screener:column-visibility';
 
 const getDefaultColumnVisibility = (ids: string[]): VisibilityState =>
-  Object.fromEntries(ids.map((id) => [id, DEFAULT_VISIBLE_COLUMNS.includes(id)]));
+  Object.fromEntries(
+    ids.map((id) => [id, DEFAULT_VISIBLE_COLUMNS.includes(id)]),
+  );
 
 const loadStoredColumnOrder = (ids: string[]): string[] => {
   try {

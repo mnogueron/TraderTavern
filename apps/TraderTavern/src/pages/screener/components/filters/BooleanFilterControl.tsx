@@ -2,7 +2,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import type {
   BooleanScreenerFilterConfig,
   BooleanScreenerFilterValue,
-} from '@/components/screener-filters/types';
+} from '@/pages/screener/components/filters/types';
 
 type BooleanFilterControlProps = {
   config: BooleanScreenerFilterConfig;

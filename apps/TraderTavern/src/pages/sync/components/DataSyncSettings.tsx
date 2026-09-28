@@ -14,7 +14,7 @@ import {
 import { AppPagination } from '@/components/AppPagination';
 import { PageSizeSelector } from '@/components/PageSizeSelector';
 import { PageRangeSummary } from '@/components/PageRangeSummary';
-import { TableFooter } from '@/components/TableFooter';
+import { TableFooter } from '@/components/table/TableFooter';
 import {
   Select,
   SelectContent,
@@ -286,7 +286,11 @@ const DataSyncSettings = () => {
           <div className="flex items-center gap-3">
             <PageSizeSelector value={limit} onChange={handleLimitChange} />
             {meta && (
-              <PageRangeSummary page={page} pageSize={limit} total={meta.total} />
+              <PageRangeSummary
+                page={page}
+                pageSize={limit}
+                total={meta.total}
+              />
             )}
           </div>
           {meta && (
