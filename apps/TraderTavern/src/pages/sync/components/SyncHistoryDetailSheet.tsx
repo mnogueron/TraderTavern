@@ -14,16 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import CancelSyncDialog from '@/pages/sync/components/CancelSyncDialog';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import CompanyCell from '@/components/table/CompanyCell';
-import EmptyCell from '@/components/table/EmptyCell';
+import SyncHistoryTickersTable from '@/pages/sync/components/SyncHistoryTickersTable';
 import SyncStatusBadge from '@/pages/sync/components/SyncStatusBadge';
 import MarketBadgeList from '@/components/MarketBadgeList';
 import {
@@ -169,135 +160,28 @@ const SyncHistoryDetailSheet = ({
               </dl>
 
               {succeededTickers && succeededTickers.length > 0 && (
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-sm font-medium text-emerald-600">
-                    Succeeded
-                  </span>
-                  <Table containerClassName="max-h-64 rounded-lg border border-input">
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>ISIN</TableHead>
-                        <TableHead>Company</TableHead>
-                        <TableHead>Ticker</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {succeededTickers.map((ticker) => (
-                        <TableRow key={ticker.isin}>
-                          <TableCell className="font-mono text-xs">
-                            {ticker.isin}
-                          </TableCell>
-                          <TableCell>
-                            <CompanyCell
-                              ticker={ticker.ticker}
-                              companyName={ticker.companyName}
-                              logoUrl={ticker.logoUrl}
-                            />
-                          </TableCell>
-                          <TableCell className="font-mono text-xs">
-                            {ticker.ticker ?? '—'}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                <SyncHistoryTickersTable
+                  title="Succeeded"
+                  titleClassName="text-emerald-600"
+                  tickers={succeededTickers}
+                />
               )}
 
               {pendingTickers && pendingTickers.length > 0 && (
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-sm font-medium text-muted-foreground">
-                    Pending
-                  </span>
-                  <Table containerClassName="max-h-64 rounded-lg border border-input">
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>ISIN</TableHead>
-                        <TableHead>Company</TableHead>
-                        <TableHead>Ticker</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {pendingTickers.map((ticker) => (
-                        <TableRow key={ticker.isin}>
-                          <TableCell className="font-mono text-xs">
-                            {ticker.isin}
-                          </TableCell>
-                          <TableCell>
-                            {ticker.companyName || ticker.ticker ? (
-                              <CompanyCell
-                                ticker={ticker.ticker}
-                                companyName={ticker.companyName}
-                                logoUrl={ticker.logoUrl}
-                              />
-                            ) : (
-                              <EmptyCell />
-                            )}
-                          </TableCell>
-                          <TableCell className="font-mono text-xs">
-                            {ticker.ticker ?? '—'}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                <SyncHistoryTickersTable
+                  title="Pending"
+                  titleClassName="text-muted-foreground"
+                  tickers={pendingTickers}
+                />
               )}
 
               {failedTickers && failedTickers.length > 0 && (
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-sm font-medium text-red-600">
-                    Failed
-                  </span>
-                  <Table containerClassName="max-h-64 rounded-lg border border-input">
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>ISIN</TableHead>
-                        <TableHead>Company</TableHead>
-                        <TableHead>Ticker</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Error</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {failedTickers.map((ticker) => (
-                        <TableRow key={ticker.isin}>
-                          <TableCell className="font-mono text-xs">
-                            {ticker.isin}
-                          </TableCell>
-                          <TableCell>
-                            {ticker.companyName || ticker.ticker ? (
-                              <CompanyCell
-                                ticker={ticker.ticker}
-                                companyName={ticker.companyName}
-                                logoUrl={ticker.logoUrl}
-                              />
-                            ) : (
-                              <EmptyCell />
-                            )}
-                          </TableCell>
-                          <TableCell className="font-mono text-xs">
-                            {ticker.ticker ?? '—'}
-                          </TableCell>
-                          <TableCell
-                            className={
-                              ticker.status === 'did_not_run'
-                                ? 'text-muted-foreground'
-                                : 'text-red-600'
-                            }
-                          >
-                            {ticker.status === 'did_not_run'
-                              ? 'Did not run'
-                              : 'Failed'}
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">
-                            {ticker.error ?? '—'}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                <SyncHistoryTickersTable
+                  title="Failed"
+                  titleClassName="text-red-600"
+                  tickers={failedTickers}
+                  showStatusAndError
+                />
               )}
             </>
           )}
