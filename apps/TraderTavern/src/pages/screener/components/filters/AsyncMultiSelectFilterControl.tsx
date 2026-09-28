@@ -17,11 +17,11 @@ import {
   isFilterValueActive,
   type AsyncMultiSelectScreenerFilterConfig,
   type MultiSelectScreenerFilterValue,
-} from '@/components/screener-filters/types';
+} from '@/pages/screener/components/filters/types';
 import {
   cacheTickerLabel,
   getCachedTickerLabel,
-} from '@/components/screener-filters/tickerLabelCache';
+} from '@/pages/screener/components/filters/tickerLabelCache';
 import { RiArrowDownSLine } from '@remixicon/react';
 import { Spinner } from '@/components/ui/spinner';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';

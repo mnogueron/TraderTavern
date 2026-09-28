@@ -10,7 +10,7 @@ import {
   isFilterValueActive,
   type SelectScreenerFilterConfig,
   type SelectScreenerFilterValue,
-} from '@/components/screener-filters/types';
+} from '@/pages/screener/components/filters/types';
 
 const ALL_VALUE = '__all__';
 

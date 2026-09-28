@@ -16,7 +16,7 @@ import {
   isFilterValueActive,
   type MultiSelectScreenerFilterConfig,
   type MultiSelectScreenerFilterValue,
-} from '@/components/screener-filters/types';
+} from '@/pages/screener/components/filters/types';
 import { RiArrowDownSLine } from '@remixicon/react';
 
 type MultiSelectFilterControlProps = {

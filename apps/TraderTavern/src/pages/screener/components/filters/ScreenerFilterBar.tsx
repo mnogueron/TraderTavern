@@ -11,14 +11,14 @@ import {
 } from '@/components/ui/collapsible';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import ScreenerFilterSearch from '@/components/screener-filters/ScreenerFilterSearch';
-import MultiSelectFilterControl from '@/components/screener-filters/MultiSelectFilterControl';
-import AsyncMultiSelectFilterControl from '@/components/screener-filters/AsyncMultiSelectFilterControl';
-import SelectFilterControl from '@/components/screener-filters/SelectFilterControl';
-import MinMaxFilterControl from '@/components/screener-filters/MinMaxFilterControl';
-import NumberFilterControl from '@/components/screener-filters/NumberFilterControl';
-import BooleanFilterControl from '@/components/screener-filters/BooleanFilterControl';
-import { getCachedTickerLabel } from '@/components/screener-filters/tickerLabelCache';
+import ScreenerFilterSearch from '@/pages/screener/components/filters/ScreenerFilterSearch';
+import MultiSelectFilterControl from '@/pages/screener/components/filters/MultiSelectFilterControl';
+import AsyncMultiSelectFilterControl from '@/pages/screener/components/filters/AsyncMultiSelectFilterControl';
+import SelectFilterControl from '@/pages/screener/components/filters/SelectFilterControl';
+import MinMaxFilterControl from '@/pages/screener/components/filters/MinMaxFilterControl';
+import NumberFilterControl from '@/pages/screener/components/filters/NumberFilterControl';
+import BooleanFilterControl from '@/pages/screener/components/filters/BooleanFilterControl';
+import { getCachedTickerLabel } from '@/pages/screener/components/filters/tickerLabelCache';
 import {
   isFilterValueActive,
   SCREENER_FILTER_CATEGORY_LABELS,
@@ -31,7 +31,7 @@ import {
   type ScreenerFilterValue,
   type ScreenerFilterValues,
   type SelectScreenerFilterValue,
-} from '@/components/screener-filters/types';
+} from '@/pages/screener/components/filters/types';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
