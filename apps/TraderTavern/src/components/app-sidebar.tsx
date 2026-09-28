@@ -1,3 +1,4 @@
+import Logo from '@/components/Logo';
 import { NavCollapse } from '@/components/nav-collapse';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -18,17 +19,6 @@ import {
   RiBookmarkLine,
   RiCloseLine,
 } from '@remixicon/react';
-
-const Logo = ({ large }: { large?: boolean }) => (
-  <div
-    className={cn(
-      'flex shrink-0 items-center justify-center rounded-md bg-primary font-bold text-primary-foreground group-data-[collapsible=icon]:size-6 group-data-[collapsible=icon]:text-xs',
-      large ? 'size-9 text-base' : 'size-8 text-sm',
-    )}
-  >
-    TT
-  </div>
-);
 
 const navMain = [
   {
