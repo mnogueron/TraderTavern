@@ -1,10 +1,11 @@
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { CommandItem } from '@/components/ui/command';
 
 type TickerCommandItemProps = {
   isin: string;
   ticker: string;
   companyName: string;
+  logoUrl: string | null;
   isSelected: boolean;
   onSelect: () => void;
   style?: React.CSSProperties;
@@ -14,6 +15,7 @@ const TickerCommandItem = ({
   isin,
   ticker,
   companyName,
+  logoUrl,
   isSelected,
   onSelect,
   style,
@@ -27,6 +29,7 @@ const TickerCommandItem = ({
       className="min-w-0 py-1 text-xs"
     >
       <Avatar size="sm" className="rounded-md after:rounded-md">
+        {logoUrl ? <AvatarImage src={logoUrl} alt="" /> : null}
         <AvatarFallback className="rounded-md">
           {companyName.slice(0, 1).toUpperCase()}
         </AvatarFallback>

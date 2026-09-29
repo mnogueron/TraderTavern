@@ -1789,10 +1789,14 @@ components:
           type: string
         companyName:
           type: string
+        logoUrl:
+          type: string
+          nullable: true
       required:
         - isin
         - ticker
         - companyName
+        - logoUrl
     PaginatedTickerOptionDto:
       type: object
       properties:

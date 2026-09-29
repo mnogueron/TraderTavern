@@ -214,6 +214,7 @@ const TickerFilterControl = ({
                     isin={option.isin}
                     ticker={option.ticker}
                     companyName={option.companyName}
+                    logoUrl={option.logoUrl}
                     isSelected={value.values.includes(option.isin)}
                     onSelect={() => toggleOption(option.isin)}
                     style={{

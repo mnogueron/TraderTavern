@@ -14,8 +14,20 @@ export class TickerStaticData {
   @Prop({ required: true })
   ticker!: string;
 
+  // Diacritic-stripped copy of `ticker`, kept in sync by
+  // TickerStaticDataRepository.upsert. Search matches against this (with an
+  // equally-stripped query) rather than `ticker` directly, so e.g. "generale"
+  // matches "GÉNÉRALE" - see helpers/text-normalization.ts.
+  @Prop({ required: true })
+  normalizedTicker!: string;
+
   @Prop({ required: true })
   companyName!: string;
+
+  // Diacritic-stripped copy of `companyName`, same reasoning as
+  // `normalizedTicker`.
+  @Prop({ required: true })
+  normalizedCompanyName!: string;
 
   @Prop()
   sector?: string;
@@ -53,3 +65,19 @@ export class TickerStaticData {
 
 export const TickerStaticDataSchema =
   SchemaFactory.createForClass(TickerStaticData);
+
+// Powers ticker search: relevance-scored $text matching on the normalized
+// (diacritic-stripped) ticker and company name - see
+// helpers/text-normalization.ts. Ticker weighted higher so a symbol match
+// outranks an incidental word match in a company name.
+TickerStaticDataSchema.index(
+  { normalizedTicker: 'text', normalizedCompanyName: 'text' },
+  {
+    weights: { normalizedTicker: 5, normalizedCompanyName: 1 },
+    name: 'ticker_companyName_text',
+  },
+);
+
+// Backs the anchored ticker-prefix fallback for short/partial queries that
+// $text (whole-word) search can't match, e.g. "AAP" -> "AAPL".
+TickerStaticDataSchema.index({ normalizedTicker: 1 });
