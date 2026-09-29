@@ -14,7 +14,7 @@ import {
 } from '@/pages/screener/components/filters/types';
 import {
   cacheTickerLabel,
-  getCachedTickerLabel,
+  getCachedTickerSymbol,
 } from '@/pages/screener/components/filters/tickerLabelCache';
 import { RiArrowDownSLine } from '@remixicon/react';
 import { Spinner } from '@/components/ui/spinner';
@@ -86,7 +86,7 @@ const TickerFilterControl = ({
   const options = useMemo(() => {
     const rows = data?.pages.flatMap((page) => page.data) ?? [];
     for (const row of rows) {
-      cacheTickerLabel(row.isin, `${row.ticker} · ${row.companyName}`);
+      cacheTickerLabel(row.isin, row.ticker, row.companyName);
     }
     return rows;
   }, [data]);
@@ -94,7 +94,7 @@ const TickerFilterControl = ({
   const selectedOptions = useMemo(() => {
     const rows = selectedData ?? [];
     for (const row of rows) {
-      cacheTickerLabel(row.isin, `${row.ticker} · ${row.companyName}`);
+      cacheTickerLabel(row.isin, row.ticker, row.companyName);
     }
     return rows;
   }, [selectedData]);
@@ -149,7 +149,7 @@ const TickerFilterControl = ({
     value.values.length === 0
       ? 'Any'
       : value.values.length === 1
-        ? (getCachedTickerLabel(value.values[0]) ?? value.values[0])
+        ? (getCachedTickerSymbol(value.values[0]) ?? value.values[0])
         : `${value.values.length} selected`;
 
   return (

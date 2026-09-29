@@ -18,7 +18,10 @@ import SelectFilterControl from '@/pages/screener/components/filters/SelectFilte
 import MinMaxFilterControl from '@/pages/screener/components/filters/MinMaxFilterControl';
 import NumberFilterControl from '@/pages/screener/components/filters/NumberFilterControl';
 import BooleanFilterControl from '@/pages/screener/components/filters/BooleanFilterControl';
-import { getCachedTickerLabel } from '@/pages/screener/components/filters/tickerLabelCache';
+import {
+  getCachedTickerLabel,
+  getCachedTickerSymbol,
+} from '@/pages/screener/components/filters/tickerLabelCache';
 import {
   isFilterValueActive,
   SCREENER_FILTER_CATEGORY_LABELS,
@@ -90,6 +93,11 @@ const describeFilterValue = (
   switch (value.type) {
     case 'multiselect': {
       if (config.type === 'async-multiselect') {
+        if (value.values.length === 1) {
+          const symbol =
+            getCachedTickerSymbol(value.values[0]) ?? value.values[0];
+          return `${config.label}: ${symbol}`;
+        }
         const labels = value.values.map((v) => getCachedTickerLabel(v) ?? v);
         if (labels.length <= 2) return `${config.label}: ${labels.join(', ')}`;
         return `${config.label}: ${labels.slice(0, 2).join(', ')} +${labels.length - 2}`;
