@@ -21,6 +21,7 @@ import {
 import ScreenerFilterBar, {
   getDefaultScreenerFilterValues,
 } from '@/pages/screener/components/filters/ScreenerFilterBar';
+import ScreenerFilterBarSkeleton from '@/pages/screener/components/filters/ScreenerFilterBarSkeleton';
 import type {
   ScreenerFilterValue,
   ScreenerFilterValues,
@@ -240,13 +241,15 @@ const ScreenerPage = () => {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
-      {filterOptions && (
+      {filterOptions ? (
         <ScreenerFilterBar
           configs={configs}
           values={filterValues}
           onChange={handleFilterChange}
           onReset={handleFilterReset}
         />
+      ) : (
+        <ScreenerFilterBarSkeleton />
       )}
       <div className="flex shrink-0 items-center justify-between gap-2">
         <span className="text-sm text-muted-foreground">
