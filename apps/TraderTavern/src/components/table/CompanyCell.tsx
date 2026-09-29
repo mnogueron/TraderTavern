@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import CompanyLogo from '@/components/CompanyLogo';
 import { cn } from '@/lib/utils';
 
 type CompanyCellProps = {
@@ -21,12 +21,7 @@ const CompanyCell = ({
     <div
       className={cn('flex min-w-0 max-w-64 items-center gap-2', className)}
     >
-      <Avatar size="sm" className="rounded-md after:rounded-md">
-        {logoUrl ? <AvatarImage src={logoUrl} alt="" /> : null}
-        <AvatarFallback className="rounded-md">
-          {label.slice(0, 1).toUpperCase()}
-        </AvatarFallback>
-      </Avatar>
+      <CompanyLogo size="sm" logoUrl={logoUrl} companyName={label} />
       <span className="truncate">{label}</span>
     </div>
   );

@@ -99,6 +99,7 @@ import {
   sortScreenerTickers,
 } from './screener-filters';
 import { DEFAULT_TRADING_DAYS } from './constants/trading-days';
+import { fetchBase64Logo, isGoogleFaviconUrl } from './helpers/logo';
 
 type WithUpdatedAt = { updatedAt: Date };
 type WithTimestamps = { createdAt: Date; updatedAt: Date };
@@ -900,6 +901,8 @@ export class FinanceService {
       throw new NotFoundException(`Ticker ${ticker} not found`);
     }
 
+    await this.ensureBase64Logo(staticData);
+
     const marketHours = staticData.market
       ? await this.marketHoursModel
           .findOne({ market: staticData.market })
@@ -1363,6 +1366,26 @@ export class FinanceService {
     );
 
     return new TickerChartDto(ticker, window, candles);
+  }
+
+  // Migrates a legacy Google-favicon logoUrl to a base64-embedded icon the
+  // first time the ticker is fetched, persisting it so later fetches skip
+  // the external lookup entirely.
+  private async ensureBase64Logo(staticData: TickerStaticData): Promise<void> {
+    if (!staticData.logoUrl || !isGoogleFaviconUrl(staticData.logoUrl)) {
+      return;
+    }
+
+    const base64Logo = await fetchBase64Logo(staticData.logoUrl);
+    if (!base64Logo) {
+      return;
+    }
+
+    staticData.logoUrl = base64Logo;
+    await this.tickerStaticDataModel.updateOne(
+      { isin: staticData.isin },
+      { $set: { logoUrl: base64Logo } },
+    );
   }
 
   private toTickerDto(
