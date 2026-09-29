@@ -1,9 +1,5 @@
 import { useMemo, useState } from 'react';
-import {
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command';
+import { CommandItem } from '@/components/ui/command';
 import { Popover } from '@/components/ui/popover';
 import SearchButton from '@/pages/screener/components/filters/SearchButton';
 import {
@@ -65,22 +61,17 @@ const ScreenerFilterSearch = ({
       }}
     >
       <Popover.Trigger render={<SearchButton label="Search filters..." />} />
-      <Popover.Command
-        className="w-64 gap-2"
-        align="start"
-        shouldFilter={false}
-      >
-        <CommandInput
+      <Popover.Command className="w-64 gap-2" shouldFilter={false}>
+        <Popover.CommandInput
           value={search}
           onValueChange={setSearch}
           placeholder="Search filters..."
-          className="text-xs"
         />
-        <CommandList className="p-2">
-          {matches.length === 0 ? (
-            <Popover.NoResult>No filters found.</Popover.NoResult>
-          ) : (
-            matches.map((config) => (
+        {matches.length === 0 ? (
+          <Popover.NoResult>No filters found.</Popover.NoResult>
+        ) : (
+          <Popover.CommandList>
+            {matches.map((config) => (
               <CommandItem
                 key={config.key}
                 value={config.key}
@@ -93,9 +84,9 @@ const ScreenerFilterSearch = ({
                   {getCategoryLabel(config.category)}
                 </span>
               </CommandItem>
-            ))
-          )}
-        </CommandList>
+            ))}
+          </Popover.CommandList>
+        )}
       </Popover.Command>
     </Popover>
   );

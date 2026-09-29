@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Popover as PopoverPrimitive } from '@base-ui/react/popover';
 
 import { cn } from '@/lib/utils';
-import { Command } from '@/components/ui/command';
+import { Command, CommandInput, CommandList } from '@/components/ui/command';
 
 function Popover({ ...props }: PopoverPrimitive.Root.Props) {
   return <PopoverPrimitive.Root data-slot="popover" {...props} />;
@@ -117,7 +117,7 @@ function PopoverError({
     <div
       data-slot="popover-error"
       className={cn(
-        'flex items-center justify-center py-6 text-xs text-destructive',
+        'flex items-center justify-center py-6 px-2 text-xs text-destructive',
         className,
       )}
       {...props}
@@ -125,6 +125,27 @@ function PopoverError({
       {children}
     </div>
   );
+}
+
+function PopoverCommandInput({
+  className,
+  wrapperClassName,
+  ...props
+}: React.ComponentProps<typeof CommandInput>) {
+  return (
+    <CommandInput
+      className={cn('text-xs', className)}
+      wrapperClassName={cn('p-1', wrapperClassName)}
+      {...props}
+    />
+  );
+}
+
+function PopoverCommandList({
+  className,
+  ...props
+}: React.ComponentProps<typeof CommandList>) {
+  return <CommandList className={cn('p-1', className)} {...props} />;
 }
 
 function PopoverCommand({
@@ -155,6 +176,8 @@ function PopoverCommand({
 Popover.Trigger = PopoverTrigger;
 Popover.Content = PopoverContent;
 Popover.Command = PopoverCommand;
+Popover.CommandInput = PopoverCommandInput;
+Popover.CommandList = PopoverCommandList;
 Popover.Header = PopoverHeader;
 Popover.Title = PopoverTitle;
 Popover.Description = PopoverDescription;
@@ -173,4 +196,6 @@ export {
   PopoverNoResult,
   PopoverTitle,
   PopoverTrigger,
+  PopoverCommandInput,
+  PopoverCommandList,
 };
