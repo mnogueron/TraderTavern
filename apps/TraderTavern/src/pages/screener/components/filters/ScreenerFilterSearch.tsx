@@ -1,14 +1,12 @@
 import { useMemo, useState } from 'react';
-import { RiSearchLine } from '@remixicon/react';
-import { Button } from '@/components/ui/button';
 import {
   Command,
-  CommandEmpty,
   CommandInput,
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Popover } from '@/components/ui/popover';
+import SearchButton from '@/pages/screener/components/filters/SearchButton';
 import {
   SCREENER_FILTER_CATEGORY_LABELS,
   type ScreenerFilterCategory,
@@ -34,7 +32,10 @@ const getCategoryLabel = (category: ScreenerFilterCategory) =>
   ABBREVIATED_CATEGORY_LABELS[category] ??
   SCREENER_FILTER_CATEGORY_LABELS[category];
 
-const ScreenerFilterSearch = ({ configs, onSelect }: ScreenerFilterSearchProps) => {
+const ScreenerFilterSearch = ({
+  configs,
+  onSelect,
+}: ScreenerFilterSearchProps) => {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
 
@@ -44,7 +45,9 @@ const ScreenerFilterSearch = ({ configs, onSelect }: ScreenerFilterSearchProps) 
     return configs.filter(
       (config) =>
         config.label.toLowerCase().includes(term) ||
-        SCREENER_FILTER_CATEGORY_LABELS[config.category].toLowerCase().includes(term),
+        SCREENER_FILTER_CATEGORY_LABELS[config.category]
+          .toLowerCase()
+          .includes(term),
     );
   }, [configs, search]);
 
@@ -62,19 +65,8 @@ const ScreenerFilterSearch = ({ configs, onSelect }: ScreenerFilterSearchProps) 
         if (!next) setSearch('');
       }}
     >
-      <PopoverTrigger
-        render={
-          <Button
-            variant="outline"
-            size="xs"
-            className="h-6 w-44 justify-start gap-1.5 font-normal text-muted-foreground"
-          />
-        }
-      >
-        <RiSearchLine className="size-3.5 shrink-0" />
-        <span className="truncate text-xs">Search filters...</span>
-      </PopoverTrigger>
-      <PopoverContent className="w-64 p-0" align="start">
+      <Popover.Trigger render={<SearchButton label="Search filters..." />} />
+      <Popover.Content className="w-64 gap-2 p-0" align="start">
         <Command shouldFilter={false}>
           <CommandInput
             value={search}
@@ -82,9 +74,9 @@ const ScreenerFilterSearch = ({ configs, onSelect }: ScreenerFilterSearchProps) 
             placeholder="Search filters..."
             className="text-xs"
           />
-          <CommandList>
+          <CommandList className="p-2">
             {matches.length === 0 ? (
-              <CommandEmpty>No filters found.</CommandEmpty>
+              <Popover.NoResult>No filters found.</Popover.NoResult>
             ) : (
               matches.map((config) => (
                 <CommandItem
@@ -103,7 +95,7 @@ const ScreenerFilterSearch = ({ configs, onSelect }: ScreenerFilterSearchProps) 
             )}
           </CommandList>
         </Command>
-      </PopoverContent>
+      </Popover.Content>
     </Popover>
   );
 };

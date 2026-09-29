@@ -78,11 +78,71 @@ function PopoverDescription({
   )
 }
 
+function PopoverFooter({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="popover-footer"
+      className={cn("flex items-center justify-between gap-2", className)}
+      {...props}
+    />
+  )
+}
+
+function PopoverNoResult({
+  className,
+  children = "No results found.",
+  ...props
+}: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="popover-no-result"
+      className={cn(
+        "flex items-center justify-center py-6 text-xs text-muted-foreground",
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  )
+}
+
+function PopoverError({
+  className,
+  children = "Something went wrong.",
+  ...props
+}: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="popover-error"
+      className={cn(
+        "flex items-center justify-center py-6 text-xs text-destructive",
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  )
+}
+
+Popover.Trigger = PopoverTrigger
+Popover.Content = PopoverContent
+Popover.Header = PopoverHeader
+Popover.Title = PopoverTitle
+Popover.Description = PopoverDescription
+Popover.Footer = PopoverFooter
+Popover.NoResult = PopoverNoResult
+Popover.Error = PopoverError
+
 export {
   Popover,
   PopoverContent,
   PopoverDescription,
+  PopoverError,
+  PopoverFooter,
   PopoverHeader,
+  PopoverNoResult,
   PopoverTitle,
   PopoverTrigger,
 }
