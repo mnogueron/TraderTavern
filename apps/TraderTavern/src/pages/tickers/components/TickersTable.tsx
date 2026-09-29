@@ -7,7 +7,6 @@ import {
 } from '@tanstack/react-table';
 import { useClientMutation, useClientQuery } from '@trader-tavern/api-client';
 import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
   SelectContent,
@@ -26,9 +25,11 @@ import {
 import { AppPagination } from '@/components/AppPagination';
 import { PageSizeSelector } from '@/components/PageSizeSelector';
 import { PageRangeSummary } from '@/components/PageRangeSummary';
+import { PaginationSkeleton } from '@/components/PaginationSkeleton';
 import { TableFooter } from '@/components/table/TableFooter';
 import DeleteTickerDialog from '@/pages/tickers/components/DeleteTickerDialog';
 import TickerDetailSheet from '@/pages/tickers/components/TickerDetailSheet';
+import TickersTableSkeleton from '@/pages/tickers/components/TickersTableSkeleton';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { buildTickersColumns, type TickerSummary } from './columns';
 
@@ -152,14 +153,10 @@ const TickersTable = () => {
         />
       </div>
 
-      {isPending || !data ? (
-        <div className="flex flex-col gap-2">
-          {Array.from({ length: VISIBLE_ROWS }).map((_, index) => (
-            <Skeleton key={index} className="h-9 w-full" />
-          ))}
-        </div>
-      ) : (
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-input">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-input">
+        {isPending || !data ? (
+          <TickersTableSkeleton rows={VISIBLE_ROWS} />
+        ) : (
           <Table containerClassName="min-h-0 flex-1" className="text-xs">
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
@@ -214,27 +211,29 @@ const TickersTable = () => {
               )}
             </TableBody>
           </Table>
-          <TableFooter>
-            <div className="flex items-center gap-3">
-              <PageSizeSelector value={limit} onChange={handleLimitChange} />
-              {meta && (
-                <PageRangeSummary
-                  page={page}
-                  pageSize={limit}
-                  total={meta.total}
-                />
-              )}
-            </div>
+        )}
+        <TableFooter>
+          <div className="flex items-center gap-3">
+            <PageSizeSelector value={limit} onChange={handleLimitChange} />
             {meta && (
-              <AppPagination
-                page={meta.page}
-                totalPages={meta.totalPages}
-                onPageChange={setPage}
+              <PageRangeSummary
+                page={page}
+                pageSize={limit}
+                total={meta.total}
               />
             )}
-          </TableFooter>
-        </div>
-      )}
+          </div>
+          {meta ? (
+            <AppPagination
+              page={meta.page}
+              totalPages={meta.totalPages}
+              onPageChange={setPage}
+            />
+          ) : (
+            <PaginationSkeleton />
+          )}
+        </TableFooter>
+      </div>
 
       <DeleteTickerDialog
         ticker={deleteTarget?.ticker ?? null}

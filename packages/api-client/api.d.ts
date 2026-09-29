@@ -1689,8 +1689,9 @@ export interface operations {
             query?: {
                 page?: number;
                 limit?: number;
-                /** @description Fuzzy search on ticker or company name */
+                /** @description Fuzzy search on isin, ticker or company name */
                 search?: string;
+                status?: "active" | "disabled" | "all";
             };
             header?: never;
             path?: never;
