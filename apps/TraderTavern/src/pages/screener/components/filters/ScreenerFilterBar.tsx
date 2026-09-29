@@ -13,7 +13,7 @@ import { Field, FieldLabel } from '@/components/ui/field';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ScreenerFilterSearch from '@/pages/screener/components/filters/ScreenerFilterSearch';
 import MultiSelectFilterControl from '@/pages/screener/components/filters/MultiSelectFilterControl';
-import AsyncMultiSelectFilterControl from '@/pages/screener/components/filters/AsyncMultiSelectFilterControl';
+import TickerFilterControl from '@/pages/screener/components/filters/TickerFilterControl';
 import SelectFilterControl from '@/pages/screener/components/filters/SelectFilterControl';
 import MinMaxFilterControl from '@/pages/screener/components/filters/MinMaxFilterControl';
 import NumberFilterControl from '@/pages/screener/components/filters/NumberFilterControl';
@@ -190,7 +190,7 @@ const ScreenerFilterBar = ({
         );
       case 'async-multiselect':
         return (
-          <AsyncMultiSelectFilterControl
+          <TickerFilterControl
             key={config.key}
             config={config}
             value={value as MultiSelectScreenerFilterValue}

@@ -5,8 +5,8 @@ import {
   useClientQuery,
 } from '@trader-tavern/api-client';
 import { Button } from '@/components/ui/button';
-import { CommandItem } from '@/components/ui/command';
 import { Popover } from '@/components/ui/popover';
+import TickerCommandItem from '@/pages/screener/components/filters/TickerCommandItem';
 import {
   isFilterValueActive,
   type AsyncMultiSelectScreenerFilterConfig,
@@ -20,7 +20,7 @@ import { RiArrowDownSLine } from '@remixicon/react';
 import { Spinner } from '@/components/ui/spinner';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 
-type AsyncMultiSelectFilterControlProps = {
+type TickerFilterControlProps = {
   config: AsyncMultiSelectScreenerFilterConfig;
   value: MultiSelectScreenerFilterValue;
   onChange: (value: MultiSelectScreenerFilterValue) => void;
@@ -29,11 +29,11 @@ type AsyncMultiSelectFilterControlProps = {
 const ROW_HEIGHT = 30;
 const LIMIT = 30;
 
-const AsyncMultiSelectFilterControl = ({
+const TickerFilterControl = ({
   config,
   value,
   onChange,
-}: AsyncMultiSelectFilterControlProps) => {
+}: TickerFilterControlProps) => {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search, 250);
@@ -209,10 +209,12 @@ const AsyncMultiSelectFilterControl = ({
                 }
 
                 return (
-                  <CommandItem
+                  <TickerCommandItem
                     key={option.isin}
-                    value={option.isin}
-                    data-checked={value.values.includes(option.isin)}
+                    isin={option.isin}
+                    ticker={option.ticker}
+                    companyName={option.companyName}
+                    isSelected={value.values.includes(option.isin)}
                     onSelect={() => toggleOption(option.isin)}
                     style={{
                       position: 'absolute',
@@ -222,10 +224,7 @@ const AsyncMultiSelectFilterControl = ({
                       height: virtualItem.size,
                       transform: `translateY(${virtualItem.start}px)`,
                     }}
-                    className="py-1 text-xs"
-                  >
-                    {option.ticker} · {option.companyName}
-                  </CommandItem>
+                  />
                 );
               })}
             </div>
@@ -236,4 +235,4 @@ const AsyncMultiSelectFilterControl = ({
   );
 };
 
-export default AsyncMultiSelectFilterControl;
+export default TickerFilterControl;
