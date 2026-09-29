@@ -1,4 +1,4 @@
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import CompanyLogo from '@/components/CompanyLogo';
 import { CommandItem } from '@/components/ui/command';
 
 type TickerCommandItemProps = {
@@ -28,12 +28,7 @@ const TickerCommandItem = ({
       style={style}
       className="min-w-0 py-1 text-xs"
     >
-      <Avatar size="sm" className="rounded-md after:rounded-md">
-        {logoUrl ? <AvatarImage src={logoUrl} alt="" /> : null}
-        <AvatarFallback className="rounded-md">
-          {companyName.slice(0, 1).toUpperCase()}
-        </AvatarFallback>
-      </Avatar>
+      <CompanyLogo size="sm" logoUrl={logoUrl} companyName={companyName} />
       <span className="shrink-0">{ticker}</span>
       <span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">
         {companyName}

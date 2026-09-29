@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { RiArrowLeftLine } from '@remixicon/react';
 import type { ApiResponse } from '@trader-tavern/api-client';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import CompanyLogo from '@/components/CompanyLogo';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import WatchlistBookmarkButton from '@/pages/ticker/components/WatchlistBookmarkButton';
@@ -68,12 +68,11 @@ const TickerHeader = ({
           <RiArrowLeftLine />
         </Button>
 
-        <Avatar size="lg" className="rounded-md after:rounded-md">
-          {ticker.logoUrl ? <AvatarImage src={ticker.logoUrl} alt="" /> : null}
-          <AvatarFallback className="rounded-md">
-            {ticker.ticker.slice(0, 1)}
-          </AvatarFallback>
-        </Avatar>
+        <CompanyLogo
+          size="lg"
+          logoUrl={ticker.logoUrl}
+          companyName={ticker.companyName ?? ticker.ticker}
+        />
 
         <div className="flex min-w-0 flex-col">
           <div className="flex items-baseline gap-2">

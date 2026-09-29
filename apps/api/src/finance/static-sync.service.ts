@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { TickerStaticDataRepository } from './repositories/ticker-static-data.repository';
 import { QuoteSummaryResult } from './helpers/sync-fetchers';
 import { TickerRef } from './helpers/sync-utils';
+import { fetchBase64Logo, isGoogleFaviconUrl } from './helpers/logo';
 
 // Computes and persists ticker_static_data: company profile fields (name,
 // sector, industry, description, market, logo, ...) derived from a ticker's
@@ -19,7 +20,10 @@ export class StaticSyncService {
     const { price, assetProfile, defaultKeyStatistics } = quoteSummary;
     const companyName = price?.longName ?? price?.shortName ?? ref.ticker;
     const website = assetProfile?.website;
-    const logoUrl = website ? this.logoUrlFromWebsite(website) : undefined;
+    const faviconUrl = website ? this.logoUrlFromWebsite(website) : undefined;
+    const logoUrl = faviconUrl
+      ? await this.resolveLogoUrl(faviconUrl)
+      : undefined;
 
     await this.tickerStaticDataRepository.upsert(ref, {
       companyName,
@@ -44,5 +48,14 @@ export class StaticSyncService {
     } catch {
       return undefined;
     }
+  }
+
+  // Embeds the favicon as base64 at sync time so the frontend never loads it
+  // live from Google - see helpers/logo.ts.
+  private async resolveLogoUrl(faviconUrl: string): Promise<string> {
+    if (!isGoogleFaviconUrl(faviconUrl)) {
+      return faviconUrl;
+    }
+    return (await fetchBase64Logo(faviconUrl)) ?? faviconUrl;
   }
 }
