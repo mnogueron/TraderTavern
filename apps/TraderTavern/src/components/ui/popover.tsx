@@ -98,7 +98,7 @@ function PopoverNoResult({
     <div
       data-slot="popover-no-result"
       className={cn(
-        'flex items-center justify-center py-6 text-xs text-muted-foreground',
+        'flex items-center justify-center py-6 px-2 text-xs text-muted-foreground',
         className,
       )}
       {...props}
