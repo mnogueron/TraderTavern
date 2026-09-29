@@ -18,6 +18,7 @@ import { parseXtbOmiText } from './xtb-omi.parser';
 import { SCREENER_TICKERS } from '../finance/constants/tickers';
 import { TickerRef } from '../finance/helpers/sync-utils';
 import { YahooRateLimiterService } from '../shared/yahoo-rate-limiter.service';
+import { stripDiacritics } from '../finance/helpers/text-normalization';
 
 const yahooFinance = new YahooFinance();
 
@@ -213,6 +214,7 @@ export class TickerSourceService {
           isin: row.isin,
           source,
           ticker: row.ticker,
+          normalizedTicker: stripDiacritics(row.ticker),
           name: row.name,
           currency: row.currency,
           lastSyncedAt: syncedAt,

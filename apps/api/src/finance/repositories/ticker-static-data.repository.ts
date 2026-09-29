@@ -6,6 +6,7 @@ import {
   TickerStaticDataDocument,
 } from '../schemas/ticker-static-data.schema';
 import { TickerRef } from '../helpers/sync-utils';
+import { stripDiacritics } from '../helpers/text-normalization';
 import {
   TickerSource,
   TickerSourceDocument,
@@ -35,7 +36,12 @@ export class TickerStaticDataRepository {
     // search it without joining back to ticker_static_data.
     await this.tickerSourceModel.updateMany(
       { isin: ref.isin },
-      { $set: { companyName: data.companyName } },
+      {
+        $set: {
+          companyName: data.companyName,
+          normalizedCompanyName: stripDiacritics(data.companyName),
+        },
+      },
     );
   }
 

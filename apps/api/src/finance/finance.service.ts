@@ -35,6 +35,7 @@ import {
   DEFAULT_TICKER_STALE_THRESHOLD_MINUTES,
 } from './constants/candle-windows';
 import { minutesPastRegularClose, regularCloseAt } from './helpers/date-time';
+import { stripDiacritics } from './helpers/text-normalization';
 import {
   TickerStaticData,
   TickerStaticDataDocument,
@@ -214,11 +215,15 @@ export class FinanceService {
         limit,
       );
     } else {
+      // Normalized (diacritic-stripped) so e.g. "societe generale" matches
+      // "Société Générale" - see helpers/text-normalization.ts.
+      const normalizedSearch = stripDiacritics(search);
+
       // Relevance-ranked $text search across the source-specific ticker and
       // company name (ticker weighted higher, so a symbol match outranks an
       // incidental word match in a company name).
       result = await this.runTickerOptionQuery(
-        { source: user.tickerSource, $text: { $search: search } },
+        { source: user.tickerSource, $text: { $search: normalizedSearch } },
         { score: -1 },
         page,
         limit,
@@ -230,11 +235,14 @@ export class FinanceService {
       // only reached when $text found nothing, so it doesn't cost every
       // request.
       if (result.total === 0) {
-        const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const escaped = normalizedSearch.replace(
+          /[.*+?^${}()|[\]\\]/g,
+          '\\$&',
+        );
         result = await this.runTickerOptionQuery(
           {
             source: user.tickerSource,
-            ticker: { $regex: `^${escaped}`, $options: 'i' },
+            normalizedTicker: { $regex: `^${escaped}`, $options: 'i' },
           },
           { ticker: 1 },
           page,

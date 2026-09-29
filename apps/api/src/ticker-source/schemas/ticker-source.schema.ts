@@ -18,6 +18,13 @@ export class TickerSource {
   @Prop({ required: true })
   ticker!: string;
 
+  // Diacritic-stripped copy of `ticker`, kept in sync by
+  // TickerSourceService.upsertTicker. Search matches against this (with an
+  // equally-stripped query) rather than `ticker` directly, so e.g. "generale"
+  // matches "GÉNÉRALE" - see helpers/text-normalization.ts.
+  @Prop({ required: true })
+  normalizedTicker!: string;
+
   @Prop()
   name?: string;
 
@@ -28,6 +35,11 @@ export class TickerSource {
   // on the collection being searched).
   @Prop()
   companyName?: string;
+
+  // Diacritic-stripped copy of `companyName`, same reasoning as
+  // `normalizedTicker`.
+  @Prop()
+  normalizedCompanyName?: string;
 
   @Prop()
   currency?: string;
@@ -51,12 +63,17 @@ TickerSourceSchema.index({ isin: 1, source: 1 }, { unique: true });
 
 // Powers ticker search: `source` as an equality prefix lets Mongo narrow to
 // the user's source before ranking, and the text fields give relevance-scored
-// matching on both the source-specific ticker and the company name.
+// matching on both the source-specific ticker and the company name. Indexed
+// on the normalized (diacritic-stripped) copies so search is accent-agnostic
+// - see helpers/text-normalization.ts.
 TickerSourceSchema.index(
-  { source: 1, ticker: 'text', companyName: 'text' },
-  { weights: { ticker: 5, companyName: 1 }, name: 'source_ticker_companyName_text' },
+  { source: 1, normalizedTicker: 'text', normalizedCompanyName: 'text' },
+  {
+    weights: { normalizedTicker: 5, normalizedCompanyName: 1 },
+    name: 'source_ticker_companyName_text',
+  },
 );
 
 // Backs the anchored ticker-prefix fallback for short/partial queries that
 // $text (whole-word) search can't match, e.g. "AAP" -> "AAPL".
-TickerSourceSchema.index({ source: 1, ticker: 1 });
+TickerSourceSchema.index({ source: 1, normalizedTicker: 1 });
