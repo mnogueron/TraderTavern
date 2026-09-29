@@ -319,6 +319,29 @@ paths:
         - cookie: []
       tags:
         - Finance
+  /api/finance/screener/filters/tickers/by-isin:
+    get:
+      operationId: getScreenerTickerOptionsByIsin
+      parameters:
+        - name: isins
+          required: true
+          in: query
+          description: Comma-separated list of ISINs
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TickerOptionDto'
+      security:
+        - cookie: []
+      tags:
+        - Finance
   /api/finance/sync/status:
     get:
       operationId: getSyncStatus

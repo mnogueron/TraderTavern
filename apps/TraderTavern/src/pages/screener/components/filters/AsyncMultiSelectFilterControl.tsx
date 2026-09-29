@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { useClientInfiniteQuery } from '@trader-tavern/api-client';
+import {
+  useClientInfiniteQuery,
+  useClientQuery,
+} from '@trader-tavern/api-client';
 import { Button } from '@/components/ui/button';
 import { CommandItem } from '@/components/ui/command';
 import { Popover } from '@/components/ui/popover';
@@ -31,8 +34,10 @@ const AsyncMultiSelectFilterControl = ({
   value,
   onChange,
 }: AsyncMultiSelectFilterControlProps) => {
+  const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search, 250);
+  const isSearching = debouncedSearch.length > 0;
   // A state ref (rather than useRef) so attaching the scroll container on
   // popover open triggers a re-render, letting the virtualizer measure it
   // immediately instead of computing an empty range against a stale null.
@@ -62,6 +67,22 @@ const AsyncMultiSelectFilterControl = ({
       },
     );
 
+  // Re-hydrates already-selected options by ISIN so they can be pinned to
+  // the top of the list without depending on them being present in (or even
+  // matching the sort order of) the current unfiltered page of results.
+  const { data: selectedData } = useClientQuery(
+    'get',
+    '/api/finance/screener/filters/tickers/by-isin',
+    {
+      params: {
+        query: {
+          isins: value.values.join(','),
+        },
+      },
+    },
+    { enabled: value.values.length > 0 },
+  );
+
   const options = useMemo(() => {
     const rows = data?.pages.flatMap((page) => page.data) ?? [];
     for (const row of rows) {
@@ -70,8 +91,31 @@ const AsyncMultiSelectFilterControl = ({
     return rows;
   }, [data]);
 
+  const selectedOptions = useMemo(() => {
+    const rows = selectedData ?? [];
+    for (const row of rows) {
+      cacheTickerLabel(row.isin, `${row.ticker} · ${row.companyName}`);
+    }
+    return rows;
+  }, [selectedData]);
+
+  // Selected tickers are pinned to the top only outside of search, so a
+  // search always shows just its own results.
+  const displayOptions = useMemo(() => {
+    if (isSearching || selectedOptions.length === 0) {
+      return options;
+    }
+    const selectedIsins = new Set(selectedOptions.map((option) => option.isin));
+    return [
+      ...selectedOptions,
+      ...options.filter((option) => !selectedIsins.has(option.isin)),
+    ];
+  }, [isSearching, selectedOptions, options]);
+
+  const pinnedCount = displayOptions.length - options.length;
+
   const virtualizer = useVirtualizer({
-    count: hasNextPage ? options.length + 1 : options.length,
+    count: hasNextPage ? displayOptions.length + 1 : displayOptions.length,
     getScrollElement: () => scrollParent,
     estimateSize: () => ROW_HEIGHT,
     overscan: 8,
@@ -82,7 +126,7 @@ const AsyncMultiSelectFilterControl = ({
   const lastItem = virtualItems.at(-1);
   if (
     lastItem &&
-    lastItem.index >= options.length - 1 &&
+    lastItem.index >= pinnedCount + options.length - 1 &&
     hasNextPage &&
     !isFetchingNextPage
   ) {
@@ -97,6 +141,8 @@ const AsyncMultiSelectFilterControl = ({
         ? value.values.filter((v) => v !== isin)
         : [...value.values, isin],
     });
+    setSearch('');
+    setOpen(false);
   };
 
   const triggerLabel =
@@ -107,7 +153,7 @@ const AsyncMultiSelectFilterControl = ({
         : `${value.values.length} selected`;
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <Popover.Trigger
         render={
           <Button
@@ -130,7 +176,7 @@ const AsyncMultiSelectFilterControl = ({
           <div className="flex items-center justify-center py-6">
             <Spinner />
           </div>
-        ) : options.length === 0 ? (
+        ) : displayOptions.length === 0 ? (
           <Popover.NoResult>No results found.</Popover.NoResult>
         ) : (
           <Popover.CommandList ref={setScrollParent} className="pt-1.5">
@@ -142,7 +188,7 @@ const AsyncMultiSelectFilterControl = ({
               }}
             >
               {virtualItems.map((virtualItem) => {
-                const option = options[virtualItem.index];
+                const option = displayOptions[virtualItem.index];
                 if (!option) {
                   return (
                     <div

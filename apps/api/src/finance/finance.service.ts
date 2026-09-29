@@ -79,6 +79,7 @@ import {
 } from './schemas/ticker-earnings-history.schema';
 import { GetScreenerDto } from './dto/GetScreener.dto';
 import { GetScreenerTickerOptionsDto } from './dto/GetScreenerTickerOptions.dto';
+import { GetTickerOptionsByIsinDto } from './dto/GetTickerOptionsByIsin.dto';
 import { PaginatedTickerDto } from './dto/PaginatedTicker.dto';
 import { PaginatedTickerOptionDto } from './dto/PaginatedTickerOption.dto';
 import { ScreenerFilterOptionsDto } from './dto/ScreenerFilterOptions.dto';
@@ -257,6 +258,38 @@ export class FinanceService {
       limit,
       result.total,
       Math.max(Math.ceil(result.total / limit), 1),
+    );
+  }
+
+  // Batch lookup for already-selected filter values (e.g. re-hydrating a
+  // ticker multiselect's chosen options), keyed by ISIN rather than a text
+  // search.
+  async getScreenerTickerOptionsByIsin(
+    userId: string,
+    query: GetTickerOptionsByIsinDto,
+  ): Promise<TickerOptionDto[]> {
+    const user = await this.userService.findById(userId);
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+
+    const isins = query.isins
+      .split(',')
+      .map((isin) => isin.trim())
+      .filter(Boolean);
+    if (isins.length === 0) {
+      return [];
+    }
+
+    const rows = await this.tickerSourceModel
+      .aggregate<{ isin: string; ticker: string; companyName: string }>([
+        { $match: { source: user.tickerSource, isin: { $in: isins } } },
+        { $project: this.tickerOptionProjection() },
+      ])
+      .exec();
+
+    return rows.map(
+      (row) => new TickerOptionDto(row.isin, row.ticker, row.companyName),
     );
   }
 
