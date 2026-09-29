@@ -2,17 +2,8 @@ import { useMemo, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useClientInfiniteQuery } from '@trader-tavern/api-client';
 import { Button } from '@/components/ui/button';
-import {
-  Command,
-  CommandEmpty,
-  CommandInput,
-  CommandItem,
-} from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { CommandItem } from '@/components/ui/command';
+import { Popover } from '@/components/ui/popover';
 import {
   isFilterValueActive,
   type AsyncMultiSelectScreenerFilterConfig,
@@ -112,7 +103,7 @@ const AsyncMultiSelectFilterControl = ({
 
   return (
     <Popover>
-      <PopoverTrigger
+      <Popover.Trigger
         render={
           <Button
             variant={isFilterValueActive(value) ? 'secondary' : 'outline'}
@@ -124,59 +115,33 @@ const AsyncMultiSelectFilterControl = ({
           </Button>
         }
       />
-      <PopoverContent className="w-72 p-0" align="start">
-        <Command shouldFilter={false}>
-          <CommandInput
-            value={search}
-            onValueChange={setSearch}
-            placeholder={`Search ${config.label.toLowerCase()}...`}
-            className="text-xs"
-          />
-          <div
-            ref={scrollParentRef}
-            className="max-h-72 overflow-y-auto pt-1.5"
-          >
-            {isPending ? (
-              <div className="flex items-center justify-center py-6">
-                <Spinner />
-              </div>
-            ) : options.length === 0 ? (
-              <CommandEmpty>No results found.</CommandEmpty>
-            ) : (
-              <div
-                style={{
-                  height: virtualizer.getTotalSize(),
-                  position: 'relative',
-                  width: '100%',
-                }}
-              >
-                {virtualItems.map((virtualItem) => {
-                  const option = options[virtualItem.index];
-                  if (!option) {
-                    return (
-                      <div
-                        key={virtualItem.key}
-                        style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          width: '100%',
-                          height: virtualItem.size,
-                          transform: `translateY(${virtualItem.start}px)`,
-                        }}
-                        className="flex items-center justify-center text-xs text-muted-foreground"
-                      >
-                        Loading…
-                      </div>
-                    );
-                  }
-
+      <Popover.Command className="w-72" shouldFilter={false} align="start">
+        <Popover.CommandInput
+          value={search}
+          onValueChange={setSearch}
+          placeholder={`Search ${config.label.toLowerCase()}...`}
+        />
+        {isPending ? (
+          <div className="flex items-center justify-center py-6">
+            <Spinner />
+          </div>
+        ) : options.length === 0 ? (
+          <Popover.NoResult>No results found.</Popover.NoResult>
+        ) : (
+          <Popover.CommandList ref={scrollParentRef} className="pt-1.5">
+            <div
+              style={{
+                height: virtualizer.getTotalSize(),
+                position: 'relative',
+                width: '100%',
+              }}
+            >
+              {virtualItems.map((virtualItem) => {
+                const option = options[virtualItem.index];
+                if (!option) {
                   return (
-                    <CommandItem
-                      key={option.isin}
-                      value={option.isin}
-                      data-checked={value.values.includes(option.isin)}
-                      onSelect={() => toggleOption(option.isin)}
+                    <div
+                      key={virtualItem.key}
                       style={{
                         position: 'absolute',
                         top: 0,
@@ -185,17 +150,37 @@ const AsyncMultiSelectFilterControl = ({
                         height: virtualItem.size,
                         transform: `translateY(${virtualItem.start}px)`,
                       }}
-                      className="py-1 text-xs"
+                      className="flex items-center justify-center text-xs text-muted-foreground"
                     >
-                      {option.ticker} · {option.companyName}
-                    </CommandItem>
+                      Loading…
+                    </div>
                   );
-                })}
-              </div>
-            )}
-          </div>
-        </Command>
-      </PopoverContent>
+                }
+
+                return (
+                  <CommandItem
+                    key={option.isin}
+                    value={option.isin}
+                    data-checked={value.values.includes(option.isin)}
+                    onSelect={() => toggleOption(option.isin)}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: virtualItem.size,
+                      transform: `translateY(${virtualItem.start}px)`,
+                    }}
+                    className="py-1 text-xs"
+                  >
+                    {option.ticker} · {option.companyName}
+                  </CommandItem>
+                );
+              })}
+            </div>
+          </Popover.CommandList>
+        )}
+      </Popover.Command>
     </Popover>
   );
 };
