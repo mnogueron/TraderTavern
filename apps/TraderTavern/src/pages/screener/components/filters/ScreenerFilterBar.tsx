@@ -13,12 +13,15 @@ import { Field, FieldLabel } from '@/components/ui/field';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ScreenerFilterSearch from '@/pages/screener/components/filters/ScreenerFilterSearch';
 import MultiSelectFilterControl from '@/pages/screener/components/filters/MultiSelectFilterControl';
-import AsyncMultiSelectFilterControl from '@/pages/screener/components/filters/AsyncMultiSelectFilterControl';
+import TickerFilterControl from '@/pages/screener/components/filters/TickerFilterControl';
 import SelectFilterControl from '@/pages/screener/components/filters/SelectFilterControl';
 import MinMaxFilterControl from '@/pages/screener/components/filters/MinMaxFilterControl';
 import NumberFilterControl from '@/pages/screener/components/filters/NumberFilterControl';
 import BooleanFilterControl from '@/pages/screener/components/filters/BooleanFilterControl';
-import { getCachedTickerLabel } from '@/pages/screener/components/filters/tickerLabelCache';
+import {
+  getCachedTickerLabel,
+  getCachedTickerSymbol,
+} from '@/pages/screener/components/filters/tickerLabelCache';
 import {
   isFilterValueActive,
   SCREENER_FILTER_CATEGORY_LABELS,
@@ -90,6 +93,11 @@ const describeFilterValue = (
   switch (value.type) {
     case 'multiselect': {
       if (config.type === 'async-multiselect') {
+        if (value.values.length === 1) {
+          const symbol =
+            getCachedTickerSymbol(value.values[0]) ?? value.values[0];
+          return `${config.label}: ${symbol}`;
+        }
         const labels = value.values.map((v) => getCachedTickerLabel(v) ?? v);
         if (labels.length <= 2) return `${config.label}: ${labels.join(', ')}`;
         return `${config.label}: ${labels.slice(0, 2).join(', ')} +${labels.length - 2}`;
@@ -190,7 +198,7 @@ const ScreenerFilterBar = ({
         );
       case 'async-multiselect':
         return (
-          <AsyncMultiSelectFilterControl
+          <TickerFilterControl
             key={config.key}
             config={config}
             value={value as MultiSelectScreenerFilterValue}

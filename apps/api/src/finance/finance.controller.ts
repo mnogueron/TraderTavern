@@ -23,6 +23,8 @@ import { GetTickerChartDto } from './dto/GetTickerChart.dto';
 import { GetScreenerDto } from './dto/GetScreener.dto';
 import { GetTickersDto } from './dto/GetTickers.dto';
 import { GetScreenerTickerOptionsDto } from './dto/GetScreenerTickerOptions.dto';
+import { GetTickerOptionsByIsinDto } from './dto/GetTickerOptionsByIsin.dto';
+import { TickerOptionDto } from './dto/TickerOption.dto';
 import { PaginatedTickerDto } from './dto/PaginatedTicker.dto';
 import { PaginatedTickerOptionDto } from './dto/PaginatedTickerOption.dto';
 import { ScreenerFilterOptionsDto } from './dto/ScreenerFilterOptions.dto';
@@ -90,6 +92,19 @@ export class FinanceController {
     @Query() query: GetScreenerTickerOptionsDto,
   ): Promise<PaginatedTickerOptionDto> {
     return this.financeService.getScreenerTickerOptions(user.sub, query);
+  }
+
+  @Get('screener/filters/tickers/by-isin')
+  @Auth()
+  @ApiOkResponse({ type: TickerOptionDto, isArray: true })
+  getScreenerTickerOptionsByIsin(
+    @CurrentUser() user: JwtPayload,
+    @Query() query: GetTickerOptionsByIsinDto,
+  ): Promise<TickerOptionDto[]> {
+    return this.financeService.getScreenerTickerOptionsByIsin(
+      user.sub,
+      query,
+    );
   }
 
   @Get('sync/status')

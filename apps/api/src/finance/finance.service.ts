@@ -3,10 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import Fuse from 'fuse.js';
 import { UserService } from '../user/user.service';
-import {
-  TickerSource,
-  TickerSourceDocument,
-} from '../ticker-source/schemas/ticker-source.schema';
+import { TickerSourceType } from '../ticker-source/enums/ticker-source-type.enum';
 import { TickerDto } from './dto/Ticker.dto';
 import { FundamentalTickerDto } from './dto/FundamentalTicker.dto';
 import { CandleDto } from './dto/Candle.dto';
@@ -35,6 +32,7 @@ import {
   DEFAULT_TICKER_STALE_THRESHOLD_MINUTES,
 } from './constants/candle-windows';
 import { minutesPastRegularClose, regularCloseAt } from './helpers/date-time';
+import { stripDiacritics } from './helpers/text-normalization';
 import {
   TickerStaticData,
   TickerStaticDataDocument,
@@ -78,6 +76,7 @@ import {
 } from './schemas/ticker-earnings-history.schema';
 import { GetScreenerDto } from './dto/GetScreener.dto';
 import { GetScreenerTickerOptionsDto } from './dto/GetScreenerTickerOptions.dto';
+import { GetTickerOptionsByIsinDto } from './dto/GetTickerOptionsByIsin.dto';
 import { PaginatedTickerDto } from './dto/PaginatedTicker.dto';
 import { PaginatedTickerOptionDto } from './dto/PaginatedTickerOption.dto';
 import { ScreenerFilterOptionsDto } from './dto/ScreenerFilterOptions.dto';
@@ -125,8 +124,6 @@ export class FinanceService {
     private readonly marketService: MarketService,
     private readonly configService: AppConfigService,
     private readonly userService: UserService,
-    @InjectModel(TickerSource.name)
-    private readonly tickerSourceModel: Model<TickerSourceDocument>,
     @InjectModel(TickerStaticData.name)
     private readonly tickerStaticDataModel: Model<TickerStaticDataDocument>,
     @InjectModel(CompoundTechnicalTickerData.name)
@@ -146,58 +143,93 @@ export class FinanceService {
     private readonly syncHistoryRepository: SyncHistoryRepository,
   ) {}
 
-  // Ranks tickers by how closely they match the search term: exact match,
-  // then prefix, then substring — this handles partial input (and typos via
-  // substring, e.g. "thyssenkrup" for "thyssenkrupp") precisely. Only falls
-  // back to fuzzy matching when nothing matches as a substring, since fuzzy
-  // scoring alone is too noisy for short queries (e.g. "TKA" fuzzy-matching
-  // hundreds of unrelated tickers).
-  private rankTickerCandidates<
-    T extends { ticker: string; companyName: string },
-  >(candidates: T[], search: string): T[] {
-    const term = search.toLowerCase();
+  // $lookup's the user's source-specific ticker symbol onto a
+  // ticker_static_data doc and drops any doc with no row for that source —
+  // i.e. only tickers actually associated with the user's ticker source.
+  // Static data (companyName/logoUrl) is authoritative here since it's one
+  // row per isin, unlike ticker_sources which has one row per (isin, source).
+  private tickerOptionLookupStages(source: TickerSourceType) {
+    return [
+      {
+        $lookup: {
+          from: 'ticker_sources',
+          let: { isin: '$isin' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$isin', '$$isin'] },
+                    { $eq: ['$source', source] },
+                  ],
+                },
+              },
+            },
+            { $project: { _id: 0, ticker: 1 } },
+          ],
+          as: 'sourceMatch',
+        },
+      },
+      { $match: { 'sourceMatch.0': { $exists: true } } },
+      {
+        $project: {
+          _id: 0,
+          isin: 1,
+          companyName: 1,
+          logoUrl: 1,
+          score: 1,
+          ticker: { $arrayElemAt: ['$sourceMatch.ticker', 0] },
+        },
+      },
+    ];
+  }
 
-    const scored = candidates
-      .map((candidate) => {
-        const ticker = candidate.ticker.toLowerCase();
-        const companyName = candidate.companyName.toLowerCase();
+  private async runTickerOptionQuery(
+    source: TickerSourceType,
+    match: Record<string, unknown>,
+    sort: Record<string, 1 | -1>,
+    page: number,
+    limit: number,
+    withTextScore = false,
+  ): Promise<{ data: TickerOptionDto[]; total: number }> {
+    const [result] = await this.tickerStaticDataModel.aggregate<{
+      data: {
+        isin: string;
+        ticker: string;
+        companyName: string;
+        logoUrl: string | null;
+      }[];
+      totalCount: { count: number }[];
+    }>([
+      { $match: match },
+      // $meta: 'textScore' must be materialized into a real field before
+      // entering $facet, since aggregation metadata doesn't survive across
+      // a $facet sub-pipeline boundary.
+      ...(withTextScore
+        ? [{ $addFields: { score: { $meta: 'textScore' } } }]
+        : []),
+      ...this.tickerOptionLookupStages(source),
+      { $sort: sort },
+      {
+        $facet: {
+          data: [{ $skip: (page - 1) * limit }, { $limit: limit }],
+          totalCount: [{ $count: 'count' }],
+        },
+      },
+    ]);
 
-        let score: number | null = null;
-        if (ticker === term || companyName === term) {
-          score = 0;
-        } else if (ticker.startsWith(term) || companyName.startsWith(term)) {
-          score = 1;
-        } else if (ticker.includes(term) || companyName.includes(term)) {
-          score = 2;
-        }
-
-        return { candidate, score };
-      })
-      .filter(
-        (entry): entry is { candidate: T; score: number } =>
-          entry.score !== null,
-      );
-
-    if (scored.length > 0) {
-      return scored
-        .sort(
-          (a, b) =>
-            a.score - b.score ||
-            a.candidate.companyName.localeCompare(b.candidate.companyName),
-        )
-        .map((entry) => entry.candidate);
-    }
-
-    return new Fuse(candidates, {
-      keys: [
-        { name: 'ticker', weight: 0.6 },
-        { name: 'companyName', weight: 0.4 },
-      ],
-      threshold: 0.35,
-      ignoreLocation: true,
-    })
-      .search(search)
-      .map((result) => result.item);
+    return {
+      data: (result?.data ?? []).map(
+        (row) =>
+          new TickerOptionDto(
+            row.isin,
+            row.ticker,
+            row.companyName,
+            row.logoUrl ?? null,
+          ),
+      ),
+      total: result?.totalCount[0]?.count ?? 0,
+    };
   }
 
   async getScreenerTickerOptions(
@@ -213,50 +245,101 @@ export class FinanceService {
     const limit = query.limit ?? 20;
     const search = query.search?.trim();
 
-    const candidates = await this.tickerSourceModel.aggregate<{
-      isin: string;
-      ticker: string;
-      companyName: string;
-    }>([
-      { $match: { source: user.tickerSource } },
-      {
-        $lookup: {
-          from: 'ticker_static_data',
-          localField: 'isin',
-          foreignField: 'isin',
-          as: 'staticData',
-        },
-      },
-      {
-        $addFields: {
-          companyName: {
-            $ifNull: [
-              { $arrayElemAt: ['$staticData.companyName', 0] },
-              '$ticker',
-            ],
-          },
-        },
-      },
-      { $sort: { companyName: 1, ticker: 1 } },
-      { $project: { _id: 0, isin: 1, ticker: 1, companyName: 1 } },
-    ]);
+    let result: { data: TickerOptionDto[]; total: number };
 
-    const rows = search
-      ? this.rankTickerCandidates(candidates, search)
-      : candidates;
+    if (!search) {
+      result = await this.runTickerOptionQuery(
+        user.tickerSource,
+        {},
+        { companyName: 1, ticker: 1 },
+        page,
+        limit,
+      );
+    } else {
+      // Normalized (diacritic-stripped) so e.g. "societe generale" matches
+      // "Société Générale" - see helpers/text-normalization.ts.
+      const normalizedSearch = stripDiacritics(search);
 
-    const total = rows.length;
-    const skip = (page - 1) * limit;
-    const data = rows
-      .slice(skip, skip + limit)
-      .map((row) => new TickerOptionDto(row.isin, row.ticker, row.companyName));
+      // Relevance-ranked $text search across the (Yahoo reference) ticker and
+      // company name (ticker weighted higher, so a symbol match outranks an
+      // incidental word match in a company name).
+      result = await this.runTickerOptionQuery(
+        user.tickerSource,
+        { $text: { $search: normalizedSearch } },
+        { score: -1 },
+        page,
+        limit,
+        true,
+      );
+
+      // $text only matches whole (stemmed) words, so a partial ticker like
+      // "AAP" won't find "AAPL". Fall back to an anchored prefix match —
+      // only reached when $text found nothing, so it doesn't cost every
+      // request.
+      if (result.total === 0) {
+        const escaped = normalizedSearch.replace(
+          /[.*+?^${}()|[\]\\]/g,
+          '\\$&',
+        );
+        result = await this.runTickerOptionQuery(
+          user.tickerSource,
+          { normalizedTicker: { $regex: `^${escaped}`, $options: 'i' } },
+          { ticker: 1 },
+          page,
+          limit,
+        );
+      }
+    }
 
     return new PaginatedTickerOptionDto(
-      data,
+      result.data,
       page,
       limit,
-      total,
-      Math.max(Math.ceil(total / limit), 1),
+      result.total,
+      Math.max(Math.ceil(result.total / limit), 1),
+    );
+  }
+
+  // Batch lookup for already-selected filter values (e.g. re-hydrating a
+  // ticker multiselect's chosen options), keyed by ISIN rather than a text
+  // search.
+  async getScreenerTickerOptionsByIsin(
+    userId: string,
+    query: GetTickerOptionsByIsinDto,
+  ): Promise<TickerOptionDto[]> {
+    const user = await this.userService.findById(userId);
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+
+    const isins = query.isins
+      .split(',')
+      .map((isin) => isin.trim())
+      .filter(Boolean);
+    if (isins.length === 0) {
+      return [];
+    }
+
+    const rows = await this.tickerStaticDataModel
+      .aggregate<{
+        isin: string;
+        ticker: string;
+        companyName: string;
+        logoUrl: string | null;
+      }>([
+        { $match: { isin: { $in: isins } } },
+        ...this.tickerOptionLookupStages(user.tickerSource),
+      ])
+      .exec();
+
+    return rows.map(
+      (row) =>
+        new TickerOptionDto(
+          row.isin,
+          row.ticker,
+          row.companyName,
+          row.logoUrl ?? null,
+        ),
     );
   }
 

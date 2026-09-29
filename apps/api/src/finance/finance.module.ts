@@ -18,10 +18,6 @@ import { UserModule } from '../user/user.module';
 import { SharedModule } from '../shared/shared.module';
 import { TickerSourceModule } from '../ticker-source/ticker-source.module';
 import {
-  TickerSource,
-  TickerSourceSchema,
-} from '../ticker-source/schemas/ticker-source.schema';
-import {
   TickerStaticData,
   TickerStaticDataSchema,
 } from './schemas/ticker-static-data.schema';
@@ -85,7 +81,6 @@ import { SyncHistoryRepository } from './repositories/sync-history.repository';
         name: TickerEarningsHistory.name,
         schema: TickerEarningsHistorySchema,
       },
-      { name: TickerSource.name, schema: TickerSourceSchema },
       { name: TickerSyncHealth.name, schema: TickerSyncHealthSchema },
     ]),
   ],

@@ -244,6 +244,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/finance/screener/filters/tickers/by-isin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getScreenerTickerOptionsByIsin"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/finance/sync/status": {
         parameters: {
             query?: never;
@@ -1021,6 +1037,7 @@ export interface components {
             isin: string;
             ticker: string;
             companyName: string;
+            logoUrl: string | null;
         };
         PaginatedTickerOptionDto: {
             data: components["schemas"]["TickerOptionDto"][];
@@ -1687,6 +1704,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedTickerOptionDto"];
+                };
+            };
+        };
+    };
+    getScreenerTickerOptionsByIsin: {
+        parameters: {
+            query: {
+                /** @description Comma-separated list of ISINs */
+                isins: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TickerOptionDto"][];
                 };
             };
         };

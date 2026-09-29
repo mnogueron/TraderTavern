@@ -6,8 +6,12 @@ import {
   TickerStaticDataDocument,
 } from '../schemas/ticker-static-data.schema';
 import { TickerRef } from '../helpers/sync-utils';
+import { stripDiacritics } from '../helpers/text-normalization';
 
-export type TickerStaticDataUpsert = Omit<TickerStaticData, 'isin' | 'ticker'>;
+export type TickerStaticDataUpsert = Omit<
+  TickerStaticData,
+  'isin' | 'ticker' | 'normalizedTicker' | 'normalizedCompanyName'
+>;
 
 export type TickerRefWithMarket = TickerRef & { market?: string };
 
@@ -21,7 +25,15 @@ export class TickerStaticDataRepository {
   async upsert(ref: TickerRef, data: TickerStaticDataUpsert): Promise<void> {
     await this.tickerStaticDataModel.updateOne(
       { isin: ref.isin },
-      { $set: { isin: ref.isin, ticker: ref.ticker, ...data } },
+      {
+        $set: {
+          isin: ref.isin,
+          ticker: ref.ticker,
+          normalizedTicker: stripDiacritics(ref.ticker),
+          normalizedCompanyName: stripDiacritics(data.companyName),
+          ...data,
+        },
+      },
       { upsert: true },
     );
   }
