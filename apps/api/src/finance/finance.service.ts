@@ -184,6 +184,73 @@ export class FinanceService {
     ];
   }
 
+  // Ordered match tiers for a ticker/isin/company search: an anchored isin
+  // match first (isins are exact structured codes, not $text material), then
+  // relevance-ranked $text across ticker/company, then an anchored ticker
+  // prefix as a last resort for short/partial queries that $text's
+  // whole-word matching can't reach (e.g. "AAP" -> "AAPL"). Consumers try
+  // each tier in order until one yields results.
+  private buildTickerSearchTiers(search: string): Array<{
+    match: Record<string, unknown>;
+    sort: Record<string, 1 | -1>;
+    withTextScore: boolean;
+  }> {
+    const escapeRegex = (value: string) =>
+      value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // Normalized (diacritic-stripped) so e.g. "societe generale" matches
+    // "Société Générale" - see helpers/text-normalization.ts.
+    const normalizedSearch = stripDiacritics(search);
+
+    return [
+      {
+        match: { isin: { $regex: escapeRegex(search), $options: 'i' } },
+        sort: { isin: 1 },
+        withTextScore: false,
+      },
+      {
+        match: { $text: { $search: normalizedSearch } },
+        sort: { score: -1 },
+        withTextScore: true,
+      },
+      {
+        match: {
+          normalizedTicker: {
+            $regex: `^${escapeRegex(normalizedSearch)}`,
+            $options: 'i',
+          },
+        },
+        sort: { ticker: 1 },
+        withTextScore: false,
+      },
+    ];
+  }
+
+  // Resolves a ticker-list status filter into a match clause, backed by the
+  // same hidden-isin set the sync job maintains (see TickerHealthService) —
+  // there's no `status` field on ticker_static_data to filter on directly.
+  private async buildTickerStatusMatch(
+    status: TickerStatus | 'all' | undefined,
+  ): Promise<Record<string, unknown>> {
+    if (!status || status === 'all') {
+      return {};
+    }
+    const hiddenIsins = Array.from(
+      await this.tickerHealthService.getHiddenIsins(),
+    );
+    return status === TickerStatus.Disabled
+      ? { isin: { $in: hiddenIsins } }
+      : { isin: { $nin: hiddenIsins } };
+  }
+
+  private mergeMatch(
+    match: Record<string, unknown>,
+    statusMatch: Record<string, unknown>,
+  ): Record<string, unknown> {
+    return Object.keys(statusMatch).length === 0
+      ? match
+      : { $and: [match, statusMatch] };
+  }
+
   private async runTickerOptionQuery(
     source: TickerSourceType,
     match: Record<string, unknown>,
@@ -244,50 +311,32 @@ export class FinanceService {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
     const search = query.search?.trim();
+    const statusMatch = await this.buildTickerStatusMatch(query.status);
 
     let result: { data: TickerOptionDto[]; total: number };
 
     if (!search) {
       result = await this.runTickerOptionQuery(
         user.tickerSource,
-        {},
+        statusMatch,
         { companyName: 1, ticker: 1 },
         page,
         limit,
       );
     } else {
-      // Normalized (diacritic-stripped) so e.g. "societe generale" matches
-      // "Société Générale" - see helpers/text-normalization.ts.
-      const normalizedSearch = stripDiacritics(search);
-
-      // Relevance-ranked $text search across the (Yahoo reference) ticker and
-      // company name (ticker weighted higher, so a symbol match outranks an
-      // incidental word match in a company name).
-      result = await this.runTickerOptionQuery(
-        user.tickerSource,
-        { $text: { $search: normalizedSearch } },
-        { score: -1 },
-        page,
-        limit,
-        true,
-      );
-
-      // $text only matches whole (stemmed) words, so a partial ticker like
-      // "AAP" won't find "AAPL". Fall back to an anchored prefix match —
-      // only reached when $text found nothing, so it doesn't cost every
-      // request.
-      if (result.total === 0) {
-        const escaped = normalizedSearch.replace(
-          /[.*+?^${}()|[\]\\]/g,
-          '\\$&',
-        );
+      result = { data: [], total: 0 };
+      for (const tier of this.buildTickerSearchTiers(search)) {
         result = await this.runTickerOptionQuery(
           user.tickerSource,
-          { normalizedTicker: { $regex: `^${escaped}`, $options: 'i' } },
-          { ticker: 1 },
+          this.mergeMatch(tier.match, statusMatch),
+          tier.sort,
           page,
           limit,
+          tier.withTextScore,
         );
+        if (result.total > 0) {
+          break;
+        }
       }
     }
 
@@ -540,61 +589,128 @@ export class FinanceService {
   // Every ticker regardless of active/disabled state, annotated with its
   // sync health so the Tickers page can list, filter and search across both
   // in one table instead of two separate endpoints.
+  // Same search tiers/index as the ticker filter (getScreenerTickerOptions)
+  // rather than loading every ticker into memory and ranking in JS - status
+  // is pushed down the same way, via the hidden-isin set.
+  private async runTickerSummaryQuery(
+    match: Record<string, unknown>,
+    sort: Record<string, 1 | -1>,
+    page: number,
+    limit: number,
+    withTextScore = false,
+  ): Promise<{
+    data: {
+      isin: string;
+      ticker: string;
+      companyName: string | null;
+      logoUrl: string | null;
+      market: string | null;
+    }[];
+    total: number;
+  }> {
+    const [result] = await this.tickerStaticDataModel.aggregate<{
+      data: {
+        isin: string;
+        ticker: string;
+        companyName: string | null;
+        logoUrl: string | null;
+        market: string | null;
+      }[];
+      totalCount: { count: number }[];
+    }>([
+      { $match: match },
+      ...(withTextScore
+        ? [{ $addFields: { score: { $meta: 'textScore' } } }]
+        : []),
+      { $sort: sort },
+      {
+        $facet: {
+          data: [
+            { $skip: (page - 1) * limit },
+            { $limit: limit },
+            {
+              $project: {
+                _id: 0,
+                isin: 1,
+                ticker: 1,
+                companyName: 1,
+                logoUrl: 1,
+                market: 1,
+              },
+            },
+          ],
+          totalCount: [{ $count: 'count' }],
+        },
+      },
+    ]);
+
+    return {
+      data: result?.data ?? [],
+      total: result?.totalCount[0]?.count ?? 0,
+    };
+  }
+
   async getTickersList(
     query: GetTickersListDto,
   ): Promise<PaginatedTickerSummaryDto> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
     const search = query.search?.trim();
-    const status = query.status ?? 'all';
+    const statusMatch = await this.buildTickerStatusMatch(query.status);
 
-    const [staticData, marketLabelByCode, healthByIsin] = await Promise.all([
-      this.tickerStaticDataModel
-        .find()
-        .select('isin ticker companyName logoUrl market')
-        .lean(),
+    let result: Awaited<ReturnType<typeof this.runTickerSummaryQuery>>;
+
+    if (!search) {
+      result = await this.runTickerSummaryQuery(
+        statusMatch,
+        { ticker: 1 },
+        page,
+        limit,
+      );
+    } else {
+      result = { data: [], total: 0 };
+      for (const tier of this.buildTickerSearchTiers(search)) {
+        result = await this.runTickerSummaryQuery(
+          this.mergeMatch(tier.match, statusMatch),
+          tier.sort,
+          page,
+          limit,
+          tier.withTextScore,
+        );
+        if (result.total > 0) {
+          break;
+        }
+      }
+    }
+
+    const [marketLabelByCode, healthByIsin] = await Promise.all([
       this.getMarketLabelsByCode(),
       this.tickerHealthService.getHealthByIsin(),
     ]);
 
-    const summaries = staticData
-      .filter((ticker): ticker is typeof ticker & { isin: string } => !!ticker.isin)
-      .map((ticker) => {
-        const health = healthByIsin.get(ticker.isin);
-        return new TickerSummaryDto(
-          ticker.isin,
-          ticker.ticker,
-          ticker.companyName ?? null,
-          ticker.logoUrl ?? null,
-          ticker.market ?? null,
-          (ticker.market && marketLabelByCode.get(ticker.market)) ?? null,
-          health?.lastFullSyncedAt ?? null,
-          health?.hidden ? TickerStatus.Disabled : TickerStatus.Active,
-          health?.errorCount ?? 0,
-          health?.lastError ?? null,
-          health?.hiddenAt ?? null,
-        );
-      });
-
-    const statusFiltered =
-      status === 'all'
-        ? summaries
-        : summaries.filter((ticker) => ticker.status === status);
-
-    const rows = search
-      ? this.rankByIsinOrTicker(statusFiltered, search)
-      : statusFiltered.sort((a, b) => a.ticker.localeCompare(b.ticker));
-
-    const total = rows.length;
-    const skip = (page - 1) * limit;
-    const data = rows.slice(skip, skip + limit);
+    const data = result.data.map((ticker) => {
+      const health = healthByIsin.get(ticker.isin);
+      return new TickerSummaryDto(
+        ticker.isin,
+        ticker.ticker,
+        ticker.companyName ?? null,
+        ticker.logoUrl ?? null,
+        ticker.market ?? null,
+        (ticker.market && marketLabelByCode.get(ticker.market)) ?? null,
+        health?.lastFullSyncedAt ?? null,
+        health?.hidden ? TickerStatus.Disabled : TickerStatus.Active,
+        health?.errorCount ?? 0,
+        health?.lastError ?? null,
+        health?.hiddenAt ?? null,
+      );
+    });
 
     return new PaginatedTickerSummaryDto(
       data,
       page,
       limit,
-      total,
-      Math.max(Math.ceil(total / limit), 1),
+      result.total,
+      Math.max(Math.ceil(result.total / limit), 1),
     );
   }
 

@@ -305,9 +305,19 @@ paths:
         - name: search
           required: false
           in: query
-          description: Fuzzy search on ticker or company name
+          description: Fuzzy search on isin, ticker or company name
           schema:
             type: string
+        - name: status
+          required: false
+          in: query
+          schema:
+            default: all
+            type: string
+            enum:
+              - active
+              - disabled
+              - all
       responses:
         '200':
           description: ''
