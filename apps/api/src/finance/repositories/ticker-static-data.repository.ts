@@ -6,6 +6,10 @@ import {
   TickerStaticDataDocument,
 } from '../schemas/ticker-static-data.schema';
 import { TickerRef } from '../helpers/sync-utils';
+import {
+  TickerSource,
+  TickerSourceDocument,
+} from '../../ticker-source/schemas/ticker-source.schema';
 
 export type TickerStaticDataUpsert = Omit<TickerStaticData, 'isin' | 'ticker'>;
 
@@ -16,6 +20,8 @@ export class TickerStaticDataRepository {
   constructor(
     @InjectModel(TickerStaticData.name)
     private readonly tickerStaticDataModel: Model<TickerStaticDataDocument>,
+    @InjectModel(TickerSource.name)
+    private readonly tickerSourceModel: Model<TickerSourceDocument>,
   ) {}
 
   async upsert(ref: TickerRef, data: TickerStaticDataUpsert): Promise<void> {
@@ -23,6 +29,13 @@ export class TickerStaticDataRepository {
       { isin: ref.isin },
       { $set: { isin: ref.isin, ticker: ref.ticker, ...data } },
       { upsert: true },
+    );
+
+    // Keep ticker_sources.companyName in sync so ticker search can $text
+    // search it without joining back to ticker_static_data.
+    await this.tickerSourceModel.updateMany(
+      { isin: ref.isin },
+      { $set: { companyName: data.companyName } },
     );
   }
 

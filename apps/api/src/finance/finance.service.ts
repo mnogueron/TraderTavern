@@ -146,58 +146,49 @@ export class FinanceService {
     private readonly syncHistoryRepository: SyncHistoryRepository,
   ) {}
 
-  // Ranks tickers by how closely they match the search term: exact match,
-  // then prefix, then substring — this handles partial input (and typos via
-  // substring, e.g. "thyssenkrup" for "thyssenkrupp") precisely. Only falls
-  // back to fuzzy matching when nothing matches as a substring, since fuzzy
-  // scoring alone is too noisy for short queries (e.g. "TKA" fuzzy-matching
-  // hundreds of unrelated tickers).
-  private rankTickerCandidates<
-    T extends { ticker: string; companyName: string },
-  >(candidates: T[], search: string): T[] {
-    const term = search.toLowerCase();
+  private tickerOptionProjection() {
+    return {
+      _id: 0,
+      isin: 1,
+      ticker: 1,
+      companyName: { $ifNull: ['$companyName', '$ticker'] },
+    };
+  }
 
-    const scored = candidates
-      .map((candidate) => {
-        const ticker = candidate.ticker.toLowerCase();
-        const companyName = candidate.companyName.toLowerCase();
+  private async runTickerOptionQuery(
+    match: Record<string, unknown>,
+    sort: Record<string, 1 | -1>,
+    page: number,
+    limit: number,
+    withTextScore = false,
+  ): Promise<{ data: TickerOptionDto[]; total: number }> {
+    const [result] = await this.tickerSourceModel.aggregate<{
+      data: { isin: string; ticker: string; companyName: string }[];
+      totalCount: { count: number }[];
+    }>([
+      { $match: match },
+      // $meta: 'textScore' must be materialized into a real field before
+      // entering $facet, since aggregation metadata doesn't survive across
+      // a $facet sub-pipeline boundary.
+      ...(withTextScore
+        ? [{ $addFields: { score: { $meta: 'textScore' } } }]
+        : []),
+      { $sort: sort },
+      { $project: this.tickerOptionProjection() },
+      {
+        $facet: {
+          data: [{ $skip: (page - 1) * limit }, { $limit: limit }],
+          totalCount: [{ $count: 'count' }],
+        },
+      },
+    ]);
 
-        let score: number | null = null;
-        if (ticker === term || companyName === term) {
-          score = 0;
-        } else if (ticker.startsWith(term) || companyName.startsWith(term)) {
-          score = 1;
-        } else if (ticker.includes(term) || companyName.includes(term)) {
-          score = 2;
-        }
-
-        return { candidate, score };
-      })
-      .filter(
-        (entry): entry is { candidate: T; score: number } =>
-          entry.score !== null,
-      );
-
-    if (scored.length > 0) {
-      return scored
-        .sort(
-          (a, b) =>
-            a.score - b.score ||
-            a.candidate.companyName.localeCompare(b.candidate.companyName),
-        )
-        .map((entry) => entry.candidate);
-    }
-
-    return new Fuse(candidates, {
-      keys: [
-        { name: 'ticker', weight: 0.6 },
-        { name: 'companyName', weight: 0.4 },
-      ],
-      threshold: 0.35,
-      ignoreLocation: true,
-    })
-      .search(search)
-      .map((result) => result.item);
+    return {
+      data: (result?.data ?? []).map(
+        (row) => new TickerOptionDto(row.isin, row.ticker, row.companyName),
+      ),
+      total: result?.totalCount[0]?.count ?? 0,
+    };
   }
 
   async getScreenerTickerOptions(
@@ -213,50 +204,51 @@ export class FinanceService {
     const limit = query.limit ?? 20;
     const search = query.search?.trim();
 
-    const candidates = await this.tickerSourceModel.aggregate<{
-      isin: string;
-      ticker: string;
-      companyName: string;
-    }>([
-      { $match: { source: user.tickerSource } },
-      {
-        $lookup: {
-          from: 'ticker_static_data',
-          localField: 'isin',
-          foreignField: 'isin',
-          as: 'staticData',
-        },
-      },
-      {
-        $addFields: {
-          companyName: {
-            $ifNull: [
-              { $arrayElemAt: ['$staticData.companyName', 0] },
-              '$ticker',
-            ],
+    let result: { data: TickerOptionDto[]; total: number };
+
+    if (!search) {
+      result = await this.runTickerOptionQuery(
+        { source: user.tickerSource },
+        { companyName: 1, ticker: 1 },
+        page,
+        limit,
+      );
+    } else {
+      // Relevance-ranked $text search across the source-specific ticker and
+      // company name (ticker weighted higher, so a symbol match outranks an
+      // incidental word match in a company name).
+      result = await this.runTickerOptionQuery(
+        { source: user.tickerSource, $text: { $search: search } },
+        { score: -1 },
+        page,
+        limit,
+        true,
+      );
+
+      // $text only matches whole (stemmed) words, so a partial ticker like
+      // "AAP" won't find "AAPL". Fall back to an anchored prefix match —
+      // only reached when $text found nothing, so it doesn't cost every
+      // request.
+      if (result.total === 0) {
+        const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        result = await this.runTickerOptionQuery(
+          {
+            source: user.tickerSource,
+            ticker: { $regex: `^${escaped}`, $options: 'i' },
           },
-        },
-      },
-      { $sort: { companyName: 1, ticker: 1 } },
-      { $project: { _id: 0, isin: 1, ticker: 1, companyName: 1 } },
-    ]);
-
-    const rows = search
-      ? this.rankTickerCandidates(candidates, search)
-      : candidates;
-
-    const total = rows.length;
-    const skip = (page - 1) * limit;
-    const data = rows
-      .slice(skip, skip + limit)
-      .map((row) => new TickerOptionDto(row.isin, row.ticker, row.companyName));
+          { ticker: 1 },
+          page,
+          limit,
+        );
+      }
+    }
 
     return new PaginatedTickerOptionDto(
-      data,
+      result.data,
       page,
       limit,
-      total,
-      Math.max(Math.ceil(total / limit), 1),
+      result.total,
+      Math.max(Math.ceil(result.total / limit), 1),
     );
   }
 

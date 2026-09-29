@@ -21,6 +21,14 @@ export class TickerSource {
   @Prop()
   name?: string;
 
+  // Denormalized copy of ticker_static_data.companyName, kept in sync by
+  // TickerStaticDataRepository.upsert whenever static data syncs for this
+  // isin. Needed so ticker search can $text-search company name without a
+  // cross-collection $lookup (MongoDB text indexes only cover fields stored
+  // on the collection being searched).
+  @Prop()
+  companyName?: string;
+
   @Prop()
   currency?: string;
 
@@ -40,3 +48,15 @@ export class TickerSource {
 export const TickerSourceSchema = SchemaFactory.createForClass(TickerSource);
 
 TickerSourceSchema.index({ isin: 1, source: 1 }, { unique: true });
+
+// Powers ticker search: `source` as an equality prefix lets Mongo narrow to
+// the user's source before ranking, and the text fields give relevance-scored
+// matching on both the source-specific ticker and the company name.
+TickerSourceSchema.index(
+  { source: 1, ticker: 'text', companyName: 'text' },
+  { weights: { ticker: 5, companyName: 1 }, name: 'source_ticker_companyName_text' },
+);
+
+// Backs the anchored ticker-prefix fallback for short/partial queries that
+// $text (whole-word) search can't match, e.g. "AAP" -> "AAPL".
+TickerSourceSchema.index({ source: 1, ticker: 1 });
