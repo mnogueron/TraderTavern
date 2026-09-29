@@ -273,7 +273,7 @@ const ScreenerFilterBar = ({
         </div>
 
         <CollapsibleContent>
-        <SectionContent className="flex flex-col gap-3 p-4">
+        <SectionContent className="flex flex-col gap-3 p-2">
         <Tabs value={tab} onValueChange={handleTabChange}>
           <TabsList variant="line" className="h-6">
             <TabsTrigger value="descriptive" className="text-xs">
@@ -290,6 +290,7 @@ const ScreenerFilterBar = ({
             </TabsTrigger>
           </TabsList>
         </Tabs>
+        <div className="flex flex-col gap-3 overflow-y-auto max-h-[30vh] p-2">
         {visibleCategories.map((category) => {
           const categoryConfigs = configs.filter(
             (config) => config.category === category,
@@ -301,15 +302,17 @@ const ScreenerFilterBar = ({
 
           return (
             <div key={category} className="flex flex-col gap-1">
-              <div className="flex items-center gap-2 text-[10px] font-bold tracking-wide text-muted-foreground uppercase min-h-[20px]">
-                {SCREENER_FILTER_CATEGORY_LABELS[category]}
-                {categoryActiveCount > 0 && (
-                  <Badge variant="secondary" className="text-[10px]">
-                    {categoryActiveCount}
-                  </Badge>
-                )}
-                <Separator className="flex-1" />
-              </div>
+              {visibleCategories.length > 1 && (
+                <div className="flex items-center gap-2 text-[10px] font-bold tracking-wide text-muted-foreground uppercase min-h-[20px]">
+                  {SCREENER_FILTER_CATEGORY_LABELS[category]}
+                  {categoryActiveCount > 0 && (
+                    <Badge variant="secondary" className="text-[10px]">
+                      {categoryActiveCount}
+                    </Badge>
+                  )}
+                  <Separator className="flex-1" />
+                </div>
+              )}
               <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-x-3 gap-y-1.5">
                 {categoryConfigs.map((config) => (
                   <Field
@@ -341,6 +344,7 @@ const ScreenerFilterBar = ({
             </div>
           );
         })}
+        </div>
         </SectionContent>
         </CollapsibleContent>
       </Collapsible>
