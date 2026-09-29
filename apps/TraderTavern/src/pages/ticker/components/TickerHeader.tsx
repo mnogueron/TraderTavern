@@ -8,12 +8,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import WatchlistBookmarkButton from '@/pages/ticker/components/WatchlistBookmarkButton';
 import CountryFlag from '@/components/CountryFlag';
 import RelativeDateTime from '@/components/RelativeDateTime';
-import {
-  changePercentClassName,
-  formatChangePercent,
-  formatMarketCap,
-  formatNumber,
-} from '@/lib/format';
+import { useFormatNumber } from '@/hooks/useFormatNumber';
+import { changePercentClassName } from '@/lib/format';
 
 type Ticker = ApiResponse<'get', '/api/finance/ticker/{id}'>;
 type Fundamental = ApiResponse<'get', '/api/finance/ticker/{id}/fundamental'>;
@@ -29,6 +25,8 @@ const TickerHeader = ({
   fundamental,
   isPending,
 }: TickerHeaderProps) => {
+  const { formatChangePercent, formatCurrency, formatMarketCap, formatNumber } =
+    useFormatNumber();
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [isDescriptionClamped, setIsDescriptionClamped] = useState(false);
   const descriptionRef = useRef<HTMLParagraphElement>(null);
@@ -120,7 +118,7 @@ const TickerHeader = ({
 
       <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
         <span className="text-2xl font-semibold tabular-nums">
-          {formatNumber(ticker.price, 2, ticker.currency)}
+          {formatCurrency(ticker.price, ticker.currency, 2)}
         </span>
         <span
           className={`tabular-nums ${changePercentClassName(ticker.changePercent)}`}

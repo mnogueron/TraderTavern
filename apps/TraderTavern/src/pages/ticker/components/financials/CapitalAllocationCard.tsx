@@ -1,6 +1,6 @@
 import { Section, SectionContent, SectionFooter } from '@/components/Section';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatMarketCap } from '@/lib/format';
+import { useFormatNumber } from '@/hooks/useFormatNumber';
 import type { Fundamental } from '@/pages/ticker/components/financials/types';
 
 type CapitalAllocationCardProps = {
@@ -22,6 +22,8 @@ const CapitalAllocationCard = ({
   currency,
   isPending,
 }: CapitalAllocationCardProps) => {
+  const { formatMarketCap } = useFormatNumber();
+
   if (isPending || !fundamental) {
     return (
       <Section title="Capital Allocation">

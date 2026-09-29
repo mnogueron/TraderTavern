@@ -1,5 +1,4 @@
-import { formatDistanceToNow } from 'date-fns';
-import { formatDateTime } from '@/lib/format';
+import { useFormatDate } from '@/hooks/useFormatDate';
 import {
   Tooltip,
   TooltipContent,
@@ -16,13 +15,13 @@ type RelativeDateTimeProps = {
 // a day old, or the absolute date otherwise, always with the exact date/time
 // available in a tooltip.
 const RelativeDateTime = ({ value }: RelativeDateTimeProps) => {
+  const { formatDateTime, formatRelativeToNow } = useFormatDate();
+
   if (value === null) return <>—</>;
 
   const date = new Date(value);
   const isRecent = Math.abs(Date.now() - date.getTime()) < ONE_DAY_MS;
-  const display = isRecent
-    ? formatDistanceToNow(date, { addSuffix: true, includeSeconds: true })
-    : formatDateTime(value);
+  const display = isRecent ? formatRelativeToNow(date) : formatDateTime(value);
 
   return (
     <Tooltip>

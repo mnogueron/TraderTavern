@@ -13,7 +13,8 @@ import { Section, SectionContent } from '@/components/Section';
 import { ButtonGroup } from '@/components/ui/button-group';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatMarketCap, formatYear } from '@/lib/format';
+import { useFormatDate } from '@/hooks/useFormatDate';
+import { useFormatNumber } from '@/hooks/useFormatNumber';
 import type {
   AnnualFinancialPeriod,
   FinancialHistory,
@@ -60,7 +61,10 @@ const SERIES_DEFINITIONS: Record<SeriesSet, SeriesDefinition[]> = {
   ],
 };
 
-const toChartRow = (period: AnnualFinancialPeriod) => {
+const toChartRow = (
+  period: AnnualFinancialPeriod,
+  formatYear: (value: string) => string,
+) => {
   const revenue = period.revenue;
   const ebitda = period.ebitda;
   const netIncome = period.netIncome;
@@ -100,11 +104,15 @@ const FinancialHistoryCard = ({
   isPending,
 }: FinancialHistoryCardProps) => {
   const [seriesSet, setSeriesSet] = useState<SeriesSet>('pnl');
+  const { formatYear } = useFormatDate();
+  const { formatMarketCap } = useFormatNumber();
 
   const series = SERIES_DEFINITIONS[seriesSet];
   const isPercent = seriesSet === 'margins';
 
-  const data: ChartRow[] = (financialHistory?.annual ?? []).map(toChartRow);
+  const data: ChartRow[] = (financialHistory?.annual ?? []).map((period) =>
+    toChartRow(period, formatYear),
+  );
 
   return (
     <Section

@@ -1,11 +1,12 @@
 import type { Candle } from '@/pages/ticker/components/CandlestickChart';
-import { formatNumber } from '@/lib/format';
+import { useFormatNumber } from '@/hooks/useFormatNumber';
 
 type CandleReadoutProps = {
   candle: Candle;
 };
 
 const CandleReadout = ({ candle }: CandleReadoutProps) => {
+  const { formatNumber } = useFormatNumber();
   const valueClassName =
     candle.exit >= candle.entry ? 'text-emerald-600' : 'text-red-600';
 
@@ -17,7 +18,7 @@ const CandleReadout = ({ candle }: CandleReadoutProps) => {
       C<span className={valueClassName}>{formatNumber(candle.exit, 3)}</span> -{' '}
       V
       <span className={valueClassName}>
-        {(candle.volume ?? 0).toLocaleString()}
+        {formatNumber(candle.volume ?? 0, 0)}
       </span>
     </span>
   );

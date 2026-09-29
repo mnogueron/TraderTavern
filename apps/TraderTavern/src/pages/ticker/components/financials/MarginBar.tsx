@@ -1,4 +1,4 @@
-import { formatPercent } from '@/lib/format';
+import { useFormatNumber } from '@/hooks/useFormatNumber';
 
 type MarginBarProps = {
   label: string;
@@ -6,6 +6,7 @@ type MarginBarProps = {
 };
 
 const MarginBar = ({ label, value }: MarginBarProps) => {
+  const { formatPercent } = useFormatNumber();
   const width = value === null ? 0 : Math.min(Math.abs(value), 100);
   const isNegative = value !== null && value < 0;
 

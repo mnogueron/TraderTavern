@@ -1,11 +1,13 @@
 import { Badge } from '@/components/ui/badge';
-import { changePercentClassName, formatChangePercent } from '@/lib/format';
+import { useFormatNumber } from '@/hooks/useFormatNumber';
+import { changePercentClassName } from '@/lib/format';
 
 type ChangeBadgeProps = {
   value: number | null;
 };
 
 const ChangeBadge = ({ value }: ChangeBadgeProps) => {
+  const { formatChangePercent } = useFormatNumber();
   const rounded = value === null ? null : Math.round(value * 100) / 100;
   return (
     <div className="flex justify-end">

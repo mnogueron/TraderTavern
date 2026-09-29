@@ -1,10 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  changePercentClassName,
-  formatChangePercent,
-  formatMarketCap,
-} from '@/lib/format';
+import { useFormatNumber } from '@/hooks/useFormatNumber';
+import { changePercentClassName } from '@/lib/format';
 import type {
   AnnualFinancialPeriod,
   Fundamental,
@@ -57,6 +54,8 @@ const StatCards = ({
   currency,
   isPending,
 }: StatCardsProps) => {
+  const { formatMarketCap, formatChangePercent } = useFormatNumber();
+
   if (isPending || !fundamental) {
     return (
       <div className="grid gap-4 md:grid-cols-4">

@@ -1,4 +1,5 @@
-import { formatMarketCap, formatMonthYearShort } from '@/lib/format';
+import { useFormatDate } from '@/hooks/useFormatDate';
+import { useFormatNumber } from '@/hooks/useFormatNumber';
 
 type RevenueTooltipProps = {
   active?: boolean;
@@ -7,6 +8,9 @@ type RevenueTooltipProps = {
 };
 
 const RevenueTooltip = ({ active, payload, currency }: RevenueTooltipProps) => {
+  const { formatMonthYearShort } = useFormatDate();
+  const { formatMarketCap } = useFormatNumber();
+
   if (!active || !payload?.length) {
     return null;
   }

@@ -21,7 +21,8 @@ import {
   SYNC_KIND_LABEL,
   formatSyncTrigger,
 } from '@/pages/sync/components/syncLabels';
-import { formatDateTime, formatDuration } from '@/lib/format';
+import { formatDuration } from '@/lib/format';
+import { useFormatDate } from '@/hooks/useFormatDate';
 import RelativeDateTime from '@/components/RelativeDateTime';
 
 type SyncHistoryDetailSheetProps = {
@@ -33,6 +34,7 @@ const SyncHistoryDetailSheet = ({
   syncId,
   onOpenChange,
 }: SyncHistoryDetailSheetProps) => {
+  const { formatDateTime } = useFormatDate();
   const queryClient = useQueryClient();
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
 
