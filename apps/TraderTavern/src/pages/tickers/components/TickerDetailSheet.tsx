@@ -16,7 +16,7 @@ import CompanyCell from '@/components/table/CompanyCell';
 import MarketBadge from '@/components/MarketBadge';
 import TickerStatusBadge from '@/pages/tickers/components/TickerStatusBadge';
 import RelativeDateTime from '@/components/RelativeDateTime';
-import { formatMarketCap, formatNumber } from '@/lib/format';
+import { useFormatNumber } from '@/hooks/useFormatNumber';
 import type { components } from '@trader-tavern/api-client';
 
 type TickerSummary = components['schemas']['TickerSummaryDto'];
@@ -30,6 +30,7 @@ const TickerDetailSheet = ({
   ticker,
   onOpenChange,
 }: TickerDetailSheetProps) => {
+  const { formatCurrency, formatMarketCap, formatNumber } = useFormatNumber();
   const { data, isPending } = useClientQuery(
     'get',
     '/api/finance/ticker/{id}',
@@ -149,7 +150,7 @@ const TickerDetailSheet = ({
 
                 <dt className="text-muted-foreground">Price</dt>
                 <dd className="tabular-nums">
-                  {formatNumber(data.price, 2, data.currency)}
+                  {formatCurrency(data.price, data.currency, 2)}
                 </dd>
 
                 <dt className="text-muted-foreground">Market cap</dt>
@@ -162,9 +163,7 @@ const TickerDetailSheet = ({
 
                 <dt className="text-muted-foreground">Employees</dt>
                 <dd className="tabular-nums">
-                  {data.employees !== null
-                    ? data.employees.toLocaleString()
-                    : '—'}
+                  {formatNumber(data.employees, 0)}
                 </dd>
 
                 <dt className="text-muted-foreground">Data refreshed</dt>

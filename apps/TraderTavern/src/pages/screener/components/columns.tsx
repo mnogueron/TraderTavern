@@ -9,7 +9,6 @@ import SortableHeader from '@/components/table/cells/SortableHeader';
 import StringCell from '@/components/table/cells/StringCell';
 import CountryFlag from '@/components/CountryFlag';
 import RelativeDateTime from '@/components/RelativeDateTime';
-import { formatMarketCap, formatNumber } from '@/lib/format';
 import ChangeBadge from '@/pages/screener/components/cells/ChangeBadge';
 
 export type Ticker = ApiResponse<
@@ -228,7 +227,7 @@ export const columns: ColumnDef<Ticker>[] = [
       <CurrencyCell
         value={row.original.marketCap}
         currency={row.original.currency}
-        format={(value) => formatMarketCap(value)}
+        kind="marketCap"
       />
     ),
   },
@@ -252,7 +251,8 @@ export const columns: ColumnDef<Ticker>[] = [
       <CurrencyCell
         value={row.original.price}
         currency={row.original.currency}
-        format={(value) => formatNumber(value, 2)}
+        kind="number"
+        decimals={2}
       />
     ),
   },

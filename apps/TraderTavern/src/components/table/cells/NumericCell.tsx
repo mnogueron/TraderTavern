@@ -1,6 +1,6 @@
 import CurrencyCell from '@/components/table/cells/CurrencyCell';
 import RightAligned from '@/components/table/cells/RightAligned';
-import { formatMarketCap, formatNumber, formatPercent } from '@/lib/format';
+import { useFormatNumber } from '@/hooks/useFormatNumber';
 
 type NumericCellProps = {
   value: number | null;
@@ -15,6 +15,8 @@ const NumericCell = ({
   decimals,
   currency = null,
 }: NumericCellProps) => {
+  const { formatMarketCap, formatNumber, formatPercent } = useFormatNumber();
+
   switch (kind) {
     case 'marketCap':
       return <RightAligned>{formatMarketCap(value, currency)}</RightAligned>;
@@ -23,7 +25,8 @@ const NumericCell = ({
         <CurrencyCell
           value={value}
           currency={currency}
-          format={(v) => formatNumber(v, decimals ?? 2)}
+          kind="number"
+          decimals={decimals ?? 2}
         />
       );
     case 'percent':

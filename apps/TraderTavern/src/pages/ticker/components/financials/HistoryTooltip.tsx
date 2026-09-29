@@ -1,4 +1,4 @@
-import { formatMarketCap } from '@/lib/format';
+import { useFormatNumber } from '@/hooks/useFormatNumber';
 
 export type SeriesDefinition = { key: string; label: string; color: string };
 
@@ -19,6 +19,8 @@ const HistoryTooltip = ({
   currency,
   isPercent,
 }: HistoryTooltipProps) => {
+  const { formatMarketCap, formatPercent } = useFormatNumber();
+
   if (!active || !payload?.length) {
     return null;
   }
@@ -35,9 +37,7 @@ const HistoryTooltip = ({
               <span className="text-muted-foreground">{item.label}</span>
               <span className="text-right">
                 {isPercent
-                  ? value === null
-                    ? '—'
-                    : `${value.toFixed(2)}%`
+                  ? formatPercent(value)
                   : formatMarketCap(value, currency)}
               </span>
             </div>

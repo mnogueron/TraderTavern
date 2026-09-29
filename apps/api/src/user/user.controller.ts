@@ -29,10 +29,7 @@ export class UserController {
     @CurrentUser() currentUser: JwtPayload,
     @Body() dto: UpdateUserSettingsDto,
   ): Promise<UserDto> {
-    const user = await this.userService.updateTickerSource(
-      currentUser.sub,
-      dto.tickerSource,
-    );
+    const user = await this.userService.updateSettings(currentUser.sub, dto);
     if (!user) {
       throw new BadRequestException('User not found');
     }

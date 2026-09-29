@@ -14,6 +14,14 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { DEFAULT_LOCALE, LOCALE_OPTIONS, type AppLocale } from '@/lib/locale';
 
 const ProfilePage = () => {
   const queryClient = useQueryClient();
@@ -27,6 +35,16 @@ const ProfilePage = () => {
       queryClient.setQueryData(['get', '/api/auth/me'], user);
     },
   });
+
+  const updateSettingsMutation = useClientMutation(
+    'patch',
+    '/api/user/me/settings',
+    {
+      onSuccess: (user) => {
+        queryClient.setQueryData(['get', '/api/auth/me'], user);
+      },
+    },
+  );
 
   const changePasswordMutation = useClientMutation(
     'post',
@@ -51,6 +69,13 @@ const ProfilePage = () => {
   const handlePasswordSubmit = (event: SubmitEvent) => {
     event.preventDefault();
     changePasswordMutation.mutate({ body: { currentPassword, newPassword } });
+  };
+
+  const handleLocaleChange = (value: AppLocale | null) => {
+    if (!value) {
+      return;
+    }
+    updateSettingsMutation.mutate({ body: { locale: value } });
   };
 
   return (
@@ -101,6 +126,35 @@ const ProfilePage = () => {
             </Button>
           </CardFooter>
         </form>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Preferences</CardTitle>
+          <CardDescription>
+            Number and date formatting used across the app.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="locale">Locale</Label>
+            <Select
+              value={currentUser.locale ?? DEFAULT_LOCALE}
+              onValueChange={handleLocaleChange}
+            >
+              <SelectTrigger id="locale" className="w-64">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {LOCALE_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
       </Card>
 
       <Card>

@@ -1,6 +1,7 @@
 import type { ApiResponse } from '@trader-tavern/api-client';
 import { Skeleton } from '@/components/ui/skeleton';
-import { changePercentClassName, formatChangePercent } from '@/lib/format';
+import { useFormatNumber } from '@/hooks/useFormatNumber';
+import { changePercentClassName } from '@/lib/format';
 
 type Ticker = ApiResponse<'get', '/api/finance/ticker/{id}'>;
 
@@ -10,6 +11,8 @@ type PerformanceRowProps = {
 };
 
 const PerformanceRow = ({ ticker, isPending }: PerformanceRowProps) => {
+  const { formatChangePercent } = useFormatNumber();
+
   if (isPending || !ticker) {
     return <Skeleton className="h-14 w-full" />;
   }

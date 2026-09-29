@@ -1160,12 +1160,26 @@ components:
           enum:
             - yahoo
             - xtb
+        locale:
+          type: string
+          enum:
+            - en-US
+            - en-GB
+            - fr
+            - de
+            - es
+            - it
+            - pt
+            - nl
+            - ja
+            - zh-CN
       required:
         - id
         - username
         - email
         - role
         - tickerSource
+        - locale
     PaginationMetaDto:
       type: object
       properties:
@@ -1202,8 +1216,19 @@ components:
           enum:
             - yahoo
             - xtb
-      required:
-        - tickerSource
+        locale:
+          type: string
+          enum:
+            - en-US
+            - en-GB
+            - fr
+            - de
+            - es
+            - it
+            - pt
+            - nl
+            - ja
+            - zh-CN
     UpdateEmailDto:
       type: object
       properties:

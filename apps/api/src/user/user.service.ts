@@ -10,6 +10,7 @@ import { PaginatedUserDto } from './PaginatedUser.dto';
 import { UserDto } from '../shared/User.dto';
 import { User, UserDocument } from './schemas/user.schema';
 import { TickerSourceType } from '../ticker-source/enums/ticker-source-type.enum';
+import { Locale } from '../shared/locale.enum';
 
 const toUserDto = (user: UserDocument): UserDto =>
   new UserDto(
@@ -18,6 +19,7 @@ const toUserDto = (user: UserDocument): UserDto =>
     user.email,
     user.role,
     user.tickerSource,
+    user.locale,
   );
 
 @Injectable()
@@ -63,11 +65,13 @@ export class UserService {
     return this.userModel.find({ _id: { $in: ids } }).exec();
   }
 
-  async updateTickerSource(
+  async updateSettings(
     id: string,
-    tickerSource: TickerSourceType,
+    settings: { tickerSource?: TickerSourceType; locale?: Locale },
   ): Promise<UserDocument | null> {
-    return this.userModel.findByIdAndUpdate(id, { tickerSource }, { new: true }).exec();
+    return this.userModel
+      .findByIdAndUpdate(id, settings, { new: true })
+      .exec();
   }
 
   async updateEmail(id: string, email: string): Promise<UserDocument> {

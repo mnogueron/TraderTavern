@@ -815,6 +815,8 @@ export interface components {
             role: string;
             /** @enum {string} */
             tickerSource: "yahoo" | "xtb";
+            /** @enum {string} */
+            locale: "en-US" | "en-GB" | "fr" | "de" | "es" | "it" | "pt" | "nl" | "ja" | "zh-CN";
         };
         PaginationMetaDto: {
             page: number;
@@ -828,7 +830,9 @@ export interface components {
         };
         UpdateUserSettingsDto: {
             /** @enum {string} */
-            tickerSource: "yahoo" | "xtb";
+            tickerSource?: "yahoo" | "xtb";
+            /** @enum {string} */
+            locale?: "en-US" | "en-GB" | "fr" | "de" | "es" | "it" | "pt" | "nl" | "ja" | "zh-CN";
         };
         UpdateEmailDto: {
             email: string;

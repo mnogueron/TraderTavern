@@ -13,7 +13,8 @@ import { Section, SectionContent } from '@/components/Section';
 import { ButtonGroup } from '@/components/ui/button-group';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatMarketCap, formatMonthYearShort, formatNumber } from '@/lib/format';
+import { useFormatDate } from '@/hooks/useFormatDate';
+import { useFormatNumber } from '@/hooks/useFormatNumber';
 import type { EarningsHistory } from '@/pages/ticker/components/financials/types';
 import EpsTooltip from '@/pages/ticker/components/financials/EpsTooltip';
 import RevenueTooltip from '@/pages/ticker/components/financials/RevenueTooltip';
@@ -47,8 +48,6 @@ type EpsBarShapeProps = {
   payload?: { classification: EpsClassification };
 };
 
-const formatQuarter = (value: string) => formatMonthYearShort(value);
-
 const classifyEps = (
   actual: number | null,
   estimate: number | null,
@@ -68,6 +67,9 @@ const EarningsHistoryCard = ({
   isPending,
 }: EarningsHistoryCardProps) => {
   const [subTab, setSubTab] = useState<SubTab>('eps');
+  const { formatMonthYearShort } = useFormatDate();
+  const { formatMarketCap, formatNumber } = useFormatNumber();
+  const formatQuarter = (value: string) => formatMonthYearShort(value);
 
   const epsData = (earningsHistory?.eps ?? []).map((period) => ({
     quarter: period.quarter,

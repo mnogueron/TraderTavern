@@ -9,6 +9,7 @@ import {
 import { useSearchParams } from 'react-router';
 import { useClientQuery } from '@trader-tavern/api-client';
 import { cn } from '@/lib/utils';
+import { useFormatNumber } from '@/hooks/useFormatNumber';
 import type { SortingState, VisibilityState } from '@tanstack/react-table';
 import TickerTable from '@/pages/screener/components/TickerTable';
 import TickerTableSkeleton from '@/pages/screener/components/TickerTableSkeleton';
@@ -68,6 +69,7 @@ const loadStoredColumnVisibility = (ids: string[]): VisibilityState => {
 };
 
 const ScreenerPage = () => {
+  const { formatNumber } = useFormatNumber();
   const [searchParams, setSearchParams] = useSearchParams();
   const page = Number(searchParams.get('page') ?? 1);
   const limit = Number(searchParams.get('limit') ?? DEFAULT_LIMIT);
@@ -248,7 +250,7 @@ const ScreenerPage = () => {
       )}
       <div className="flex shrink-0 items-center justify-between gap-2">
         <span className="text-sm text-muted-foreground">
-          {meta ? `${meta.total.toLocaleString()} results` : '—'}
+          {meta ? `${formatNumber(meta.total, 0)} results` : '—'}
         </span>
         <ColumnVisibilityPopover
           columnVisibility={columnVisibility}

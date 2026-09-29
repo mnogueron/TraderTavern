@@ -23,7 +23,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { formatDateTime, formatDuration } from '@/lib/format';
+import { formatDuration } from '@/lib/format';
+import { useFormatDate } from '@/hooks/useFormatDate';
 import RelativeDateTime from '@/components/RelativeDateTime';
 import SyncStatusBadge from '@/pages/sync/components/SyncStatusBadge';
 import SyncKindBadge from '@/pages/sync/components/SyncKindBadge';
@@ -54,6 +55,7 @@ const getElapsedMs = (startedAt: string, finishedAt: string | null) =>
   new Date(startedAt).getTime();
 
 const DataSyncSettings = () => {
+  const { formatDateTime } = useFormatDate();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(DEFAULT_LIMIT);

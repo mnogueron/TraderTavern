@@ -1,4 +1,5 @@
-import { formatMonthYearShort, formatNumber } from '@/lib/format';
+import { useFormatDate } from '@/hooks/useFormatDate';
+import { useFormatNumber } from '@/hooks/useFormatNumber';
 
 type EpsTooltipProps = {
   active?: boolean;
@@ -8,6 +9,9 @@ type EpsTooltipProps = {
 };
 
 const EpsTooltip = ({ active, payload }: EpsTooltipProps) => {
+  const { formatMonthYearShort } = useFormatDate();
+  const { formatNumber } = useFormatNumber();
+
   if (!active || !payload?.length) {
     return null;
   }

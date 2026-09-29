@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
+import { useFormatNumber } from '@/hooks/useFormatNumber';
 import SyncHealthTable from '@/pages/sync/components/SyncHealthTable';
 import type { components } from '@trader-tavern/api-client';
 
@@ -33,6 +34,7 @@ const SEVERITY_TEXT: Record<Severity, string> = {
 };
 
 const SyncHealthMonitor = () => {
+  const { formatNumber } = useFormatNumber();
   const [activeTab, setActiveTab] = useState<SyncHealthStatus | null>(null);
 
   const { data: summary, isPending } = useClientQuery(
@@ -70,7 +72,8 @@ const SyncHealthMonitor = () => {
                   {summary.healthyPercentage.toFixed(1)}%
                 </div>
                 <div className="text-sm tabular-nums text-muted-foreground">
-                  {summary.healthyCount.toLocaleString()} of {summary.total.toLocaleString()} tickers
+                  {formatNumber(summary.healthyCount, 0)} of{' '}
+                  {formatNumber(summary.total, 0)} tickers
                 </div>
               </CardContent>
             </Card>
@@ -96,7 +99,7 @@ const SyncHealthMonitor = () => {
               </CardHeader>
               <CardContent>
                 <div className={cn('text-2xl font-semibold tabular-nums', SEVERITY_TEXT[severity])}>
-                  {summary.unhealthyCount.toLocaleString()}
+                  {formatNumber(summary.unhealthyCount, 0)}
                 </div>
                 <div className="text-sm text-muted-foreground">
                   Not synced since their market closed

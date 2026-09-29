@@ -11,7 +11,7 @@ import { Section, SectionContent } from '@/components/Section';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Chart, Series, useChartColors } from '@/components/charts';
-import { formatNumber } from '@/lib/format';
+import { useFormatNumber } from '@/hooks/useFormatNumber';
 import { altmanZoneInfo } from '@/lib/altman';
 import type {
   AltmanHistory,
@@ -31,6 +31,7 @@ const toUnixTime = (isoDate: string): UTCTimestamp =>
 
 const AltmanScoreCard = ({ history, isPending }: AltmanScoreCardProps) => {
   const colors = useChartColors();
+  const { formatNumber } = useFormatNumber();
   const [series, setSeries] = useState<ISeriesApi<'Baseline'> | null>(null);
 
   const points = useMemo(() => history?.history ?? [], [history]);

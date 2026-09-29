@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { Role } from '../../shared/role.enum';
+import { Locale } from '../../shared/locale.enum';
 import { TickerSourceType } from '../../ticker-source/enums/ticker-source-type.enum';
 
 export type UserDocument = HydratedDocument<User>;
@@ -26,6 +27,14 @@ export class User {
     default: TickerSourceType.Yahoo,
   })
   tickerSource!: TickerSourceType;
+
+  @Prop({
+    type: String,
+    required: true,
+    enum: Locale,
+    default: Locale.EnUS,
+  })
+  locale!: Locale;
 
   @Prop()
   resetPasswordTokenHash?: string;

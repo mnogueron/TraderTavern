@@ -18,15 +18,9 @@ import TickerHeader from '@/pages/ticker/components/TickerHeader';
 import CandleReadout from '@/pages/ticker/components/CandleReadout';
 import StatGroup from '@/pages/ticker/components/StatGroup';
 import StatRow from '@/pages/ticker/components/StatRow';
-import {
-  changePercentClassName,
-  formatChangePercent,
-  formatDate,
-  formatMarketCap,
-  formatMonthYear,
-  formatNumber,
-  formatPercent,
-} from '@/lib/format';
+import { useFormatDate } from '@/hooks/useFormatDate';
+import { useFormatNumber } from '@/hooks/useFormatNumber';
+import { changePercentClassName } from '@/lib/format';
 import { altmanZoneInfo } from '@/lib/altman';
 import { lastRegularCloseAt } from '@/lib/marketHours';
 
@@ -44,6 +38,14 @@ type TickerDetailPageProps = {
 };
 
 const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
+  const { formatDate, formatMonthYear } = useFormatDate();
+  const {
+    formatChangePercent,
+    formatCurrency,
+    formatMarketCap,
+    formatNumber,
+    formatPercent,
+  } = useFormatNumber();
   const [window, setWindow] = useState<CandleWindow>('1d');
   const [showPreMarket, setShowPreMarket] = useState(false);
   const [displayCandle, setDisplayCandle] = useState<Candle | null>(null);
@@ -238,10 +240,10 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
                       />
                       <StatRow
                         label="Revenue/Share"
-                        value={formatNumber(
+                        value={formatCurrency(
                           fundamental.revenuePerShare,
-                          3,
                           tickerData.currency,
+                          3,
                         )}
                       />
                     </StatGroup>
@@ -292,18 +294,18 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
                     <StatGroup title="52W Range">
                       <StatRow
                         label="52W High"
-                        value={formatNumber(
+                        value={formatCurrency(
                           fundamental.fiftyTwoWeekHigh,
-                          2,
                           tickerData.currency,
+                          2,
                         )}
                       />
                       <StatRow
                         label="52W Low"
-                        value={formatNumber(
+                        value={formatCurrency(
                           fundamental.fiftyTwoWeekLow,
-                          2,
                           tickerData.currency,
+                          2,
                         )}
                       />
                     </StatGroup>
@@ -438,18 +440,18 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
                       />
                       <StatRow
                         label="Book Value/Sh"
-                        value={formatNumber(
+                        value={formatCurrency(
                           fundamental.bookValuePerShare,
-                          4,
                           tickerData.currency,
+                          4,
                         )}
                       />
                       <StatRow
                         label="Cash/Share"
-                        value={formatNumber(
+                        value={formatCurrency(
                           fundamental.cashPerShare,
-                          3,
                           tickerData.currency,
+                          3,
                         )}
                       />
                     </StatGroup>
@@ -459,18 +461,18 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
                     <StatGroup title="Dividends">
                       <StatRow
                         label="Fwd Div Rate"
-                        value={formatNumber(
+                        value={formatCurrency(
                           fundamental.forwardDividendRate,
-                          4,
                           tickerData.currency,
+                          4,
                         )}
                       />
                       <StatRow
                         label="Trail. Div Rate"
-                        value={formatNumber(
+                        value={formatCurrency(
                           fundamental.trailingDividendRate,
-                          4,
                           tickerData.currency,
+                          4,
                         )}
                       />
                       <StatRow
@@ -502,10 +504,10 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
                       />
                       <StatRow
                         label="Target (Mean)"
-                        value={formatNumber(
+                        value={formatCurrency(
                           fundamental.analystTargetMean,
-                          2,
                           tickerData.currency,
+                          2,
                         )}
                       />
                       <StatRow
@@ -531,7 +533,7 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
                       />
                       <StatRow
                         label="Target Range"
-                        value={`${formatNumber(fundamental.analystTargetLow, 2, tickerData.currency)} – ${formatNumber(fundamental.analystTargetHigh, 2, tickerData.currency)}`}
+                        value={`${formatCurrency(fundamental.analystTargetLow, tickerData.currency, 2)} – ${formatCurrency(fundamental.analystTargetHigh, tickerData.currency, 2)}`}
                       />
                       <StatRow
                         label="# Analysts"
@@ -589,18 +591,18 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
                       />
                       <StatRow
                         label="SMA 50"
-                        value={formatNumber(
+                        value={formatCurrency(
                           fundamental.sma50,
-                          2,
                           tickerData.currency,
+                          2,
                         )}
                       />
                       <StatRow
                         label="SMA 200"
-                        value={formatNumber(
+                        value={formatCurrency(
                           fundamental.sma200,
-                          2,
                           tickerData.currency,
+                          2,
                         )}
                       />
                       <StatRow
@@ -648,26 +650,26 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
                       />
                       <StatRow
                         label="BB Upper"
-                        value={formatNumber(
+                        value={formatCurrency(
                           tickerData.bbUpper,
-                          2,
                           tickerData.currency,
+                          2,
                         )}
                       />
                       <StatRow
                         label="BB Middle"
-                        value={formatNumber(
+                        value={formatCurrency(
                           tickerData.bbMiddle,
-                          2,
                           tickerData.currency,
+                          2,
                         )}
                       />
                       <StatRow
                         label="BB Lower"
-                        value={formatNumber(
+                        value={formatCurrency(
                           tickerData.bbLower,
-                          2,
                           tickerData.currency,
+                          2,
                         )}
                       />
                       <StatRow
@@ -676,10 +678,10 @@ const TickerDetailPage = ({ ticker }: TickerDetailPageProps) => {
                       />
                       <StatRow
                         label="ATR (14)"
-                        value={formatNumber(
+                        value={formatCurrency(
                           tickerData.atr14,
-                          2,
                           tickerData.currency,
+                          2,
                         )}
                       />
                       <StatRow
