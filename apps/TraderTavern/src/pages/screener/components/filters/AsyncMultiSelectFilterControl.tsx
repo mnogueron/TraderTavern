@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useClientInfiniteQuery } from '@trader-tavern/api-client';
 import { Button } from '@/components/ui/button';
@@ -33,7 +33,12 @@ const AsyncMultiSelectFilterControl = ({
 }: AsyncMultiSelectFilterControlProps) => {
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search, 250);
-  const scrollParentRef = useRef<HTMLDivElement>(null);
+  // A state ref (rather than useRef) so attaching the scroll container on
+  // popover open triggers a re-render, letting the virtualizer measure it
+  // immediately instead of computing an empty range against a stale null.
+  const [scrollParent, setScrollParent] = useState<HTMLDivElement | null>(
+    null,
+  );
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isPending } =
     useClientInfiniteQuery(
@@ -67,7 +72,7 @@ const AsyncMultiSelectFilterControl = ({
 
   const virtualizer = useVirtualizer({
     count: hasNextPage ? options.length + 1 : options.length,
-    getScrollElement: () => scrollParentRef.current,
+    getScrollElement: () => scrollParent,
     estimateSize: () => ROW_HEIGHT,
     overscan: 8,
   });
@@ -128,7 +133,7 @@ const AsyncMultiSelectFilterControl = ({
         ) : options.length === 0 ? (
           <Popover.NoResult>No results found.</Popover.NoResult>
         ) : (
-          <Popover.CommandList ref={scrollParentRef} className="pt-1.5">
+          <Popover.CommandList ref={setScrollParent} className="pt-1.5">
             <div
               style={{
                 height: virtualizer.getTotalSize(),
