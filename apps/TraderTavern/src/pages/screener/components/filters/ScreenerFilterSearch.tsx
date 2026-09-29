@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import {
-  Command,
   CommandInput,
   CommandItem,
   CommandList,
@@ -66,36 +65,38 @@ const ScreenerFilterSearch = ({
       }}
     >
       <Popover.Trigger render={<SearchButton label="Search filters..." />} />
-      <Popover.Content className="w-64 gap-2 p-0" align="start">
-        <Command shouldFilter={false}>
-          <CommandInput
-            value={search}
-            onValueChange={setSearch}
-            placeholder="Search filters..."
-            className="text-xs"
-          />
-          <CommandList className="p-2">
-            {matches.length === 0 ? (
-              <Popover.NoResult>No filters found.</Popover.NoResult>
-            ) : (
-              matches.map((config) => (
-                <CommandItem
-                  key={config.key}
-                  value={config.key}
-                  onSelect={() => handleSelect(config.key)}
-                  showCheck={false}
-                  className="py-1 text-xs"
-                >
-                  <span className="flex-1 truncate">{config.label}</span>
-                  <span className="shrink-0 text-[10px] text-muted-foreground">
-                    {getCategoryLabel(config.category)}
-                  </span>
-                </CommandItem>
-              ))
-            )}
-          </CommandList>
-        </Command>
-      </Popover.Content>
+      <Popover.Command
+        className="w-64 gap-2"
+        align="start"
+        shouldFilter={false}
+      >
+        <CommandInput
+          value={search}
+          onValueChange={setSearch}
+          placeholder="Search filters..."
+          className="text-xs"
+        />
+        <CommandList className="p-2">
+          {matches.length === 0 ? (
+            <Popover.NoResult>No filters found.</Popover.NoResult>
+          ) : (
+            matches.map((config) => (
+              <CommandItem
+                key={config.key}
+                value={config.key}
+                onSelect={() => handleSelect(config.key)}
+                showCheck={false}
+                className="py-1 text-xs"
+              >
+                <span className="flex-1 truncate">{config.label}</span>
+                <span className="shrink-0 text-[10px] text-muted-foreground">
+                  {getCategoryLabel(config.category)}
+                </span>
+              </CommandItem>
+            ))
+          )}
+        </CommandList>
+      </Popover.Command>
     </Popover>
   );
 };
